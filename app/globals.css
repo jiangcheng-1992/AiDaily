@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 210 40% 98%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --primary: 217 89% 51%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 258 85% 60%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 16% 47%;
+  --accent: 217 91% 95%;
+  --accent-foreground: 217 89% 42%;
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 217 89% 60%;
+  --success: 153 78% 40%;
+  --warning: 38 92% 50%;
+  --radius: 1rem;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(59, 130, 246, 0.13), transparent 28rem),
+    radial-gradient(circle at 88% 8%, rgba(139, 92, 246, 0.12), transparent 26rem),
+    hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+}
+
+::selection {
+  background: rgba(59, 130, 246, 0.18);
+}
+
+@layer components {
+  .brand-gradient {
+    @apply bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent;
+  }
+
+  .surface-blur {
+    @apply border border-white/70 bg-white/80 shadow-soft backdrop-blur-xl;
+  }
+
+  .ai-grid {
+    background-image:
+      linear-gradient(rgba(59, 130, 246, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(139, 92, 246, 0.08) 1px, transparent 1px);
+    background-size: 32px 32px;
+    mask-image: radial-gradient(circle at center, black, transparent 72%);
+  }
+}
