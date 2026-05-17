@@ -12,6 +12,8 @@
     "start": "node scripts/start-standalone.mjs",
     "start:next": "next start",
     "ingest:sources": "node scripts/call-ingest-endpoint.mjs",
+    "github:login": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/push-main.ps1 -LoginOnly",
+    "push:main": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/push-main.ps1",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },
