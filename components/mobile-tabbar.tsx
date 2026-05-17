@@ -2,12 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bookmark, ChartNoAxesColumnIncreasing, Home, PenLine, UserRound } from "lucide-react";
+import {
+  Bookmark,
+  ChartNoAxesColumnIncreasing,
+  Home,
+  PenLine,
+  Sparkles,
+  UserRound,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
 const items = [
   { href: "/", label: "首页", icon: Home },
+  { href: "/skills", label: "Skill", icon: Sparkles },
   { href: "/ranking", label: "榜单", icon: ChartNoAxesColumnIncreasing },
   { href: "/submit", label: "投稿", icon: PenLine },
   { href: "/saved", label: "收藏", icon: Bookmark },
@@ -19,7 +27,7 @@ export function MobileTabbar() {
 
   return (
     <nav className="fixed inset-x-3 bottom-3 z-50 rounded-3xl border border-white/80 bg-white/90 px-2 py-2 shadow-lift backdrop-blur-xl md:hidden">
-      <div className="grid grid-cols-5">
+      <div className="grid grid-cols-6">
         {items.map((item) => {
           const active =
             item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);

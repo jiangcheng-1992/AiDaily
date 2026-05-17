@@ -15,8 +15,10 @@ export function HomeClient() {
 
   const filteredPosts = useMemo(() => {
     const visiblePosts = selectedTag
-      ? allPosts.filter((post) => post.tags.includes(selectedTag))
-      : allPosts;
+      ? allPosts.filter(
+          (post) => post.type !== "skill" && post.tags.includes(selectedTag),
+        )
+      : allPosts.filter((post) => post.type !== "skill");
 
     return [...visiblePosts].sort(
       (a, b) =>

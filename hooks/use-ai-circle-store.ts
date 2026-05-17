@@ -141,6 +141,7 @@ function dedupePosts(posts: Post[]) {
 export function useAiCircleStore() {
   const [generatedFeed, setGeneratedFeed] =
     useState<GeneratedFeedState>(emptyGeneratedFeed);
+  const [generatedFeedLoaded, setGeneratedFeedLoaded] = useState(false);
   const localState = useSyncExternalStore(
     subscribeToLocalState,
     readLocalState,
@@ -168,9 +169,13 @@ export function useAiCircleStore() {
             comments:
               data.comments && typeof data.comments === "object" ? data.comments : {},
           });
+          setGeneratedFeedLoaded(true);
         }
       } catch {
-        if (active) setGeneratedFeed(emptyGeneratedFeed);
+        if (active) {
+          setGeneratedFeed(emptyGeneratedFeed);
+          setGeneratedFeedLoaded(true);
+        }
       }
     }
 
@@ -348,7 +353,7 @@ export function useAiCircleStore() {
   }, []);
 
   return {
-    hydrated: true,
+    hydrated: generatedFeedLoaded,
     allPosts,
     savedPostIds: savedPosts,
     likedCommentIds: likedComments,
