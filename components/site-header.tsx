@@ -19,8 +19,8 @@ export function SiteHeader() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
-  function handleLogout() {
-    logout();
+  async function handleLogout() {
+    await logout();
 
     if (pathname.startsWith("/me")) {
       window.location.href = "/auth";

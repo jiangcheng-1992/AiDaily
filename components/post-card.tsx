@@ -1,7 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Bookmark, Heart, MessageCircle, Share2, Sparkles } from "lucide-react";
+import {
+  Bookmark,
+  ExternalLink,
+  Heart,
+  MessageCircle,
+  Share2,
+  Sparkles,
+} from "lucide-react";
 
 import { InteractionButton } from "@/components/interaction-button";
 import { PostTypeBadge } from "@/components/post-type-badge";
@@ -80,6 +87,19 @@ export function PostCard({
         <p className="mt-3 line-clamp-3 text-[15px] leading-7 text-slate-600">
           {post.summary}
         </p>
+
+        {post.type === "skill" && post.sourceUrl ? (
+          <a
+            href={post.sourceUrl}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(event) => event.stopPropagation()}
+            className="mt-4 inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700"
+          >
+            查看 GitHub
+            <ExternalLink className="h-4 w-4" />
+          </a>
+        ) : null}
 
         <div className="mt-5 rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-violet-50/70 p-4">
           <div className="text-xs font-black uppercase tracking-[0.12em] text-blue-700">

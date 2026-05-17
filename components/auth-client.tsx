@@ -57,7 +57,7 @@ export function AuthClient() {
             保存灵感、管理投稿，把你的 AI 信息流同步起来
           </h1>
           <p className="mt-5 max-w-xl text-base leading-8 text-blue-50">
-            注册后可以进入个人主页，查看收藏、投稿和评论数据。当前版本先保存在本地浏览器中，后续可平滑接入真实后端。
+            注册后可以进入个人主页，查看收藏、投稿和评论数据。账号会保存在服务端数据目录中，正式环境刷新和重新访问后也能保持登录。
           </p>
         </div>
 
@@ -156,7 +156,7 @@ export function AuthClient() {
           </form>
 
           <p className="mt-5 text-center text-xs leading-5 text-slate-400">
-            这是本地演示账号系统，请不要使用常用真实密码。
+            密码会在服务端加盐哈希保存，登录状态通过安全 Cookie 维持。
           </p>
         </Card>
       </div>

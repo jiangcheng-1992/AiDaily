@@ -35,8 +35,21 @@ AIQ_USER_AGENT=AIQ/1.0 (+https://github.com/jiangcheng-1992/AiDaily)
 ```
 
 `CRON_SECRET` 在生产环境必填，用于保护 `/api/cron/ingest`。
-`AIQ_DATA_DIR` 建议指向 Railway Volume 挂载目录，例如 `/data`，这样离线抓取的 `generated-feed.json` 不会因为服务重启丢失。
+`AIQ_DATA_DIR` 建议指向 Railway Volume 挂载目录，例如 `/data`，这样离线抓取的 `generated-feed.json`、注册账号和登录会话不会因为服务重启丢失。
 `AUTO_INGEST_ENABLED=true` 后，Web 服务启动 30 秒后会自动抓取一次，之后默认每 60 分钟抓取一次；这条链路不依赖额外的 Railway Cron 服务。
+
+## 登录注册
+
+登录注册走服务端 API：
+
+```bash
+GET /api/auth/session
+POST /api/auth/register
+POST /api/auth/login
+POST /api/auth/logout
+```
+
+账号数据和会话写入 `AIQ_DATA_DIR/auth-store.json`，登录态通过 `httpOnly` Cookie `aiq_session` 维持。生产环境务必给 Railway Web 服务挂载 Volume，并设置 `AIQ_DATA_DIR=/data`。
 
 ## 每小时定时抓取
 

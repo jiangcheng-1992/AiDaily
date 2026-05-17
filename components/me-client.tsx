@@ -22,11 +22,23 @@ import { cn, formatRelativeTime } from "@/lib/utils";
 
 export function MeClient() {
   const { savedPostIds, submissions, commentsByPost } = useAiCircleStore();
-  const { user, logout } = useAuth();
+  const { user, loading, logout } = useAuth();
   const commentCount = Object.values(commentsByPost).reduce(
     (total, comments) => total + comments.length,
     0,
   );
+
+  if (loading) {
+    return (
+      <div className="mx-auto flex min-h-[calc(100vh-8rem)] max-w-3xl items-center px-4 py-8 sm:px-6 lg:px-8">
+        <Card className="w-full rounded-[2rem] p-8 text-center shadow-lift">
+          <div className="mx-auto h-16 w-16 animate-pulse rounded-3xl bg-blue-50" />
+          <div className="mx-auto mt-5 h-8 w-56 animate-pulse rounded-full bg-slate-100" />
+          <div className="mx-auto mt-3 h-4 w-72 animate-pulse rounded-full bg-slate-100" />
+        </Card>
+      </div>
+    );
+  }
 
   if (!user) {
     return (

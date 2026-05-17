@@ -196,21 +196,22 @@ function githubRepoToPost(repo: GitHubRepo): Post {
     repo.language || "",
     ...topics.slice(0, 5),
   ]).slice(0, 8);
+  const useCase = describeGithubSkillUse(repo);
+  const description = repo.description || "暂无仓库简介";
+  const githubUrl = repo.html_url;
 
   return {
     id: `github-${repo.id}`,
     type: "skill",
     title: `GitHub 热门 AI Skill：${repo.full_name}`,
-    summary:
-      repo.description ||
-      "这个仓库正在 GitHub 上获得较多开发者关注，适合加入 AI 技能和工具雷达。",
-    content: `${repo.description || "暂无仓库简介。"}\n\n真实 GitHub 指标：${repo.stargazers_count.toLocaleString("zh-CN")} stars、${repo.forks_count.toLocaleString("zh-CN")} forks、${repo.open_issues_count.toLocaleString("zh-CN")} open issues。主要语言：${repo.language || "未标注"}。最近推送：${new Date(repo.pushed_at).toLocaleString("zh-CN")}。\n\nAI圈会把 GitHub stars 作为点赞基数、forks 作为收藏基数，并抓取热门 issue 标题作为真实讨论线索。`,
+    summary: `${description}。用途：${useCase}`,
+    content: `GitHub 链接：${githubUrl}\n\n这个 Skill 能用来：${useCase}\n\n仓库简介：${description}。\n\n真实 GitHub 指标：${repo.stargazers_count.toLocaleString("zh-CN")} stars、${repo.forks_count.toLocaleString("zh-CN")} forks、${repo.open_issues_count.toLocaleString("zh-CN")} open issues。主要语言：${repo.language || "未标注"}。最近推送：${new Date(repo.pushed_at).toLocaleString("zh-CN")}。\n\nAI圈会把 GitHub stars 作为点赞基数、forks 作为收藏基数，并抓取热门 issue 标题作为真实讨论线索。`,
     whyItMatters:
-      "GitHub 的 stars、forks 和 issue 活跃度是开发者真实投票。高热度 AI Skill 往往意味着可复用工作流、开发范式或垂直工具机会正在形成。",
+      `这个仓库可用于${useCase}。GitHub 的 stars、forks 和 issue 活跃度是开发者真实投票，高热度 AI Skill 往往意味着可复用工作流、开发范式或垂直工具机会正在形成。`,
     editorComment:
       "看这类仓库不要只看 stars，还要看最近提交、issues 是否活跃、README 是否能快速复现。能被复用到你当前项目里的，才是真正有价值的 skill。",
-    sourceName: "GitHub",
-    sourceUrl: repo.html_url,
+    sourceName: "GitHub Repo",
+    sourceUrl: githubUrl,
     author: repo.owner.login,
     tags,
     createdAt:
@@ -222,6 +223,43 @@ function githubRepoToPost(repo: GitHubRepo): Post {
     savesCount: repo.forks_count,
     featured: repo.stargazers_count >= 10000,
   };
+}
+
+function describeGithubSkillUse(repo: GitHubRepo) {
+  const text = [
+    repo.full_name,
+    repo.description ?? "",
+    repo.language ?? "",
+    ...(repo.topics ?? []),
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  if (text.includes("agent")) {
+    return "搭建 AI Agent、自动化任务执行和多步骤工作流";
+  }
+
+  if (text.includes("rag") || text.includes("retrieval") || text.includes("vector")) {
+    return "构建知识库问答、文档检索和带引用的 AI 搜索";
+  }
+
+  if (text.includes("mcp") || text.includes("model-context-protocol")) {
+    return "把外部工具、数据源和本地能力接入大模型上下文";
+  }
+
+  if (text.includes("prompt")) {
+    return "沉淀提示词模板、评测提示效果和复用提示工程流程";
+  }
+
+  if (text.includes("llm") || text.includes("chatbot") || text.includes("chatgpt")) {
+    return "开发 LLM 应用、聊天机器人和模型调用工程能力";
+  }
+
+  if (text.includes("workflow") || text.includes("automation")) {
+    return "编排自动化工作流，减少重复操作并连接多个工具";
+  }
+
+  return "学习和复用 AI 应用工程实践，快速验证可落地的工具能力";
 }
 
 function authorityLabel(authority: AiSource["authority"]) {

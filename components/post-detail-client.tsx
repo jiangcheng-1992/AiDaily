@@ -187,7 +187,7 @@ export function PostDetailClient({ postId }: { postId: string }) {
                 rel="noreferrer"
                 className="inline-flex items-center gap-1 text-blue-700 hover:underline"
               >
-                原始来源
+                {post.type === "skill" ? "查看 GitHub" : "原始来源"}
                 <ExternalLink className="h-3.5 w-3.5" />
               </a>
             ) : null}
