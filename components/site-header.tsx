@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { PenLine, Search, UserRound } from "lucide-react";
+import { PenLine, UserRound } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/", label: "首页" },
   { href: "/ranking", label: "榜单" },
-  { href: "/sources", label: "信息源" },
   { href: "/saved", label: "收藏" },
   { href: "/me", label: "我的" },
 ];
@@ -52,12 +51,6 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <button
-            aria-label="搜索"
-            className="hidden h-10 w-10 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-950 sm:inline-flex"
-          >
-            <Search className="h-5 w-5" />
-          </button>
           <Link
             href="/me"
             className="hidden items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950 sm:inline-flex"

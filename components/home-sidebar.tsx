@@ -2,10 +2,8 @@
 
 import Link from "next/link";
 import {
-  ArrowRight,
   Flame,
   Hash,
-  MessageSquarePlus,
   Rocket,
   Trophy,
   UsersRound,
@@ -35,29 +33,6 @@ export function HomeSidebar({
 
   return (
     <div className="space-y-4">
-      <Card className="overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 to-violet-600 p-5 text-white shadow-lift">
-        <div className="flex items-center gap-2 text-sm font-semibold text-blue-50">
-          <MessageSquarePlus className="h-4 w-4" />
-          分享新鲜事
-        </div>
-        <h3 className="mt-3 text-xl font-black leading-tight">
-          记录你的 AI 发现
-        </h3>
-        <p className="mt-2 text-sm leading-6 text-blue-50">
-          好工具、好观点、好案例，都值得被圈内人看见。
-        </p>
-        <Link
-          href="/submit"
-          className={cn(
-            buttonVariants({ variant: "outline" }),
-            "mt-4 w-full border-white/40 bg-white text-blue-700 hover:bg-blue-50",
-          )}
-        >
-          去投稿
-          <ArrowRight className="h-4 w-4" />
-        </Link>
-      </Card>
-
       <Card className="rounded-3xl p-5">
         <div className="mb-4 flex items-center gap-2">
           <Flame className="h-5 w-5 text-violet-600" />
