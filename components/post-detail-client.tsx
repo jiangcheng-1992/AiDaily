@@ -185,7 +185,11 @@ export function PostDetailClient({
           <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm font-medium text-slate-500">
             <span>{post.sourceName}</span>
             <span className="h-1 w-1 rounded-full bg-slate-300" />
-            <time>{formatRelativeTime(post.createdAt)}</time>
+            <time>
+              {post.collectedAt
+                ? `${formatRelativeTime(post.collectedAt)}收录`
+                : formatRelativeTime(post.createdAt)}
+            </time>
             {post.author ? (
               <>
                 <span className="h-1 w-1 rounded-full bg-slate-300" />

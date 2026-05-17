@@ -66,7 +66,9 @@ export function mergeGeneratedFeed({
 
   const posts = Array.from(postMap.values())
     .sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      (a, b) =>
+        new Date(b.collectedAt ?? b.createdAt).getTime() -
+        new Date(a.collectedAt ?? a.createdAt).getTime(),
     )
     .slice(0, limit);
   const postIds = new Set(posts.map((post) => post.id));

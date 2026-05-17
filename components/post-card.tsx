@@ -72,7 +72,11 @@ export function PostCard({
               <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-slate-500">
                 <span>{post.sourceName}</span>
                 <span className="h-1 w-1 rounded-full bg-slate-300" />
-                <time>{formatRelativeTime(post.createdAt)}</time>
+                <time>
+                  {post.collectedAt
+                    ? `${formatRelativeTime(post.collectedAt)}收录`
+                    : formatRelativeTime(post.createdAt)}
+                </time>
               </div>
             </div>
           </div>

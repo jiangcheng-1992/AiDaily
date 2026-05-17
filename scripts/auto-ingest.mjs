@@ -1,5 +1,5 @@
-const DEFAULT_INTERVAL_MINUTES = 60;
-const DEFAULT_INITIAL_DELAY_MS = 30_000;
+const DEFAULT_INTERVAL_MINUTES = 15;
+const DEFAULT_INITIAL_DELAY_MS = 10_000;
 
 let timer = null;
 let running = false;
@@ -18,21 +18,23 @@ export function startAutoIngest() {
     process.env.AUTO_INGEST_INTERVAL_MINUTES,
     DEFAULT_INTERVAL_MINUTES,
   );
+  const cappedIntervalMinutes = Math.min(intervalMinutes, DEFAULT_INTERVAL_MINUTES);
   const initialDelayMs = readPositiveNumber(
     process.env.AUTO_INGEST_INITIAL_DELAY_MS,
     DEFAULT_INITIAL_DELAY_MS,
   );
-  const intervalMs = intervalMinutes * 60 * 1000;
+  const cappedInitialDelayMs = Math.min(initialDelayMs, DEFAULT_INITIAL_DELAY_MS);
+  const intervalMs = cappedIntervalMinutes * 60 * 1000;
 
   console.log(
     `[auto-ingest] enabled; first run in ${Math.round(
-      initialDelayMs / 1000,
-    )}s, then every ${intervalMinutes}m`,
+      cappedInitialDelayMs / 1000,
+    )}s, then every ${cappedIntervalMinutes}m`,
   );
 
   setTimeout(() => {
     void runAutoIngest("startup");
-  }, initialDelayMs).unref?.();
+  }, cappedInitialDelayMs).unref?.();
 
   timer = setInterval(() => {
     void runAutoIngest("interval");

@@ -163,7 +163,9 @@ async function fetchGithubPosts(limit: number): Promise<{
 }
 
 function sourceItemToPost(item: SourceItem, source: AiSource): Post {
-  const createdAt = toIsoDate(item.publishedAt) || new Date().toISOString();
+  const collectedAt = new Date().toISOString();
+  const publishedAt = toIsoDate(item.publishedAt);
+  const createdAt = publishedAt || collectedAt;
   const summary =
     item.summary ||
     `来自 ${item.sourceName} 的最新 AI 动态，AI圈已纳入定时信息源。`;
@@ -173,7 +175,7 @@ function sourceItemToPost(item: SourceItem, source: AiSource): Post {
     type: source.recommendedType,
     title: item.title,
     summary,
-    content: `${summary}\n\n原始来源：${item.sourceName}\n抓取时间：${new Date().toLocaleString("zh-CN")}\n\n说明：该内容来自 AI圈离线抓取任务。RSS/Atom 源通常不提供点赞和评论数据，因此互动数不会被编造；详情页会附带 AI 角色评论作为社区视角补充。`,
+    content: `${summary}\n\n原始来源：${item.sourceName}\n原文时间：${publishedAt ? new Date(publishedAt).toLocaleString("zh-CN") : "未提供"}\n抓取时间：${new Date(collectedAt).toLocaleString("zh-CN")}\n\n说明：该内容来自 AI圈离线抓取任务。RSS/Atom 源通常不提供点赞和评论数据，因此互动数不会被编造；详情页会附带 AI 角色评论作为社区视角补充。`,
     whyItMatters:
       "这是来自权威 AI 信息源的最新变化，适合用于判断模型、产品、开发工具和创作者机会的方向。",
     editorComment:
@@ -182,6 +184,7 @@ function sourceItemToPost(item: SourceItem, source: AiSource): Post {
     sourceUrl: item.url,
     tags: uniqueTags([...item.tags, authorityLabel(source.authority)]).slice(0, 6),
     createdAt,
+    collectedAt,
     likesCount: 0,
     commentsCount: 0,
     savesCount: 0,

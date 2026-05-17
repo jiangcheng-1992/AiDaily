@@ -13,6 +13,7 @@ export type Post = {
   author?: string;
   tags: string[];
   createdAt: string;
+  collectedAt?: string;
   likesCount: number;
   commentsCount: number;
   savesCount: number;
