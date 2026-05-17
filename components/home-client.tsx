@@ -22,9 +22,9 @@ export function HomeClient() {
 
     return [...visiblePosts].sort(
       (a, b) =>
-        Number(b.featured) - Number(a.featured) ||
         new Date(b.collectedAt ?? b.createdAt).getTime() -
-          new Date(a.collectedAt ?? a.createdAt).getTime(),
+          new Date(a.collectedAt ?? a.createdAt).getTime() ||
+        Number(b.featured) - Number(a.featured),
     );
   }, [allPosts, selectedTag]);
 
