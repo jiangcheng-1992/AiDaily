@@ -10,6 +10,8 @@ Railway 会读取 `railway.toml`：
 
 项目使用 Next.js standalone 输出，构建后会把 `.next/static` 和 `public` 复制到 `.next/standalone`，正式环境启动更轻。
 
+`npm start` 会通过 `scripts/start-standalone.mjs` 启动服务，并把 Next.js standalone 的监听地址固定为 `0.0.0.0`，避免 Railway 健康检查因为容器 `HOSTNAME` 绑定失败。
+
 ## 环境变量
 
 在 Railway Web 服务里配置：
@@ -25,6 +27,7 @@ GITHUB_SKILL_LIMIT=8
 GENERATED_FEED_LIMIT=120
 GITHUB_TOKEN=可选，建议填写 GitHub fine-grained token 提高 API 限额
 AIQ_DATA_DIR=/data
+HOSTNAME_BIND=0.0.0.0
 AIQ_USER_AGENT=AIQ/1.0 (+https://github.com/jiangcheng-1992/AiDaily)
 ```
 

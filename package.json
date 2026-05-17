@@ -9,7 +9,7 @@
     "dev": "next dev",
     "build": "next build",
     "postbuild": "node scripts/prepare-standalone.mjs",
-    "start": "node .next/standalone/server.js",
+    "start": "node scripts/start-standalone.mjs",
     "start:next": "next start",
     "ingest:sources": "node scripts/call-ingest-endpoint.mjs",
     "lint": "eslint .",
