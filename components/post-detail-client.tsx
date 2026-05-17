@@ -23,10 +23,18 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useAiCircleStore } from "@/hooks/use-ai-circle-store";
-import { getPostById, type Comment } from "@/lib/mock-data";
+import { getPostById, type Comment, type Post } from "@/lib/mock-data";
 import { cn, formatCompactNumber, formatRelativeTime } from "@/lib/utils";
 
-export function PostDetailClient({ postId }: { postId: string }) {
+export function PostDetailClient({
+  postId,
+  initialPost,
+  initialComments = [],
+}: {
+  postId: string;
+  initialPost?: Post;
+  initialComments?: Comment[];
+}) {
   const router = useRouter();
   const {
     hydrated,
@@ -46,7 +54,10 @@ export function PostDetailClient({ postId }: { postId: string }) {
   const [aiCommentNotice, setAiCommentNotice] = useState("");
   const [isGeneratingAiComments, setIsGeneratingAiComments] = useState(false);
 
-  const post = useMemo(() => getPostById(allPosts, postId), [allPosts, postId]);
+  const post = useMemo(
+    () => getPostById(allPosts, postId) ?? initialPost,
+    [allPosts, initialPost, postId],
+  );
 
   if (!post && !hydrated) {
     return (
@@ -80,7 +91,8 @@ export function PostDetailClient({ postId }: { postId: string }) {
   }
 
   const stats = getPostStats(post);
-  const comments = getCommentsForPost(post.id);
+  const storedComments = getCommentsForPost(post.id);
+  const comments = storedComments.length ? storedComments : initialComments;
   const paragraphs = post.content.split(/\n+/).filter(Boolean);
 
   const handleShare = async () => {

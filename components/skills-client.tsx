@@ -7,21 +7,21 @@ import { Card } from "@/components/ui/card";
 import { useAiCircleStore } from "@/hooks/use-ai-circle-store";
 import type { Post } from "@/lib/mock-data";
 
-export function SkillsClient() {
+export function SkillsClient({ initialPosts = [] }: { initialPosts?: Post[] }) {
   const { allPosts, hydrated, getPostStats, toggleLike, toggleSave } =
     useAiCircleStore();
   const [sharedPostId, setSharedPostId] = useState<string | null>(null);
 
   const skillPosts = useMemo(
     () =>
-      allPosts
+      dedupePosts([...allPosts, ...initialPosts])
         .filter((post) => post.type === "skill")
         .sort(
           (a, b) =>
             b.likesCount + b.savesCount - (a.likesCount + a.savesCount) ||
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         ),
-    [allPosts],
+    [allPosts, initialPosts],
   );
 
   const handleShare = async (post: Post) => {
@@ -81,4 +81,14 @@ export function SkillsClient() {
       </div>
     </section>
   );
+}
+
+function dedupePosts(posts: Post[]) {
+  const seen = new Set<string>();
+
+  return posts.filter((post) => {
+    if (seen.has(post.id)) return false;
+    seen.add(post.id);
+    return true;
+  });
 }
