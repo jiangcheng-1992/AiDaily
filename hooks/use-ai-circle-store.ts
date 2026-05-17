@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { generateAiCommentsForPost } from "@/lib/ai-comment-roles";
 import {
@@ -28,12 +28,22 @@ type LocalState = {
   likedComments: string[];
 };
 
+type GeneratedFeedState = {
+  posts: Post[];
+  comments: Record<string, Comment[]>;
+};
+
 const emptyState: LocalState = {
   likedPosts: [],
   savedPosts: [],
   comments: {},
   submissions: [],
   likedComments: [],
+};
+
+const emptyGeneratedFeed: GeneratedFeedState = {
+  posts: [],
+  comments: {},
 };
 
 let lastSerialized = "";
@@ -118,7 +128,19 @@ function createId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function dedupePosts(posts: Post[]) {
+  const seen = new Set<string>();
+
+  return posts.filter((post) => {
+    if (seen.has(post.id)) return false;
+    seen.add(post.id);
+    return true;
+  });
+}
+
 export function useAiCircleStore() {
+  const [generatedFeed, setGeneratedFeed] =
+    useState<GeneratedFeedState>(emptyGeneratedFeed);
   const localState = useSyncExternalStore(
     subscribeToLocalState,
     readLocalState,
@@ -127,11 +149,59 @@ export function useAiCircleStore() {
   const { likedPosts, savedPosts, comments, submissions, likedComments } =
     localState;
 
-  const allPosts = useMemo(() => [...submissions, ...mockPosts], [submissions]);
+  useEffect(() => {
+    let active = true;
+
+    async function loadGeneratedFeed() {
+      try {
+        const response = await fetch("/api/feed", { cache: "no-store" });
+        if (!response.ok) return;
+
+        const data = (await response.json()) as {
+          posts?: Post[];
+          comments?: Record<string, Comment[]>;
+        };
+
+        if (active) {
+          setGeneratedFeed({
+            posts: Array.isArray(data.posts) ? data.posts : [],
+            comments:
+              data.comments && typeof data.comments === "object" ? data.comments : {},
+          });
+        }
+      } catch {
+        if (active) setGeneratedFeed(emptyGeneratedFeed);
+      }
+    }
+
+    void loadGeneratedFeed();
+    const timer = window.setInterval(loadGeneratedFeed, 5 * 60 * 1000);
+
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  const allPosts = useMemo(
+    () => dedupePosts([...submissions, ...generatedFeed.posts, ...mockPosts]),
+    [generatedFeed.posts, submissions],
+  );
+
+  const allCommentsByPost = useMemo(() => {
+    const merged: Record<string, Comment[]> = { ...generatedFeed.comments };
+
+    for (const [postId, postComments] of Object.entries(comments)) {
+      merged[postId] = [...(merged[postId] ?? []), ...postComments];
+    }
+
+    return merged;
+  }, [comments, generatedFeed.comments]);
 
   const getPostStats = useCallback(
     (post: Post) => {
       const localComments = comments[post.id]?.length ?? 0;
+      const generatedComments = generatedFeed.comments[post.id]?.length ?? 0;
       const liked = likedPosts.includes(post.id);
       const saved = savedPosts.includes(post.id);
 
@@ -140,18 +210,19 @@ export function useAiCircleStore() {
         saved,
         likesCount: post.likesCount + (liked ? 1 : 0),
         savesCount: post.savesCount + (saved ? 1 : 0),
-        commentsCount: post.commentsCount + localComments,
+        commentsCount: post.commentsCount + generatedComments + localComments,
       };
     },
-    [comments, likedPosts, savedPosts],
+    [comments, generatedFeed.comments, likedPosts, savedPosts],
   );
 
   const getCommentsForPost = useCallback(
     (postId: string) => [
       ...(mockComments[postId] ?? []),
+      ...(generatedFeed.comments[postId] ?? []),
       ...(comments[postId] ?? []),
     ],
-    [comments],
+    [comments, generatedFeed.comments],
   );
 
   const toggleLike = useCallback((postId: string) => {
@@ -281,7 +352,7 @@ export function useAiCircleStore() {
     allPosts,
     savedPostIds: savedPosts,
     likedCommentIds: likedComments,
-    commentsByPost: comments,
+    commentsByPost: allCommentsByPost,
     submissions,
     getPostStats,
     getCommentsForPost,

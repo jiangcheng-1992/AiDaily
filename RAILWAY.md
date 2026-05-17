@@ -21,19 +21,37 @@ OPENAI_API_KEY=可选，填写后启用正式 AI 评论
 AI_COMMENT_MODEL=gpt-4.1-mini
 SOURCE_FETCH_LIMIT=12
 SOURCE_ITEMS_PER_SOURCE=6
-AIQ_USER_AGENT=AIQ/1.0 (+https://github.com/jiangcheng-1992/-AIDaily)
+GITHUB_SKILL_LIMIT=8
+GENERATED_FEED_LIMIT=120
+GITHUB_TOKEN=可选，建议填写 GitHub fine-grained token 提高 API 限额
+AIQ_DATA_DIR=/data
+AIQ_USER_AGENT=AIQ/1.0 (+https://github.com/jiangcheng-1992/AiDaily)
 ```
 
 `CRON_SECRET` 在生产环境必填，用于保护 `/api/cron/ingest`。
+`AIQ_DATA_DIR` 建议指向 Railway Volume 挂载目录，例如 `/data`，这样离线抓取的 `generated-feed.json` 不会因为服务重启丢失。
 
-## 定时抓取服务
+## 每小时定时抓取
 
-第一版还没有接数据库，所以 `/api/cron/ingest` 当前是 dry run：会抓取并标准化候选内容，但不入库。
+当前抓取链路：
 
-后续在 Railway 新增一个 Scheduled/Cron 服务，复用同一个仓库，启动命令设置为：
+1. 抓取 AI RSS/Atom 权威信息源。
+2. 调用 GitHub Search API 找热门 AI Skill 仓库。
+3. 使用 GitHub stars 作为点赞基数，forks 作为收藏基数，热门 issue 作为真实讨论线索。
+4. 为每条动态生成 AI 角色评论。
+5. 写入服务端缓存文件 `generated-feed.json`。
+6. 前端通过 `/api/feed` 自动读取新动态。
+
+在 Railway 新增一个 Scheduled/Cron 服务，复用同一个仓库，启动命令设置为：
 
 ```bash
 npm run ingest:sources
+```
+
+建议 cron 表达式设置为每小时一次：
+
+```bash
+0 * * * *
 ```
 
 这个服务也需要配置：
@@ -43,9 +61,9 @@ APP_BASE_URL=https://你的 Web 服务域名
 CRON_SECRET=和 Web 服务保持一致
 SOURCE_FETCH_LIMIT=12
 SOURCE_ITEMS_PER_SOURCE=6
+GITHUB_SKILL_LIMIT=8
+AIQ_DATA_DIR=/data
 ```
-
-建议先设为每天 08:00 执行一次，接入数据库和去重逻辑后再提高频率。
 
 ## 本地检查
 
@@ -53,4 +71,12 @@ SOURCE_ITEMS_PER_SOURCE=6
 npm run typecheck
 npm run lint
 npm run build
+```
+
+本地手动触发抓取：
+
+```bash
+$env:APP_BASE_URL="http://localhost:3004"
+$env:CRON_SECRET="local-test"
+npm run ingest:sources
 ```

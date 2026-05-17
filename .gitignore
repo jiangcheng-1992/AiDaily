@@ -11,7 +11,9 @@ ai_3
 ai_4
 out
 dist
+data/*.json
 .env*
+!.env.example
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
