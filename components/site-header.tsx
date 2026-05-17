@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { PenLine, UserRound } from "lucide-react";
+import { LogOut, PenLine, UserRound } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -16,6 +17,15 @@ const navItems = [
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
+
+  function handleLogout() {
+    logout();
+
+    if (pathname.startsWith("/me")) {
+      window.location.href = "/auth";
+    }
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/70 bg-white/82 backdrop-blur-xl">
@@ -51,13 +61,35 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <Link
-            href="/me"
-            className="hidden items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950 sm:inline-flex"
-          >
-            <UserRound className="h-4 w-4" />
-            登录
-          </Link>
+          {user ? (
+            <>
+              <Link
+                href="/me"
+                className="hidden items-center gap-2 rounded-full px-2 py-1.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950 sm:inline-flex"
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-xs font-black text-blue-700">
+                  {user.avatarText}
+                </span>
+                <span className="max-w-24 truncate">{user.name}</span>
+              </Link>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="hidden items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-950 sm:inline-flex"
+              >
+                <LogOut className="h-4 w-4" />
+                退出
+              </button>
+            </>
+          ) : (
+            <Link
+              href="/auth"
+              className="hidden items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950 sm:inline-flex"
+            >
+              <UserRound className="h-4 w-4" />
+              登录
+            </Link>
+          )}
           <Link
             href="/submit"
             className={cn(buttonVariants({ variant: "gradient", size: "sm" }))}

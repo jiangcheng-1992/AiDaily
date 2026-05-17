@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Sparkles, X } from "lucide-react";
+import { X } from "lucide-react";
 
 import { HomeSidebar } from "@/components/home-sidebar";
 import { PostCard } from "@/components/post-card";
@@ -43,26 +43,7 @@ export function HomeClient() {
 
   return (
     <div>
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 -z-10 ai-grid opacity-80" />
-        <div className="mx-auto max-w-7xl px-4 pb-6 pt-8 sm:px-6 md:pb-8 md:pt-14 lg:px-8">
-          <div className="max-w-4xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white/80 px-3 py-1.5 text-sm font-bold text-blue-700 shadow-soft backdrop-blur">
-              <Sparkles className="h-4 w-4" />
-              AI 创作者和独立开发者的每日信息流
-            </div>
-            <h1 className="mt-6 text-4xl font-black leading-tight tracking-normal text-slate-950 sm:text-5xl lg:text-6xl">
-              每天 5 分钟，
-              <span className="brand-gradient">刷完 AI 圈新动态</span>
-            </h1>
-            <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
-              聚合每日 AI 新闻、大佬观点、实用技巧、热门产品和创作者案例。像刷朋友圈一样，发现 AI 世界的新机会。
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto grid max-w-7xl gap-6 px-4 pt-2 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
+      <section className="mx-auto grid max-w-7xl gap-6 px-4 pt-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
         <div className="min-w-0 space-y-5">
           {selectedTag ? (
             <div className="flex items-center justify-between rounded-3xl border border-blue-100 bg-white/85 px-4 py-3 shadow-soft backdrop-blur">

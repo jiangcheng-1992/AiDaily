@@ -28,11 +28,15 @@ GENERATED_FEED_LIMIT=120
 GITHUB_TOKEN=可选，建议填写 GitHub fine-grained token 提高 API 限额
 AIQ_DATA_DIR=/data
 HOSTNAME_BIND=0.0.0.0
+AUTO_INGEST_ENABLED=true
+AUTO_INGEST_INTERVAL_MINUTES=60
+AUTO_INGEST_INITIAL_DELAY_MS=30000
 AIQ_USER_AGENT=AIQ/1.0 (+https://github.com/jiangcheng-1992/AiDaily)
 ```
 
 `CRON_SECRET` 在生产环境必填，用于保护 `/api/cron/ingest`。
 `AIQ_DATA_DIR` 建议指向 Railway Volume 挂载目录，例如 `/data`，这样离线抓取的 `generated-feed.json` 不会因为服务重启丢失。
+`AUTO_INGEST_ENABLED=true` 后，Web 服务启动 30 秒后会自动抓取一次，之后默认每 60 分钟抓取一次；这条链路不依赖额外的 Railway Cron 服务。
 
 ## 每小时定时抓取
 
@@ -45,7 +49,8 @@ AIQ_USER_AGENT=AIQ/1.0 (+https://github.com/jiangcheng-1992/AiDaily)
 5. 写入服务端缓存文件 `generated-feed.json`。
 6. 前端通过 `/api/feed` 自动读取新动态。
 
-在 Railway 新增一个 Scheduled/Cron 服务，复用同一个仓库，启动命令设置为：
+默认推荐使用 Web 服务内置自动刷新器。  
+如果还想加一个 Railway Scheduled/Cron 服务做兜底，可以复用同一个仓库，启动命令设置为：
 
 ```bash
 npm run ingest:sources

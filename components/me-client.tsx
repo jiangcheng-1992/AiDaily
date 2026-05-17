@@ -5,6 +5,7 @@ import {
   Bell,
   Bookmark,
   ChevronRight,
+  LogOut,
   MessageCircle,
   PenLine,
   Settings,
@@ -13,16 +14,42 @@ import {
 } from "lucide-react";
 
 import { PostTypeBadge } from "@/components/post-type-badge";
+import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useAuth } from "@/hooks/use-auth";
 import { useAiCircleStore } from "@/hooks/use-ai-circle-store";
-import { formatRelativeTime } from "@/lib/utils";
+import { cn, formatRelativeTime } from "@/lib/utils";
 
 export function MeClient() {
   const { savedPostIds, submissions, commentsByPost } = useAiCircleStore();
+  const { user, logout } = useAuth();
   const commentCount = Object.values(commentsByPost).reduce(
     (total, comments) => total + comments.length,
     0,
   );
+
+  if (!user) {
+    return (
+      <div className="mx-auto flex min-h-[calc(100vh-8rem)] max-w-3xl items-center px-4 py-8 sm:px-6 lg:px-8">
+        <Card className="w-full rounded-[2rem] p-8 text-center shadow-lift">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-blue-50 text-blue-700">
+            <UserRound className="h-8 w-8" />
+          </div>
+          <h1 className="mt-5 text-3xl font-black tracking-normal text-slate-950">
+            登录后查看你的 AI 圈
+          </h1>
+          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-500">
+            登录或注册后，可以查看个人资料、收藏、投稿和评论记录。
+          </p>
+          <div className="mt-6 flex justify-center">
+            <Link href="/auth" className={cn(buttonVariants({ variant: "gradient", size: "lg" }))}>
+              登录 / 注册
+            </Link>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
@@ -31,16 +58,26 @@ export function MeClient() {
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex items-center gap-4">
               <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-white/18 text-3xl font-black shadow-soft ring-1 ring-white/30">
-                探
+                {user.avatarText}
               </div>
               <div>
-                <h1 className="text-3xl font-black tracking-normal">AI 探索者</h1>
-                <p className="mt-2 text-blue-50">每天学习一点 AI</p>
+                <h1 className="text-3xl font-black tracking-normal">{user.name}</h1>
+                <p className="mt-2 text-blue-50">{user.email}</p>
               </div>
             </div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/14 px-4 py-2 text-sm font-bold text-white ring-1 ring-white/25">
-              <Sparkles className="h-4 w-4" />
-              连续关注 7 天
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/14 px-4 py-2 text-sm font-bold text-white ring-1 ring-white/25">
+                <Sparkles className="h-4 w-4" />
+                已登录
+              </div>
+              <button
+                type="button"
+                onClick={logout}
+                className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-blue-700 transition-colors hover:bg-blue-50"
+              >
+                <LogOut className="h-4 w-4" />
+                退出登录
+              </button>
             </div>
           </div>
         </div>

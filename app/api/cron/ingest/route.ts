@@ -51,10 +51,12 @@ async function handleIngestRequest(request: Request) {
   if (!dryRun) {
     await writeGeneratedFeed(nextFeed);
   }
+  const attemptedCount = sourceLimit + (githubLimit > 0 ? 1 : 0);
+  const ingestOk = attemptedCount === 0 || run.successCount > 0 || run.posts.length > 0;
 
   return Response.json(
     {
-      ok: true,
+      ok: ingestOk,
       dryRun,
       persisted: !dryRun,
       fetchedAt: run.fetchedAt,
@@ -70,6 +72,7 @@ async function handleIngestRequest(request: Request) {
       github: run.github,
     },
     {
+      status: ingestOk ? 200 : 502,
       headers: {
         "cache-control": "no-store",
       },

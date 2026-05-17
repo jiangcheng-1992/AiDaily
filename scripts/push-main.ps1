@@ -75,22 +75,21 @@ if ($ConfigureOnly) {
 }
 
 if (-not $SkipAuthCheck) {
-  Invoke-Gh auth status -h github.com
-  $authStatus = $LASTEXITCODE
+  $authStatus = Invoke-Gh auth status -h github.com
 
   if ($authStatus -ne 0) {
     Write-Host ""
     Write-Host "GitHub login is missing or expired. Starting browser/device-code login..."
     Write-Host "If this runs inside a restricted agent sandbox, run the same command in a normal PowerShell window."
-    Invoke-Gh auth login -h github.com --web --git-protocol https
+    $loginStatus = Invoke-Gh auth login -h github.com --web --git-protocol https
 
-    if ($LASTEXITCODE -ne 0) {
+    if ($loginStatus -ne 0) {
       throw "GitHub login failed. Re-run this script from a normal PowerShell window with network access."
     }
   }
 
-  Invoke-Gh auth setup-git -h github.com
-  if ($LASTEXITCODE -ne 0) {
+  $setupStatus = Invoke-Gh auth setup-git -h github.com
+  if ($setupStatus -ne 0) {
     throw "GitHub CLI could not configure Git credentials."
   }
 }
