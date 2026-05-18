@@ -2,7 +2,11 @@ import Link from "next/link";
 import { DatabaseZap, ExternalLink, Radio, ShieldCheck } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
-import { authoritativeSources, fetchableSources } from "@/lib/ai-sources";
+import {
+  authoritativeSources,
+  autoIngestSources,
+  fetchableSources,
+} from "@/lib/ai-sources";
 
 const authorityLabels = {
   official: "官方",
@@ -24,14 +28,14 @@ export default function SourcesPage() {
           权威 AI 信息源库
         </h1>
         <p className="mt-3 max-w-3xl text-base leading-8 text-slate-500">
-          第一版先维护官方、研究、产品和媒体源。带 RSS/Atom 的源可以被定时接口抓取；HTML 源先纳入监控清单，后续接页面解析器。
+          现在采用白名单抓取策略。来源库会继续维护完整名单，但真正自动抓取的只保留核心官方/研究/媒体站点，并限制为近期热门更新，避免信息流变杂。
         </p>
       </div>
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <MetricCard label="已收录来源" value={authoritativeSources.length} icon={ShieldCheck} />
         <MetricCard label="可直接抓取" value={fetchableSources.length} icon={DatabaseZap} />
-        <MetricCard label="每日定时" value="08:00" icon={Radio} />
+        <MetricCard label="自动白名单" value={autoIngestSources.length} icon={Radio} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -49,6 +53,15 @@ export default function SourcesPage() {
                   <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-500">
                     {source.status === "ready" ? "可抓取" : "待解析"}
                   </span>
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                      source.autoIngest
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-slate-100 text-slate-500"
+                    }`}
+                  >
+                    {source.autoIngest ? "自动抓取" : "仅监控"}
+                  </span>
                 </div>
                 <h2 className="mt-3 text-lg font-black leading-6 text-slate-950">
                   {source.name}
@@ -59,6 +72,11 @@ export default function SourcesPage() {
               </span>
             </div>
             <p className="mt-3 text-sm leading-6 text-slate-500">{source.notes}</p>
+            {source.autoIngest && source.maxItemAgeDays ? (
+              <p className="mt-2 text-xs font-semibold text-emerald-700">
+                仅抓取最近 {source.maxItemAgeDays} 天内的更新
+              </p>
+            ) : null}
             <div className="mt-4 flex flex-wrap gap-2">
               {source.tags.slice(0, 4).map((tag) => (
                 <span

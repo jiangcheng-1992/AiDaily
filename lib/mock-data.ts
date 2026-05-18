@@ -2,6 +2,7 @@ export type PostType = "news" | "opinion" | "tool" | "skill" | "product" | "case
 
 export type Post = {
   id: string;
+  sourceId?: string;
   type: PostType;
   title: string;
   summary: string;

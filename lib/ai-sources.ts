@@ -17,6 +17,8 @@ export type AiSource = {
   recommendedType: PostType;
   tags: string[];
   reliabilityScore: number;
+  autoIngest: boolean;
+  maxItemAgeDays?: number;
   notes: string;
 };
 
@@ -34,6 +36,8 @@ export const authoritativeSources: AiSource[] = [
     recommendedType: "news",
     tags: ["OpenAI", "模型", "产品更新", "安全"],
     reliabilityScore: 98,
+    autoIngest: true,
+    maxItemAgeDays: 10,
     notes: "OpenAI 官方新闻源，适合抓产品发布、研究说明、公司动态。",
   },
   {
@@ -49,6 +53,8 @@ export const authoritativeSources: AiSource[] = [
     recommendedType: "tool",
     tags: ["OpenAI API", "开发者", "Agents", "工具"],
     reliabilityScore: 96,
+    autoIngest: true,
+    maxItemAgeDays: 10,
     notes: "OpenAI 开发者内容，适合抓 API、SDK、Cookbook 和工程实践。",
   },
   {
@@ -63,6 +69,7 @@ export const authoritativeSources: AiSource[] = [
     recommendedType: "news",
     tags: ["Anthropic", "Claude", "安全", "企业"],
     reliabilityScore: 96,
+    autoIngest: false,
     notes: "Anthropic 官方新闻页，目前按 HTML 监控，后续可接页面解析器。",
   },
   {
@@ -77,6 +84,7 @@ export const authoritativeSources: AiSource[] = [
     recommendedType: "opinion",
     tags: ["Anthropic", "AI安全", "对齐", "可解释性"],
     reliabilityScore: 97,
+    autoIngest: false,
     notes: "Anthropic 官方研究页，适合抓安全、对齐、可解释性研究。",
   },
   {
@@ -92,6 +100,8 @@ export const authoritativeSources: AiSource[] = [
     recommendedType: "news",
     tags: ["DeepMind", "Gemini", "研究", "多模态"],
     reliabilityScore: 96,
+    autoIngest: true,
+    maxItemAgeDays: 10,
     notes: "Google DeepMind 官方博客，适合抓模型、科学 AI 和研究进展。",
   },
   {
@@ -107,6 +117,8 @@ export const authoritativeSources: AiSource[] = [
     recommendedType: "news",
     tags: ["Microsoft", "Copilot", "Azure AI", "企业 AI"],
     reliabilityScore: 93,
+    autoIngest: true,
+    maxItemAgeDays: 10,
     notes: "微软官方 AI 博客，适合抓 Copilot、Azure AI 和企业案例。",
   },
   {
@@ -121,6 +133,7 @@ export const authoritativeSources: AiSource[] = [
     recommendedType: "news",
     tags: ["Meta AI", "Llama", "开源模型", "研究"],
     reliabilityScore: 94,
+    autoIngest: false,
     notes: "Meta AI 官方博客，适合跟踪 Llama、开源模型和研究发布。",
   },
   {
@@ -136,6 +149,8 @@ export const authoritativeSources: AiSource[] = [
     recommendedType: "tool",
     tags: ["Hugging Face", "开源模型", "数据集", "推理"],
     reliabilityScore: 90,
+    autoIngest: true,
+    maxItemAgeDays: 10,
     notes: "Hugging Face 官方社区博客，适合抓开源模型、数据集和工程教程。",
   },
   {
@@ -151,6 +166,8 @@ export const authoritativeSources: AiSource[] = [
     recommendedType: "news",
     tags: ["NVIDIA", "GPU", "AI基础设施", "机器人"],
     reliabilityScore: 92,
+    autoIngest: true,
+    maxItemAgeDays: 10,
     notes: "NVIDIA 官方 AI/深度学习博客，适合抓算力、推理、机器人和行业案例。",
   },
   {
@@ -166,6 +183,7 @@ export const authoritativeSources: AiSource[] = [
     recommendedType: "opinion",
     tags: ["论文", "人工智能", "研究"],
     reliabilityScore: 89,
+    autoIngest: false,
     notes: "arXiv 人工智能分类，适合抓论文候选，需要后续用 AI 做筛选和摘要。",
   },
   {
@@ -181,6 +199,7 @@ export const authoritativeSources: AiSource[] = [
     recommendedType: "opinion",
     tags: ["论文", "NLP", "LLM"],
     reliabilityScore: 89,
+    autoIngest: false,
     notes: "arXiv 计算语言学分类，适合跟踪 LLM、NLP、Agent 研究。",
   },
   {
@@ -196,6 +215,7 @@ export const authoritativeSources: AiSource[] = [
     recommendedType: "opinion",
     tags: ["论文", "机器学习", "模型训练"],
     reliabilityScore: 88,
+    autoIngest: false,
     notes: "arXiv 机器学习分类，信息量大，建议定时抓取后做去重和打分。",
   },
   {
@@ -211,6 +231,7 @@ export const authoritativeSources: AiSource[] = [
     recommendedType: "opinion",
     tags: ["学术", "机器人", "强化学习", "研究解读"],
     reliabilityScore: 91,
+    autoIngest: false,
     notes: "伯克利 BAIR 博客，适合抓研究解读和前沿实验。",
   },
   {
@@ -225,6 +246,7 @@ export const authoritativeSources: AiSource[] = [
     recommendedType: "opinion",
     tags: ["Stanford HAI", "AI治理", "政策", "研究"],
     reliabilityScore: 91,
+    autoIngest: false,
     notes: "斯坦福 HAI 新闻和研究，适合抓 AI 治理、产业报告和研究洞察。",
   },
   {
@@ -240,6 +262,8 @@ export const authoritativeSources: AiSource[] = [
     recommendedType: "opinion",
     tags: ["The Batch", "Andrew Ng", "AI趋势", "解读"],
     reliabilityScore: 88,
+    autoIngest: true,
+    maxItemAgeDays: 14,
     notes: "DeepLearning.AI 周报，适合抓趋势解读和研究脉络。",
   },
   {
@@ -254,6 +278,7 @@ export const authoritativeSources: AiSource[] = [
     recommendedType: "news",
     tags: ["MIT Tech Review", "AI新闻", "产业影响"],
     reliabilityScore: 87,
+    autoIngest: false,
     notes: "技术评论媒体源，适合补充产业影响和社会议题。",
   },
   {
@@ -268,6 +293,7 @@ export const authoritativeSources: AiSource[] = [
     recommendedType: "product",
     tags: ["Product Hunt", "AI产品", "工具发现"],
     reliabilityScore: 82,
+    autoIngest: false,
     notes: "产品发现源，适合抓热门新工具，但需要结合投票和评论做质量过滤。",
   },
 ];
@@ -276,6 +302,16 @@ export const fetchableSources = authoritativeSources.filter(
   (source) => source.status === "ready" && Boolean(source.feedUrl),
 );
 
+export const autoIngestSources = fetchableSources.filter((source) => source.autoIngest);
+export const autoIngestSourceIds = new Set(autoIngestSources.map((source) => source.id));
+
 export function getSourcesByAuthority(authority: SourceAuthority) {
   return authoritativeSources.filter((source) => source.authority === authority);
+}
+
+export function extractGeneratedSourceId(postId: string) {
+  if (!postId.startsWith("source-")) return null;
+
+  const source = authoritativeSources.find((item) => postId.startsWith(`source-${item.id}-`));
+  return source?.id ?? null;
 }

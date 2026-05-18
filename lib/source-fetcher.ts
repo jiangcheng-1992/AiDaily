@@ -46,7 +46,7 @@ export async function fetchSourceItems(
   return rawItems
     .slice(0, limit)
     .map((item) => normalizeFeedItem(source, item))
-    .filter(hasRequiredFeedFields);
+    .filter((item) => hasRequiredFeedFields(item) && isFreshEnough(item, source));
 }
 
 async function fetchWithRetry(
@@ -156,6 +156,16 @@ function toArray(value: unknown) {
 
 function hasRequiredFeedFields(item: SourceItem) {
   return Boolean(item.title && item.url);
+}
+
+function isFreshEnough(item: SourceItem, source: AiSource) {
+  if (!item.publishedAt || !source.maxItemAgeDays) return true;
+
+  const publishedAt = new Date(item.publishedAt);
+  if (Number.isNaN(publishedAt.getTime())) return true;
+
+  const maxAgeMs = source.maxItemAgeDays * 24 * 60 * 60 * 1000;
+  return Date.now() - publishedAt.getTime() <= maxAgeMs;
 }
 
 function stripHtml(value: string) {

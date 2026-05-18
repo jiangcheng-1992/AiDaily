@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
+import { autoIngestSourceIds, extractGeneratedSourceId } from "@/lib/ai-sources";
 import type { Comment, Post } from "@/lib/mock-data";
 
 export type GeneratedFeed = {
@@ -29,14 +30,14 @@ export async function readGeneratedFeed(): Promise<GeneratedFeed> {
     const raw = await readFile(filePath, "utf8");
     const parsed = JSON.parse(raw) as GeneratedFeed;
 
-    return {
+    return sanitizeGeneratedFeed({
       updatedAt: parsed.updatedAt,
       posts: Array.isArray(parsed.posts) ? parsed.posts : [],
       comments:
         parsed.comments && typeof parsed.comments === "object"
           ? parsed.comments
           : {},
-    };
+    });
   } catch {
     return emptyFeed;
   }
@@ -45,7 +46,7 @@ export async function readGeneratedFeed(): Promise<GeneratedFeed> {
 export async function writeGeneratedFeed(feed: GeneratedFeed) {
   const filePath = getGeneratedFeedPath();
   await mkdir(dirname(filePath), { recursive: true });
-  await writeFile(filePath, JSON.stringify(feed, null, 2), "utf8");
+  await writeFile(filePath, JSON.stringify(sanitizeGeneratedFeed(feed), null, 2), "utf8");
 }
 
 export function mergeGeneratedFeed({
@@ -95,4 +96,26 @@ export function mergeGeneratedFeed({
       Object.entries(comments).filter(([postId]) => postIds.has(postId)),
     ),
   };
+}
+
+function sanitizeGeneratedFeed(feed: GeneratedFeed): GeneratedFeed {
+  const posts = feed.posts.filter(shouldKeepGeneratedPost);
+  const postIds = new Set(posts.map((post) => post.id));
+
+  return {
+    updatedAt: feed.updatedAt,
+    posts,
+    comments: Object.fromEntries(
+      Object.entries(feed.comments).filter(([postId]) => postIds.has(postId)),
+    ),
+  };
+}
+
+function shouldKeepGeneratedPost(post: Post) {
+  if (post.type === "skill") return true;
+
+  const sourceId = post.sourceId ?? extractGeneratedSourceId(post.id);
+  if (!sourceId) return true;
+
+  return autoIngestSourceIds.has(sourceId);
 }

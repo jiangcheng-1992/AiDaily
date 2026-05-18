@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { fetchableSources, type AiSource } from "@/lib/ai-sources";
+import { autoIngestSources, type AiSource } from "@/lib/ai-sources";
 import { generateAiCommentsForPost } from "@/lib/ai-comment-roles";
 import {
   fetchGithubRepoIssueComments,
@@ -41,7 +41,7 @@ export async function runIngestPipeline({
   itemLimit?: number;
   githubLimit?: number;
 }): Promise<IngestRunResult> {
-  const sources = fetchableSources.slice(0, sourceLimit);
+  const sources = autoIngestSources.slice(0, sourceLimit);
   const fetchedSources = await fetchSourcesWithLimit(sources, itemLimit, 4);
   const sourcePosts = fetchedSources.flatMap((result) => result.posts);
   const githubResult = await fetchGithubPosts(githubLimit);
@@ -172,6 +172,7 @@ function sourceItemToPost(item: SourceItem, source: AiSource): Post {
 
   return {
     id: `source-${item.sourceId}-${hashText(item.url || item.title)}`,
+    sourceId: item.sourceId,
     type: source.recommendedType,
     title: item.title,
     summary,
