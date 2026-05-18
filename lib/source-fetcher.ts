@@ -46,7 +46,12 @@ export async function fetchSourceItems(
   return rawItems
     .slice(0, limit)
     .map((item) => normalizeFeedItem(source, item))
-    .filter((item) => hasRequiredFeedFields(item) && isFreshEnough(item, source));
+    .filter(
+      (item) =>
+        hasRequiredFeedFields(item) &&
+        isFreshEnough(item, source) &&
+        matchesSourceKeywords(item, source),
+    );
 }
 
 async function fetchWithRetry(
@@ -114,7 +119,7 @@ function normalizeFeedItem(source: AiSource, item: RawFeedItem): SourceItem {
     url: extractLink(item),
     summary: summary.slice(0, 260),
     publishedAt,
-    tags: source.tags.slice(0, 5),
+    tags: Array.from(new Set([...source.tags, ...extractCategories(item)])).slice(0, 6),
   };
 }
 
@@ -158,6 +163,24 @@ function hasRequiredFeedFields(item: SourceItem) {
   return Boolean(item.title && item.url);
 }
 
+function matchesSourceKeywords(item: SourceItem, source: AiSource) {
+  const haystack = `${item.title} ${item.summary} ${item.tags.join(" ")} ${item.url ?? ""}`
+    .toLowerCase()
+    .trim();
+
+  if (!haystack) return true;
+
+  const excludeKeywords = source.excludeKeywords?.filter(Boolean) ?? [];
+  if (excludeKeywords.some((keyword) => haystack.includes(keyword.toLowerCase()))) {
+    return false;
+  }
+
+  const includeKeywords = source.includeKeywords?.filter(Boolean) ?? [];
+  if (includeKeywords.length === 0) return true;
+
+  return includeKeywords.some((keyword) => haystack.includes(keyword.toLowerCase()));
+}
+
 function isFreshEnough(item: SourceItem, source: AiSource) {
   if (!item.publishedAt || !source.maxItemAgeDays) return true;
 
@@ -166,6 +189,12 @@ function isFreshEnough(item: SourceItem, source: AiSource) {
 
   const maxAgeMs = source.maxItemAgeDays * 24 * 60 * 60 * 1000;
   return Date.now() - publishedAt.getTime() <= maxAgeMs;
+}
+
+function extractCategories(item: RawFeedItem) {
+  return toArray(item.category)
+    .map((entry) => stripHtml(asText(entry)))
+    .filter(Boolean);
 }
 
 function stripHtml(value: string) {

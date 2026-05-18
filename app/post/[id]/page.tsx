@@ -14,7 +14,7 @@ export default async function PostPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const generatedFeed = await readGeneratedFeed();
+  const generatedFeed = await readGeneratedFeed({ includeSkills: id.startsWith("github-") });
   const allServerPosts = [...generatedFeed.posts, ...mockPosts];
   const initialPost = getPostById(allServerPosts, id);
   const initialComments = generatedFeed.comments[id] ?? [];

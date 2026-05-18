@@ -6,12 +6,20 @@ import { autoIngestSourceIds, extractGeneratedSourceId } from "@/lib/ai-sources"
 import type { Comment, Post } from "@/lib/mock-data";
 
 export type GeneratedFeed = {
+  policyVersion?: string;
   updatedAt?: string;
   posts: Post[];
   comments: Record<string, Comment[]>;
 };
 
+type ReadGeneratedFeedOptions = {
+  includeSkills?: boolean;
+};
+
+export const GENERATED_FEED_POLICY_VERSION = "2026-05-core-sources-v1";
+
 const emptyFeed: GeneratedFeed = {
+  policyVersion: GENERATED_FEED_POLICY_VERSION,
   posts: [],
   comments: {},
 };
@@ -21,7 +29,9 @@ export function getGeneratedFeedPath() {
   return join(dataDir, "generated-feed.json");
 }
 
-export async function readGeneratedFeed(): Promise<GeneratedFeed> {
+export async function readGeneratedFeed(
+  options: ReadGeneratedFeedOptions = {},
+): Promise<GeneratedFeed> {
   const filePath = getGeneratedFeedPath();
 
   if (!existsSync(filePath)) return emptyFeed;
@@ -29,15 +39,19 @@ export async function readGeneratedFeed(): Promise<GeneratedFeed> {
   try {
     const raw = await readFile(filePath, "utf8");
     const parsed = JSON.parse(raw) as GeneratedFeed;
+    if (parsed.policyVersion !== GENERATED_FEED_POLICY_VERSION) {
+      return emptyFeed;
+    }
 
     return sanitizeGeneratedFeed({
+      policyVersion: parsed.policyVersion,
       updatedAt: parsed.updatedAt,
       posts: Array.isArray(parsed.posts) ? parsed.posts : [],
       comments:
         parsed.comments && typeof parsed.comments === "object"
           ? parsed.comments
           : {},
-    });
+    }, options);
   } catch {
     return emptyFeed;
   }
@@ -46,7 +60,11 @@ export async function readGeneratedFeed(): Promise<GeneratedFeed> {
 export async function writeGeneratedFeed(feed: GeneratedFeed) {
   const filePath = getGeneratedFeedPath();
   await mkdir(dirname(filePath), { recursive: true });
-  await writeFile(filePath, JSON.stringify(sanitizeGeneratedFeed(feed), null, 2), "utf8");
+  await writeFile(
+    filePath,
+    JSON.stringify(sanitizeGeneratedFeed(feed, { includeSkills: true }), null, 2),
+    "utf8",
+  );
 }
 
 export function mergeGeneratedFeed({
@@ -90,6 +108,7 @@ export function mergeGeneratedFeed({
   }
 
   return {
+    policyVersion: GENERATED_FEED_POLICY_VERSION,
     updatedAt: new Date().toISOString(),
     posts,
     comments: Object.fromEntries(
@@ -98,11 +117,15 @@ export function mergeGeneratedFeed({
   };
 }
 
-function sanitizeGeneratedFeed(feed: GeneratedFeed): GeneratedFeed {
-  const posts = feed.posts.filter(shouldKeepGeneratedPost);
+function sanitizeGeneratedFeed(
+  feed: GeneratedFeed,
+  options: ReadGeneratedFeedOptions = {},
+): GeneratedFeed {
+  const posts = feed.posts.filter((post) => shouldKeepGeneratedPost(post, options));
   const postIds = new Set(posts.map((post) => post.id));
 
   return {
+    policyVersion: GENERATED_FEED_POLICY_VERSION,
     updatedAt: feed.updatedAt,
     posts,
     comments: Object.fromEntries(
@@ -111,8 +134,8 @@ function sanitizeGeneratedFeed(feed: GeneratedFeed): GeneratedFeed {
   };
 }
 
-function shouldKeepGeneratedPost(post: Post) {
-  if (post.type === "skill") return true;
+function shouldKeepGeneratedPost(post: Post, options: ReadGeneratedFeedOptions) {
+  if (post.type === "skill") return options.includeSkills === true;
 
   const sourceId = post.sourceId ?? extractGeneratedSourceId(post.id);
   if (!sourceId) return true;

@@ -40,7 +40,7 @@ async function handleIngestRequest(request: Request) {
     itemLimit,
     githubLimit,
   });
-  const current = await readGeneratedFeed();
+  const current = await readGeneratedFeed({ includeSkills: true });
   const nextFeed = mergeGeneratedFeed({
     current,
     incomingPosts: run.posts,

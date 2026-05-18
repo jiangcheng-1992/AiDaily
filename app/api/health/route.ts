@@ -1,4 +1,7 @@
-import { readGeneratedFeed } from "@/lib/generated-feed-store";
+import {
+  GENERATED_FEED_POLICY_VERSION,
+  readGeneratedFeed,
+} from "@/lib/generated-feed-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,6 +15,7 @@ export async function GET() {
     checkedAt: new Date().toISOString(),
     feedUpdatedAt: feed.updatedAt ?? null,
     postCount: feed.posts.length,
+    feedPolicyVersion: GENERATED_FEED_POLICY_VERSION,
     autoIngest: {
       enabled: !["0", "false", "no", "off"].includes(
         (process.env.AUTO_INGEST_ENABLED ?? "true").toLowerCase(),
