@@ -10,6 +10,7 @@ import {
   ExternalLink,
   Heart,
   MessageCircle,
+  Play,
   SendHorizontal,
   Share2,
   Sparkles,
@@ -24,7 +25,12 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useAiCircleStore } from "@/hooks/use-ai-circle-store";
 import { getPostById, type Comment, type Post } from "@/lib/mock-data";
-import { cn, formatCompactNumber, formatRelativeTime } from "@/lib/utils";
+import {
+  cn,
+  formatCompactNumber,
+  formatRelativeTime,
+  formatVideoDuration,
+} from "@/lib/utils";
 
 export function PostDetailClient({
   postId,
@@ -220,7 +226,66 @@ export function PostDetailClient({
                 <ExternalLink className="h-3.5 w-3.5" />
               </a>
             ) : null}
+            {post.type === "video" && post.profileUrl ? (
+              <a
+                href={post.profileUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-fuchsia-700 hover:underline"
+              >
+                查看作者主页
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            ) : null}
           </div>
+
+          {post.type === "video" ? (
+            <div className="mt-6 overflow-hidden rounded-[1.75rem] border border-slate-100 bg-slate-950">
+              {post.videoUrl ? (
+                <video
+                  controls
+                  playsInline
+                  preload="metadata"
+                  poster={post.coverImageUrl}
+                  className="aspect-[9/16] w-full bg-black object-contain"
+                  src={post.videoUrl}
+                />
+              ) : post.coverImageUrl ? (
+                <div className="relative">
+                  <img
+                    src={post.coverImageUrl}
+                    alt={post.title}
+                    className="aspect-[9/16] w-full object-cover"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/35">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-black/70 px-4 py-2 text-sm font-bold text-white">
+                      <Play className="h-4 w-4 fill-current" />
+                      视频暂不可直播
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+              <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 text-sm text-slate-200">
+                <div className="inline-flex items-center gap-2">
+                  <Play className="h-4 w-4" />
+                  <span>站内播放</span>
+                  <span className="h-1 w-1 rounded-full bg-slate-500" />
+                  <span>{formatVideoDuration(post.durationMs)}</span>
+                </div>
+                {post.sourceUrl ? (
+                  <a
+                    href={post.sourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 font-bold text-slate-900 transition-colors hover:bg-fuchsia-100"
+                  >
+                    去抖音原视频
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
 
           <p className="mt-6 rounded-3xl bg-slate-50 p-5 text-base leading-8 text-slate-700">
             {post.summary}

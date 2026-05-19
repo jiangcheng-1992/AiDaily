@@ -91,25 +91,24 @@ export function analyzePost(post: Pick<Post, "title" | "summary" | "content">): 
 
 export function buildRoleComment(post: Pick<Post, "title" | "summary" | "content">, roleId: string) {
   const insight = analyzePost(post);
-  const subject = insight.subject;
   const evidence = insight.evidence[0] ?? insight.summary;
   const secondEvidence = insight.evidence[1] ?? evidence;
 
   switch (roleId) {
     case "product-strategist":
-      return buildProductComment(insight.theme, subject, evidence, secondEvidence);
+      return buildProductComment(insight.theme, evidence);
     case "indie-hacker":
-      return buildIndieComment(insight.theme, subject, evidence);
+      return buildIndieComment(insight.theme, evidence);
     case "research-reader":
-      return buildResearchComment(insight.theme, subject, evidence);
+      return buildResearchComment(insight.theme, evidence);
     case "growth-operator":
-      return buildGrowthComment(insight.theme, subject, evidence);
+      return buildGrowthComment(insight.theme, evidence);
     case "creator-coach":
-      return buildCreatorComment(insight.theme, subject, evidence);
+      return buildCreatorComment(insight.theme, evidence);
     case "risk-observer":
-      return buildRiskComment(insight.theme, subject, evidence, secondEvidence);
+      return buildRiskComment(insight.theme, evidence, secondEvidence);
     default:
-      return `${subject} 这条里最有价值的不是标题本身，而是「${clip(evidence, 56)}」。后续判断它值不值得持续跟，要看这条线能不能从一次性新闻变成可重复验证的产品或业务动作。`;
+      return "我更看重这件事能不能继续外化成稳定动作，而不是停在一次性热点。只要后续没有更明确的交付结果、成本边界或用户反馈，热度很快就会先于价值。";
   }
 }
 
@@ -267,60 +266,64 @@ function buildEditorComment(theme: InsightTheme, subject: string, evidence: stri
 
 function buildProductComment(
   theme: InsightTheme,
-  subject: string,
   evidence: string,
-  secondEvidence: string,
 ) {
   if (theme === "media") {
-    return `${subject} 这个动作最像是在把网文 IP 的变现链从“授权”改成“自带生产能力”。文里提到“${clip(evidence, 52)}”，如果后续真能跑通长内容和院线发行，平台就不只是内容分发方，而是在往更上游的内容工厂走。`;
+    return "从产品视角看，真正有价值的不是又多了一个内容案例，而是平台开始把生产能力内置到变现链里。只要长内容供给速度和一致性稳定下来，上游 IP、中台制作和下游发行会被重新串成一套产品。";
   }
 
-  return `${subject} 从产品角度最值得看的，是它到底替代了哪一步旧流程。文中“${clip(evidence, 52)}”说明团队不是在堆概念，而是在争取把某个高频动作做成标准化能力；接下来就看“${clip(secondEvidence, 52)}”能不能带来稳定转化。`;
+  void evidence;
+  return `我会直接看这件事有没有替代掉一段高频旧流程。只要接入后还需要大量人工补洞，产品价值就会被高估；只有当标准化能力能稳定产出结果时，转化和付费才会跟上。`;
 }
 
-function buildIndieComment(theme: InsightTheme, subject: string, evidence: string) {
+function buildIndieComment(theme: InsightTheme, evidence: string) {
   if (theme === "media") {
-    return `${subject} 给独立开发者的启发，不是去硬做一个“大而全”的视频平台，而是切其中一段能力做窄 MVP，比如角色一致性检测、分镜生成、IP 改编工作台。文里“${clip(evidence, 50)}”已经说明这个链路里有明确痛点。`;
+    return "如果让我做，我不会碰大而全平台，而是盯住流程里最费时间、最难标准化的一段先做窄工具。先把单点效率拉起来，再考虑往完整工作流扩，命中率会高得多。";
   }
 
-  return `${subject} 这条更适合拆成一个很窄的验证题：围绕“${clip(evidence, 48)}”做工具层或工作流层补位。先做能省时间的单点，而不是一上来就做完整平台，命中率会高很多。`;
+  void evidence;
+  return "这类机会更适合拆成一个很窄的验证题。先补位某个具体环节，证明能省时间、降成本或减少返工，再去谈平台化；一上来做大全套，基本都会被实施成本拖死。";
 }
 
-function buildResearchComment(theme: InsightTheme, subject: string, evidence: string) {
+function buildResearchComment(theme: InsightTheme, evidence: string) {
   if (theme === "media") {
-    return `${subject} 这里最关键的技术约束其实已经写在文里了：“${clip(evidence, 58)}”。换句话说，问题不是 AI 能不能出片，而是长内容里人物和场景的一致性能不能稳定到可交付，这决定了它能不能从 demo 走向正式制作。`;
+    return "我更关心的是约束条件有没有被正面解决。能出一次效果不难，难的是连续场景下的一致性、可控性和返工成本；这些问题不解掉，任何演示都还谈不上真正可交付。";
   }
 
-  return `${subject} 这条最好别只看结果，要看“${clip(evidence, 56)}”背后有没有稳定方法。凡是没有评测边界、没有失败条件、没有成本描述的能力，都很容易在真实场景里打折。`;
+  void evidence;
+  return "我不会先看结论，而是先看方法边界和失败条件。凡是没有评测口径、没有复现条件、没有成本描述的能力，落到真实场景里几乎都会被打折。";
 }
 
-function buildGrowthComment(theme: InsightTheme, subject: string, evidence: string) {
+function buildGrowthComment(theme: InsightTheme, evidence: string) {
   if (theme === "media") {
-    return `${subject} 对增长侧的价值，在于内容供给速度和题材测试速度可能会一起提升。文里“${clip(evidence, 52)}”意味着平台可以更快验证哪些 IP 题材值得推，增长团队拿到的就不只是内容，而是更高频的实验素材。`;
+    return "增长侧最看重的不是热点本身，而是实验频率能不能被放大。只要内容供给速度和题材测试速度一起提上来，获客、留存和转化的验证周期就会明显缩短。";
   }
 
-  return `${subject} 这类信息的增长价值，不在热点本身，而在是否能缩短从能力上线到用户感知的路径。“${clip(evidence, 52)}”如果能继续外化成案例和结果，传播效率会比纯技术叙事高很多。`;
+  void evidence;
+  return "这类能力只有在用户能快速感知结果时，增长价值才成立。技术叙事本身带不来持续传播，能打动用户的永远是更快看到收益、更低理解成本和更顺的转化路径。";
 }
 
-function buildCreatorComment(theme: InsightTheme, subject: string, evidence: string) {
+function buildCreatorComment(theme: InsightTheme, evidence: string) {
   if (theme === "media") {
-    return `${subject} 很适合拆成一个有传播力的选题：AI 不是把动画“自动化”了，而是在重做 IP 改编流水线。尤其“${clip(evidence, 54)}”这个点，能直接讲清楚为什么今天先火的是 AI 动漫，而不是 AI 仿真人。`;
+    return "对创作者来说，最有价值的不是转述新闻，而是把这类变化拆成方法论。只要能解释清楚为什么这个场景先跑通、卡点在哪、普通人能怎么借势，内容就会比泛资讯更有传播力。";
   }
 
-  return `${subject} 对创作者最有价值的，是把这条内容翻译成可执行的方法。文里“${clip(evidence, 52)}”就是现成的切入点，拿它做一篇“怎么用、适合谁、边界在哪”的拆解，比转述新闻更有用。`;
+  void evidence;
+  return "我会把这类内容直接翻译成可执行建议，而不是重复原文。真正能带来传播和信任的，是适合谁用、怎么落地、有哪些坑，而不是把新闻重新说一遍。";
 }
 
 function buildRiskComment(
   theme: InsightTheme,
-  subject: string,
   evidence: string,
   secondEvidence: string,
 ) {
   if (theme === "media") {
-    return `${subject} 也要看风险边界：一边是“${clip(evidence, 52)}”带来的产能提升，另一边是 IP 版权、内容品控和角色一致性失控。只要“${clip(secondEvidence, 48)}”还高度依赖人工补救，这条线的规模化就会被质量问题卡住。`;
+    return "这条线的风险不在热度，而在质量失控后能不能收住。只要版权、品控和一致性还高度依赖人工补救，规模一上来，问题就会比效率收益先暴露。";
   }
 
-  return `${subject} 这里的风险不只是技术失误，更是预期和交付之间的落差。只要“${clip(evidence, 52)}”还没有稳定证据支撑，就要警惕能力被高估、成本被低估，最后变成只能演示不能落地。`;
+  void evidence;
+  void secondEvidence;
+  return "我最担心的不是技术失误，而是预期先跑到交付前面。只要没有稳定证据支撑，就要默认能力会被高估、成本会被低估，最后很容易变成只能演示不能落地。";
 }
 
 function clip(value: string, maxLength: number) {

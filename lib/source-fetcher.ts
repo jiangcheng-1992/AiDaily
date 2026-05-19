@@ -3,6 +3,7 @@ import { XMLParser } from "fast-xml-parser";
 import type { AiSource } from "@/lib/ai-sources";
 import {
   cleanTitleText,
+  countTailNoiseIndicators,
   extractArticleTextFromHtml,
   normalizeArticleText,
   stripHtmlToText,
@@ -223,7 +224,7 @@ async function hydrateSourceItemContent(source: AiSource, item: SourceItem) {
     if (!response.ok) return finalizeSourceItem(item);
 
     const html = await response.text();
-    const fullText = extractArticleTextFromHtml(html, item.title);
+    const fullText = extractArticleTextFromHtml(html, item.title, item.url);
     const content = selectRicherText(item.content, fullText);
 
     return finalizeSourceItem({
@@ -252,25 +253,11 @@ function finalizeSourceItem(item: SourceItem): SourceItem {
 }
 
 function selectRicherText(currentText: string, nextText: string) {
+  const currentNoise = countTailNoiseIndicators(currentText);
+  const nextNoise = countTailNoiseIndicators(nextText);
+
+  if (nextText && nextNoise < currentNoise) return nextText;
   return nextText.length > currentText.length + 80 ? nextText : currentText;
-}
-
-function extractArticleText(html: string) {
-  const articleMatch =
-    html.match(/<article[\s\S]*?<\/article>/i) ??
-    html.match(/<main[\s\S]*?<\/main>/i) ??
-    html.match(/<body[\s\S]*?<\/body>/i);
-  const block = articleMatch?.[0] ?? html;
-
-  return normalizeArticleText(
-    block
-      .replace(/<script[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<\/p>/gi, "\n\n")
-      .replace(/<br\s*\/?>/gi, "\n")
-      .replace(/<\/div>/gi, "\n")
-      .replace(/<\/li>/gi, "\n"),
-  );
 }
 
 function extractHtmlKeywords(html: string) {

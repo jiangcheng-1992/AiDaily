@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import { autoIngestSourceIds, extractGeneratedSourceId } from "@/lib/ai-sources";
+import { autoIngestDouyinSourceIds } from "@/lib/douyin-video-sources";
 import type { Comment, Post } from "@/lib/mock-data";
 
 export type GeneratedFeed = {
@@ -140,5 +141,5 @@ function shouldKeepGeneratedPost(post: Post, options: ReadGeneratedFeedOptions) 
   const sourceId = post.sourceId ?? extractGeneratedSourceId(post.id);
   if (!sourceId) return true;
 
-  return autoIngestSourceIds.has(sourceId);
+  return autoIngestSourceIds.has(sourceId) || autoIngestDouyinSourceIds.has(sourceId);
 }

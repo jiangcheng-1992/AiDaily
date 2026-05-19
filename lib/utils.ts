@@ -36,6 +36,21 @@ export function formatRelativeTime(dateText: string) {
   });
 }
 
+export function formatVideoDuration(durationMs?: number) {
+  if (!durationMs || durationMs <= 0) return "00:00";
+
+  const totalSeconds = Math.max(1, Math.round(durationMs / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return [hours, minutes, seconds].map((value) => String(value).padStart(2, "0")).join(":");
+  }
+
+  return [minutes, seconds].map((value) => String(value).padStart(2, "0")).join(":");
+}
+
 export function normalizeTags(value: string) {
   return value
     .split(/[,，#\s]+/)

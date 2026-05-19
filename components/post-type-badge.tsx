@@ -2,14 +2,15 @@ import type { PostType } from "@/lib/mock-data";
 import { postTypeMeta } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
-const toneClass: Record<PostType, string> = {
+const toneClass = {
   news: "bg-blue-50 text-blue-700 ring-blue-100",
   opinion: "bg-violet-50 text-violet-700 ring-violet-100",
   tool: "bg-cyan-50 text-cyan-700 ring-cyan-100",
   skill: "bg-emerald-50 text-emerald-700 ring-emerald-100",
   product: "bg-amber-50 text-amber-700 ring-amber-100",
   case: "bg-rose-50 text-rose-700 ring-rose-100",
-};
+  video: "bg-fuchsia-50 text-fuchsia-700 ring-fuchsia-100",
+} satisfies Record<PostType, string>;
 
 export function PostTypeBadge({
   type,

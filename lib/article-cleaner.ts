@@ -40,6 +40,26 @@ const TAIL_NOISE_MARKERS = [
   "\n本文链接：",
   "\n论文链接：",
   "\n代码仓库：",
+  "\n版权所有，未经授权",
+  "\n扫码分享至朋友圈",
+  "\n### 相关阅读",
+  "\n相关阅读",
+  "\n热门文章",
+  "\n搜索：",
+  "\n关于量子位",
+  "\n加入我们",
+];
+
+const TAIL_NOISE_TEXT_MARKERS = [
+  "相关阅读",
+  "推荐阅读",
+  "关于量子位",
+  "热门文章",
+  "扫码分享至朋友圈",
+  "版权所有，未经授权",
+  "加入我们",
+  "商务合作",
+  "评论 feed",
 ];
 
 export function cleanTitleText(value: string) {
@@ -68,12 +88,16 @@ export function normalizeArticleText(value: string) {
     .trim();
 }
 
-export function extractArticleTextFromHtml(html: string, preferredTitle = "") {
+export function extractArticleTextFromHtml(
+  html: string,
+  preferredTitle = "",
+  pageUrl?: string,
+) {
   const articleMatch =
     html.match(/<article[\s\S]*?<\/article>/i) ??
     html.match(/<main[\s\S]*?<\/main>/i) ??
     html.match(/<body[\s\S]*?<\/body>/i);
-  const block = articleMatch?.[0] ?? html;
+  const block = trimHtmlTailBySite(articleMatch?.[0] ?? html, pageUrl);
 
   const normalized = normalizeArticleText(
     block
@@ -100,6 +124,12 @@ export function decodeHtmlEntities(value: string) {
     .replace(/&#x([0-9a-f]+);/gi, (_, code) =>
       safeCodePoint(Number.parseInt(code, 16)),
     );
+}
+
+export function countTailNoiseIndicators(value: string) {
+  return TAIL_NOISE_TEXT_MARKERS.reduce((count, marker) => {
+    return count + (value.includes(marker) ? 1 : 0);
+  }, 0);
 }
 
 function focusArticleText(content: string, preferredTitle: string) {
@@ -150,6 +180,44 @@ function safeCodePoint(value: number) {
 
   try {
     return String.fromCodePoint(value);
+  } catch {
+    return "";
+  }
+}
+
+function trimHtmlTailBySite(html: string, pageUrl?: string) {
+  if (!pageUrl) return html;
+
+  const hostname = getHostname(pageUrl);
+  if (!hostname) return html;
+
+  if (hostname.endsWith("qbitai.com")) {
+    return cutAtFirstMarker(html, [
+      "<!--版权声明-->",
+      "<!--相关阅读 start-->",
+      "<div class=\"xiangguan\">",
+      "<h3>相关阅读</h3>",
+      "<!--热门文章 end-->",
+      "<div class=\"footer\">",
+    ]);
+  }
+
+  return html;
+}
+
+function cutAtFirstMarker(content: string, markers: string[]) {
+  const cutIndex = markers
+    .map((marker) => content.indexOf(marker))
+    .filter((index) => index >= 0)
+    .sort((left, right) => left - right)[0];
+
+  if (typeof cutIndex !== "number") return content;
+  return content.slice(0, cutIndex);
+}
+
+function getHostname(value: string) {
+  try {
+    return new URL(value).hostname.replace(/^www\./i, "");
   } catch {
     return "";
   }

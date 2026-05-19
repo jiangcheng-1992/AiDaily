@@ -1,4 +1,11 @@
-export type PostType = "news" | "opinion" | "tool" | "skill" | "product" | "case";
+export type PostType =
+  | "news"
+  | "opinion"
+  | "tool"
+  | "skill"
+  | "product"
+  | "case"
+  | "video";
 
 export type Post = {
   id: string;
@@ -11,6 +18,10 @@ export type Post = {
   editorComment: string;
   sourceName: string;
   sourceUrl?: string;
+  videoUrl?: string;
+  coverImageUrl?: string;
+  durationMs?: number;
+  profileUrl?: string;
   author?: string;
   tags: string[];
   createdAt: string;
@@ -42,6 +53,7 @@ export type CategoryKey =
   | "skill"
   | "product"
   | "case"
+  | "video"
   | "ranking";
 
 export const categoryTabs: Array<{ key: CategoryKey; label: string }> = [
@@ -52,6 +64,7 @@ export const categoryTabs: Array<{ key: CategoryKey; label: string }> = [
   { key: "skill", label: "技巧" },
   { key: "product", label: "产品" },
   { key: "case", label: "案例" },
+  { key: "video", label: "视频" },
   { key: "ranking", label: "榜单" },
 ];
 
@@ -65,6 +78,7 @@ export const postTypeMeta: Record<
   skill: { label: "技巧", tone: "emerald" },
   product: { label: "产品", tone: "amber" },
   case: { label: "案例", tone: "rose" },
+  video: { label: "视频", tone: "rose" },
 };
 
 export const mockPosts: Post[] = [

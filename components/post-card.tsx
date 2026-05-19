@@ -6,6 +6,7 @@ import {
   ExternalLink,
   Heart,
   MessageCircle,
+  Play,
   Share2,
   Sparkles,
 } from "lucide-react";
@@ -14,7 +15,7 @@ import { InteractionButton } from "@/components/interaction-button";
 import { PostTypeBadge } from "@/components/post-type-badge";
 import { Card } from "@/components/ui/card";
 import type { Post } from "@/lib/mock-data";
-import { cn, formatRelativeTime } from "@/lib/utils";
+import { cn, formatRelativeTime, formatVideoDuration } from "@/lib/utils";
 
 type PostStats = {
   liked: boolean;
@@ -88,6 +89,26 @@ export function PostCard({
         <h2 className="mt-5 text-xl font-black leading-snug tracking-normal text-slate-950 sm:text-2xl">
           {post.title}
         </h2>
+
+        {post.type === "video" && post.coverImageUrl ? (
+          <div className="relative mt-4 overflow-hidden rounded-[1.5rem] bg-slate-100">
+            <img
+              src={post.coverImageUrl}
+              alt={post.title}
+              className="h-[320px] w-full object-cover"
+              loading="lazy"
+            />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/5 to-transparent" />
+            <div className="absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-full bg-black/70 px-3 py-1.5 text-xs font-bold text-white">
+              <Play className="h-3.5 w-3.5 fill-current" />
+              观看视频
+            </div>
+            <div className="absolute bottom-4 right-4 rounded-full bg-black/70 px-3 py-1.5 text-xs font-bold text-white">
+              {formatVideoDuration(post.durationMs)}
+            </div>
+          </div>
+        ) : null}
+
         <p className="mt-3 line-clamp-3 text-[15px] leading-7 text-slate-600">
           {post.summary}
         </p>
@@ -101,6 +122,19 @@ export function PostCard({
             className="mt-4 inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700"
           >
             查看 GitHub
+            <ExternalLink className="h-4 w-4" />
+          </a>
+        ) : null}
+
+        {post.type === "video" && post.sourceUrl ? (
+          <a
+            href={post.sourceUrl}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(event) => event.stopPropagation()}
+            className="mt-4 inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-fuchsia-700"
+          >
+            去抖音原视频
             <ExternalLink className="h-4 w-4" />
           </a>
         ) : null}

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import { autoIngestSources, type AiSource } from "@/lib/ai-sources";
 import { generateAiCommentsForPost } from "@/lib/ai-comment-roles";
+import { fetchDouyinVideoItems, type DouyinVideoItem } from "@/lib/douyin-video-fetcher";
 import {
   fetchGithubRepoIssueComments,
   fetchHotGithubSkillRepos,
@@ -37,18 +38,29 @@ export async function runIngestPipeline({
   sourceLimit = 12,
   itemLimit = 6,
   githubLimit = 8,
+  douyinSourceLimit = 6,
+  douyinItemLimit = 2,
 }: {
   sourceLimit?: number;
   itemLimit?: number;
   githubLimit?: number;
+  douyinSourceLimit?: number;
+  douyinItemLimit?: number;
 }): Promise<IngestRunResult> {
   const sources = autoIngestSources.slice(0, sourceLimit);
   const fetchedSources = await fetchSourcesWithLimit(sources, itemLimit, 4);
   const sourcePosts = fetchedSources.flatMap((result) => result.posts);
+  const douyinResults = await fetchDouyinVideoItems({
+    sourceLimit: douyinSourceLimit,
+    itemLimit: douyinItemLimit,
+  });
+  const douyinPosts = douyinResults.flatMap((result) => result.items.map(douyinItemToPost));
   const githubResult = await fetchGithubPosts(githubLimit);
   const githubAttempted = githubLimit > 0;
-  const posts = [...githubResult.posts, ...sourcePosts].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  const posts = [...githubResult.posts, ...sourcePosts, ...douyinPosts].sort(
+    (a, b) =>
+      new Date(b.collectedAt ?? b.createdAt).getTime() -
+      new Date(a.collectedAt ?? a.createdAt).getTime(),
   );
   const comments: Record<string, Comment[]> = {};
 
@@ -65,20 +77,32 @@ export async function runIngestPipeline({
     githubRepoCount: githubResult.posts.length,
     successCount:
       fetchedSources.filter((result) => result.ok).length +
+      douyinResults.filter((result) => result.ok).length +
       (githubAttempted && githubResult.ok ? 1 : 0),
     failureCount:
       fetchedSources.filter((result) => !result.ok).length +
+      douyinResults.filter((result) => !result.ok).length +
       (githubAttempted && !githubResult.ok ? 1 : 0),
     posts,
     comments,
-    sources: fetchedSources.map(({ source, posts, ...result }) => {
-      void posts;
-      return {
-        sourceId: source.id,
-        sourceName: source.name,
-        ...result,
-      };
-    }),
+    sources: [
+      ...fetchedSources.map(({ source, posts, ...result }) => {
+        void posts;
+        return {
+          sourceId: source.id,
+          sourceName: source.name,
+          ...result,
+        };
+      }),
+      ...douyinResults.map(({ source, items, ...result }) => {
+        void items;
+        return {
+          sourceId: source.id,
+          sourceName: source.name,
+          ...result,
+        };
+      }),
+    ],
     github: {
       ok: githubResult.ok,
       count: githubResult.posts.length,
@@ -191,6 +215,41 @@ function sourceItemToPost(item: SourceItem, source: AiSource): Post {
     likesCount: 0,
     commentsCount: 0,
     savesCount: 0,
+  };
+}
+
+function douyinItemToPost(item: DouyinVideoItem): Post {
+  const collectedAt = new Date().toISOString();
+  const createdAt = item.publishedAt || collectedAt;
+  const copy = buildGeneratedPostCopy({
+    title: item.title,
+    rawContent: item.content,
+    fallbackSummary: item.summary,
+  });
+
+  return {
+    id: `source-${item.sourceId}-${hashText(item.url || item.title)}`,
+    sourceId: item.sourceId,
+    type: "video",
+    title: item.title,
+    summary: copy.summary,
+    content: copy.content,
+    whyItMatters: copy.whyItMatters,
+    editorComment: copy.editorComment,
+    sourceName: item.sourceName,
+    sourceUrl: item.url,
+    videoUrl: item.videoUrl,
+    coverImageUrl: item.coverImageUrl,
+    durationMs: item.durationMs,
+    profileUrl: item.profileUrl,
+    author: item.author,
+    tags: uniqueTags(item.tags).slice(0, 8),
+    createdAt,
+    collectedAt,
+    likesCount: item.likesCount,
+    commentsCount: item.commentsCount,
+    savesCount: item.savesCount,
+    featured: item.likesCount >= 1000,
   };
 }
 

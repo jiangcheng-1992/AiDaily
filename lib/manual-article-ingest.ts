@@ -5,6 +5,7 @@ import { XMLParser } from "fast-xml-parser";
 import { type AiSource, authoritativeSources } from "@/lib/ai-sources";
 import {
   cleanTitleText,
+  countTailNoiseIndicators,
   decodeHtmlEntities,
   extractArticleTextFromHtml,
   normalizeArticleText,
@@ -175,7 +176,11 @@ async function fetchArticleMetadata(rawUrl: string): Promise<HtmlMetadata> {
       readMetaContent(html, "property", "og:url") ||
       undefined,
     keywords: extractHtmlKeywords(html),
-    content: extractArticleTextFromHtml(html, readFirstHeading(html) || readTitleTag(html)),
+    content: extractArticleTextFromHtml(
+      html,
+      readFirstHeading(html) || readTitleTag(html),
+      rawUrl,
+    ),
   };
 }
 
@@ -320,6 +325,9 @@ function pickPreferredContent(feedContent: string, htmlContent: string) {
 
   if (!cleanFeedContent) return cleanHtmlContent;
   if (!cleanHtmlContent) return cleanFeedContent;
+  if (countTailNoiseIndicators(cleanHtmlContent) < countTailNoiseIndicators(cleanFeedContent)) {
+    return cleanHtmlContent;
+  }
   if (cleanHtmlContent.length > cleanFeedContent.length * 0.7) return cleanHtmlContent;
 
   return cleanFeedContent;

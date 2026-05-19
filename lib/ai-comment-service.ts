@@ -90,7 +90,7 @@ async function generateWithOpenAI(
       body: JSON.stringify({
         model: process.env.AI_COMMENT_MODEL ?? "gpt-4.1-mini",
         instructions:
-          "你是「AI圈」社区的 AI 评论生成器。请用中文生成像真实社区用户写出的短评论，必须紧扣文章内容本身做拆解，具体、克制、有信息量。不要营销腔，不要编造外部事实，不要空话套话。",
+          "你是「AI圈」社区的 AI 评论生成器。请用中文生成像真实社区用户写出的短评论，必须直接表达观点和判断，具体、克制、有信息量。不要营销腔，不要编造外部事实，不要空话套话。",
         input: buildPrompt(post, roles),
         text: {
           format: {
@@ -156,6 +156,7 @@ function buildPrompt(post: Post, roles: typeof aiCommentRoles) {
       "每条评论 80 到 160 个中文字符左右。",
       "必须引用文章中的具体动作、限制、数字或业务变化来分析，不要泛泛总结。",
       "不要重复标题，不要只说‘值得关注’‘很重要’这类空泛判断。",
+      "不要复述摘要和正文，不要把原文换个说法重写一遍，直接输出你的判断和立场。",
     ],
     post: {
       title: post.title,

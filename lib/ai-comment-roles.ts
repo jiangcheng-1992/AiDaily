@@ -18,7 +18,7 @@ export const aiCommentRoles: AiCommentRole[] = [
     title: "关注商业化、用户需求和产品机会",
     avatarText: "产",
     focus: "产品定位、用户价值、商业模式",
-    preferredTypes: ["product", "tool", "case", "news"],
+    preferredTypes: ["product", "tool", "case", "news", "video"],
     writeComment: (post) => buildRoleComment(post, "product-strategist"),
   },
   {
@@ -27,7 +27,7 @@ export const aiCommentRoles: AiCommentRole[] = [
     title: "关注 MVP、低成本验证和副业机会",
     avatarText: "独",
     focus: "小产品、自动化、快速验证",
-    preferredTypes: ["tool", "product", "skill", "case"],
+    preferredTypes: ["tool", "product", "skill", "case", "video"],
     writeComment: (post) => buildRoleComment(post, "indie-hacker"),
   },
   {
@@ -36,7 +36,7 @@ export const aiCommentRoles: AiCommentRole[] = [
     title: "关注技术证据、评测和可复现性",
     avatarText: "研",
     focus: "论文、模型能力、基准评测",
-    preferredTypes: ["news", "opinion", "tool"],
+    preferredTypes: ["news", "opinion", "tool", "video"],
     writeComment: (post) => buildRoleComment(post, "research-reader"),
   },
   {
@@ -45,7 +45,7 @@ export const aiCommentRoles: AiCommentRole[] = [
     title: "关注传播、内容增长和获客效率",
     avatarText: "增",
     focus: "增长路径、内容分发、转化效率",
-    preferredTypes: ["case", "skill", "product"],
+    preferredTypes: ["case", "skill", "product", "video"],
     writeComment: (post) => buildRoleComment(post, "growth-operator"),
   },
   {
@@ -54,7 +54,7 @@ export const aiCommentRoles: AiCommentRole[] = [
     title: "关注内容创作、个人品牌和知识产品",
     avatarText: "创",
     focus: "创作者工作流、选题、交付形式",
-    preferredTypes: ["skill", "case", "opinion"],
+    preferredTypes: ["skill", "case", "opinion", "video"],
     writeComment: (post) => buildRoleComment(post, "creator-coach"),
   },
   {
@@ -63,7 +63,7 @@ export const aiCommentRoles: AiCommentRole[] = [
     title: "关注版权、合规、幻觉和长期影响",
     avatarText: "风",
     focus: "风险边界、合规、可靠性",
-    preferredTypes: ["news", "opinion", "product", "case"],
+    preferredTypes: ["news", "opinion", "product", "case", "video"],
     writeComment: (post) => buildRoleComment(post, "risk-observer"),
   },
 ];

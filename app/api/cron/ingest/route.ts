@@ -36,10 +36,20 @@ async function handleIngestRequest(request: Request) {
     url.searchParams.get("githubLimit") ?? process.env.GITHUB_SKILL_LIMIT,
     8,
   );
+  const douyinSourceLimit = readNonNegativeInt(
+    url.searchParams.get("douyinSourceLimit") ?? process.env.DOUYIN_SOURCE_LIMIT,
+    6,
+  );
+  const douyinItemLimit = readPositiveInt(
+    url.searchParams.get("douyinItemLimit") ?? process.env.DOUYIN_ITEMS_PER_SOURCE,
+    2,
+  );
   const run = await runIngestPipeline({
     sourceLimit,
     itemLimit,
     githubLimit,
+    douyinSourceLimit,
+    douyinItemLimit,
   });
   const current = await readGeneratedFeed({ includeSkills: true });
   const nextFeed = mergeGeneratedFeed({
@@ -52,7 +62,8 @@ async function handleIngestRequest(request: Request) {
   if (!dryRun) {
     await writeGeneratedFeed(nextFeed);
   }
-  const attemptedCount = sourceLimit + (githubLimit > 0 ? 1 : 0);
+  const attemptedCount =
+    sourceLimit + douyinSourceLimit + (githubLimit > 0 ? 1 : 0);
   const ingestOk = attemptedCount === 0 || run.successCount > 0 || run.posts.length > 0;
 
   return Response.json(
@@ -68,7 +79,7 @@ async function handleIngestRequest(request: Request) {
       successCount: run.successCount,
       failureCount: run.failureCount,
       message:
-        "已完成 AI 信息源与 GitHub 热门 Skill 抓取，并为每条动态生成 AI 角色评论。GitHub 动态使用 stars/forks/issues 等真实公开指标；不提供互动指标的 RSS 源不会编造点赞数。",
+        "已完成 AI 文章源、抖音 AI 作者视频和 GitHub 热门 Skill 抓取，并为每条动态生成 AI 角色评论。GitHub 与抖音动态使用真实公开互动指标；不提供互动指标的 RSS 源不会编造点赞数。",
       sources: run.sources,
       github: run.github,
     },
