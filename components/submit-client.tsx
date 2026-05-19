@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   CheckCircle2,
+  Pencil,
+  Trash2,
   FileText,
   Lightbulb,
   LinkIcon,
@@ -18,6 +21,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/hooks/use-auth";
 import { useAiCircleStore } from "@/hooks/use-ai-circle-store";
 import type { PostType } from "@/lib/mock-data";
 import { postTypeMeta } from "@/lib/mock-data";
@@ -35,9 +39,49 @@ const initialForm = {
 };
 
 export function SubmitClient() {
-  const { addSubmission } = useAiCircleStore();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user, loading } = useAuth();
+  const { submissions, addSubmission, updateSubmission, deleteSubmission, canManageSubmission } =
+    useAiCircleStore();
   const [form, setForm] = useState(initialForm);
   const [successId, setSuccessId] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const editId = searchParams.get("edit");
+  const editingPost = useMemo(
+    () =>
+      submissions.find(
+        (post) => post.id === editId && canManageSubmission(post, user?.id, user?.name),
+      ),
+    [canManageSubmission, editId, submissions, user?.id, user?.name],
+  );
+  const isEditing = Boolean(editingPost);
+
+  useEffect(() => {
+    if (!user) return;
+    if (editingPost) {
+      setForm({
+        title: editingPost.title,
+        type: editingPost.type,
+        sourceUrl: editingPost.sourceUrl ?? "",
+        summary: editingPost.summary,
+        whyItMatters: editingPost.whyItMatters,
+        tags: editingPost.tags.join(" "),
+        author: editingPost.author ?? user.name,
+      });
+      setSuccessId(null);
+      setError("");
+      return;
+    }
+
+    setForm((current) => ({
+      ...initialForm,
+      author: current.author.trim() || user.name,
+    }));
+    setSuccessId(null);
+    setError("");
+  }, [editingPost, user]);
 
   const canSubmit =
     form.title.trim() &&
@@ -45,19 +89,63 @@ export function SubmitClient() {
     form.whyItMatters.trim() &&
     form.author.trim();
 
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <Card className="rounded-[2rem] bg-white/95 p-8 text-center">
+          <div className="mx-auto h-12 w-40 animate-pulse rounded-full bg-slate-100" />
+          <div className="mx-auto mt-4 h-4 w-56 animate-pulse rounded-full bg-slate-100" />
+        </Card>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+        <Card className="rounded-[2rem] bg-white/95 p-8 text-center">
+          <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-sm font-bold text-blue-700">
+            <SendHorizontal className="h-4 w-4" />
+            投稿
+          </div>
+          <h1 className="mt-4 text-3xl font-black tracking-normal text-slate-950">
+            登录后发布并管理你的投稿
+          </h1>
+          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-500">
+            当前版本支持“我的投稿”编辑和删除。为了区分作者身份，请先登录再投稿。
+          </p>
+          <div className="mt-6 flex justify-center gap-3">
+            <Link
+              href="/auth"
+              className="rounded-full bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-3 text-sm font-bold text-white"
+            >
+              去登录
+            </Link>
+            <Link
+              href="/me"
+              className="rounded-full bg-slate-100 px-5 py-3 text-sm font-bold text-slate-700"
+            >
+              回我的主页
+            </Link>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:px-8">
       <Card className="rounded-[2rem] bg-white/95 p-5 sm:p-8">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-sm font-bold text-blue-700">
-            <SendHorizontal className="h-4 w-4" />
-            投稿
+            {isEditing ? <Pencil className="h-4 w-4" /> : <SendHorizontal className="h-4 w-4" />}
+            {isEditing ? "编辑投稿" : "投稿"}
           </div>
           <h1 className="mt-4 text-3xl font-black tracking-normal text-slate-950 sm:text-4xl">
-            分享您的发现
+            {isEditing ? "修改你的投稿" : "分享你的发现"}
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-500 sm:text-base">
-            为 AI 社区贡献有价值的新闻、工具、观点或案例。当前版本会把投稿保存在本地，并立刻出现在首页信息流里。
+            为 AI 社区贡献有价值的新闻、工具、观点或案例。当前版本会把投稿保存在本地，并和你的账号绑定，方便你继续编辑或删除。
           </p>
         </div>
 
@@ -65,10 +153,10 @@ export function SubmitClient() {
           <div className="mt-6 rounded-3xl border border-emerald-100 bg-emerald-50 p-4 text-emerald-800">
             <div className="flex items-center gap-2 font-black">
               <CheckCircle2 className="h-5 w-5" />
-              投稿已保存
+              {isEditing ? "投稿已更新" : "投稿已保存"}
             </div>
             <p className="mt-2 text-sm leading-6">
-              你的内容已经加入本地信息流，可以在首页或我的投稿中查看。
+              你的内容已经写入本地信息流，可以在首页、详情页或我的投稿中继续管理。
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Link
@@ -87,14 +175,35 @@ export function SubmitClient() {
           </div>
         ) : null}
 
+        {error ? (
+          <div className="mt-6 rounded-3xl border border-rose-100 bg-rose-50 p-4 text-sm font-semibold text-rose-700">
+            {error}
+          </div>
+        ) : null}
+
         <form
           className="mt-8 space-y-6"
           onSubmit={(event) => {
             event.preventDefault();
             if (!canSubmit) return;
-            const post = addSubmission(form);
+            setError("");
+            const payload = {
+              ...form,
+              ownerId: user.id,
+              ownerName: user.name,
+              ownerEmail: user.email,
+            };
+            const post = editingPost
+              ? updateSubmission(editingPost.id, payload, user.id, user.name)
+              : addSubmission(payload);
+            if (!post) {
+              setError("这条投稿暂时无法编辑，请返回“我的主页”后重试");
+              return;
+            }
             setSuccessId(post.id);
-            setForm(initialForm);
+            if (!editingPost) {
+              setForm({ ...initialForm, author: user.name });
+            }
           }}
         >
           <div className="space-y-2">
@@ -198,16 +307,40 @@ export function SubmitClient() {
             </div>
           </div>
 
-          <Button
-            type="submit"
-            variant="gradient"
-            size="lg"
-            className="w-full"
-            disabled={!canSubmit}
-          >
-            <SendHorizontal className="h-5 w-5" />
-            发布投稿
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <Button type="submit" variant="gradient" size="lg" className="flex-1" disabled={!canSubmit}>
+              <SendHorizontal className="h-5 w-5" />
+              {isEditing ? "保存修改" : "发布投稿"}
+            </Button>
+            {isEditing ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="lg"
+                className="min-w-32"
+                disabled={isDeleting}
+                onClick={() => {
+                  if (!editingPost) return;
+                  const confirmed = window.confirm("确认删除这条投稿吗？删除后将无法恢复。");
+                  if (!confirmed) return;
+
+                  setIsDeleting(true);
+                  const deleted = deleteSubmission(editingPost.id, user.id, user.name);
+                  setIsDeleting(false);
+
+                  if (!deleted) {
+                    setError("删除失败，这条投稿可能已经不存在");
+                    return;
+                  }
+
+                  router.push("/me");
+                }}
+              >
+                <Trash2 className="h-5 w-5" />
+                {isDeleting ? "删除中..." : "删除投稿"}
+              </Button>
+            ) : null}
+          </div>
         </form>
       </Card>
 

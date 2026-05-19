@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Bookmark,
   ChartNoAxesColumnIncreasing,
+  GalleryVerticalEnd,
   Home,
   PenLine,
   Sparkles,
@@ -19,6 +20,7 @@ const items = [
   { href: "/ranking", label: "榜单", icon: ChartNoAxesColumnIncreasing },
   { href: "/submit", label: "投稿", icon: PenLine },
   { href: "/saved", label: "收藏", icon: Bookmark },
+  { href: "/portfolio", label: "作品集", icon: GalleryVerticalEnd },
   { href: "/me", label: "我的", icon: UserRound },
 ];
 
@@ -27,7 +29,7 @@ export function MobileTabbar() {
 
   return (
     <nav className="fixed inset-x-3 bottom-3 z-50 rounded-3xl border border-white/80 bg-white/90 px-2 py-2 shadow-lift backdrop-blur-xl md:hidden">
-      <div className="grid grid-cols-6">
+      <div className="grid grid-cols-7">
         {items.map((item) => {
           const active =
             item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);

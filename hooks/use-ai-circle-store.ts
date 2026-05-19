@@ -57,6 +57,9 @@ export type SubmissionInput = {
   whyItMatters: string;
   tags: string;
   author: string;
+  ownerId?: string;
+  ownerName?: string;
+  ownerEmail?: string;
 };
 
 function readJson<T>(key: string, fallback: T): T {
@@ -136,6 +139,25 @@ function dedupePosts(posts: Post[]) {
     seen.add(post.id);
     return true;
   });
+}
+
+function isCommunitySubmission(post: Post) {
+  return post.id.startsWith("submission-");
+}
+
+function canManageSubmission(post: Post, userId?: string, userName?: string) {
+  if (!isCommunitySubmission(post)) return false;
+  if (!userId && !userName) return false;
+
+  if (post.submissionOwnerId) {
+    return post.submissionOwnerId === userId;
+  }
+
+  if (userName) {
+    return post.author?.trim() === userName.trim();
+  }
+
+  return false;
 }
 
 export function useAiCircleStore() {
@@ -329,6 +351,7 @@ export function useAiCircleStore() {
     const tags = normalizeTags(input.tags);
     const post: Post = {
       id: createId("submission"),
+      sourceId: "submission",
       type: input.type,
       title: input.title.trim(),
       summary: input.summary.trim(),
@@ -344,12 +367,71 @@ export function useAiCircleStore() {
       likesCount: 0,
       commentsCount: 0,
       savesCount: 0,
+      submissionOwnerId: input.ownerId?.trim() || undefined,
+      submissionOwnerName: input.ownerName?.trim() || undefined,
+      submissionOwnerEmail: input.ownerEmail?.trim() || undefined,
     };
 
     const current = readLocalState();
     writeLocalState({ ...current, submissions: [post, ...current.submissions] });
 
     return post;
+  }, []);
+
+  const updateSubmission = useCallback(
+    (postId: string, input: SubmissionInput, userId?: string, userName?: string) => {
+      const current = readLocalState();
+      const existing = current.submissions.find((post) => post.id === postId);
+      if (!existing) return null;
+      if (!canManageSubmission(existing, userId, userName)) return null;
+
+      const tags = normalizeTags(input.tags);
+      const updated: Post = {
+        ...existing,
+        type: input.type,
+        title: input.title.trim(),
+        summary: input.summary.trim(),
+        content: `${input.summary.trim()}\n\n这是一条来自社区成员的投稿，当前保存在本地浏览器中。后续接入真实后端后，它可以进入审核、推荐和榜单流转。`,
+        whyItMatters: input.whyItMatters.trim(),
+        sourceName: input.sourceUrl ? "社区投稿" : "AI圈社区",
+        sourceUrl: input.sourceUrl?.trim() || undefined,
+        author: input.author.trim() || "匿名投稿人",
+        tags: tags.length ? tags : ["社区投稿"],
+        submissionOwnerId: existing.submissionOwnerId ?? (input.ownerId?.trim() || undefined),
+        submissionOwnerName:
+          existing.submissionOwnerName ?? (input.ownerName?.trim() || undefined),
+        submissionOwnerEmail:
+          existing.submissionOwnerEmail ?? (input.ownerEmail?.trim() || undefined),
+      };
+
+      writeLocalState({
+        ...current,
+        submissions: current.submissions.map((post) => (post.id === postId ? updated : post)),
+      });
+
+      return updated;
+    },
+    [],
+  );
+
+  const deleteSubmission = useCallback((postId: string, userId?: string, userName?: string) => {
+    const current = readLocalState();
+    const existing = current.submissions.find((post) => post.id === postId);
+    if (!existing) return false;
+    if (!canManageSubmission(existing, userId, userName)) return false;
+
+    const nextComments = { ...current.comments };
+    delete nextComments[postId];
+
+    writeLocalState({
+      ...current,
+      submissions: current.submissions.filter((post) => post.id !== postId),
+      comments: nextComments,
+      likedPosts: current.likedPosts.filter((id) => id !== postId),
+      savedPosts: current.savedPosts.filter((id) => id !== postId),
+    });
+
+    return true;
   }, []);
 
   return {
@@ -368,5 +450,8 @@ export function useAiCircleStore() {
     addGeneratedComments,
     toggleCommentLike,
     addSubmission,
+    updateSubmission,
+    deleteSubmission,
+    canManageSubmission,
   };
 }

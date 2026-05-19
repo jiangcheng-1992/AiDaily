@@ -13,6 +13,7 @@ const navItems = [
   { href: "/skills", label: "热门 Skill" },
   { href: "/ranking", label: "榜单" },
   { href: "/saved", label: "收藏" },
+  { href: "/portfolio", label: "姜承的作品集" },
   { href: "/me", label: "我的" },
 ];
 

@@ -7,9 +7,11 @@ import {
   ChevronRight,
   LogOut,
   MessageCircle,
+  Pencil,
   PenLine,
   Settings,
   Sparkles,
+  Trash2,
   UserRound,
 } from "lucide-react";
 
@@ -21,8 +23,12 @@ import { useAiCircleStore } from "@/hooks/use-ai-circle-store";
 import { cn, formatRelativeTime } from "@/lib/utils";
 
 export function MeClient() {
-  const { savedPostIds, submissions, commentsByPost } = useAiCircleStore();
+  const { savedPostIds, submissions, commentsByPost, canManageSubmission, deleteSubmission } =
+    useAiCircleStore();
   const { user, loading, logout } = useAuth();
+  const ownedSubmissions = user
+    ? submissions.filter((post) => canManageSubmission(post, user.id, user.name))
+    : [];
   const commentCount = Object.values(commentsByPost).reduce(
     (total, comments) => total + comments.length,
     0,
@@ -96,7 +102,7 @@ export function MeClient() {
 
         <div className="grid gap-3 p-5 sm:grid-cols-3">
           <StatCard icon={Bookmark} label="我的收藏" value={savedPostIds.length} href="/saved" />
-          <StatCard icon={PenLine} label="我的投稿" value={submissions.length} href="/submit" />
+          <StatCard icon={PenLine} label="我的投稿" value={ownedSubmissions.length} href="/submit" />
           <StatCard icon={MessageCircle} label="我的评论" value={commentCount} href="#comments" />
         </div>
       </Card>
@@ -112,27 +118,49 @@ export function MeClient() {
               继续投稿
             </Link>
           </div>
-          {submissions.length ? (
+          {ownedSubmissions.length ? (
             <div className="space-y-3">
-              {submissions.map((post) => (
-                <Link
-                  href={`/post/${post.id}`}
+              {ownedSubmissions.map((post) => (
+                <div
                   key={post.id}
-                  className="group block rounded-3xl border border-slate-100 bg-slate-50 p-4 transition-colors hover:bg-blue-50/60"
+                  className="rounded-3xl border border-slate-100 bg-slate-50 p-4 transition-colors hover:bg-blue-50/60"
                 >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <PostTypeBadge type={post.type} />
-                    <span className="text-xs font-semibold text-slate-400">
-                      {formatRelativeTime(post.createdAt)}
-                    </span>
+                  <Link href={`/post/${post.id}`} className="group block">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <PostTypeBadge type={post.type} />
+                      <span className="text-xs font-semibold text-slate-400">
+                        {formatRelativeTime(post.createdAt)}
+                      </span>
+                    </div>
+                    <h3 className="mt-3 line-clamp-2 font-black leading-6 text-slate-900 group-hover:text-blue-700">
+                      {post.title}
+                    </h3>
+                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">
+                      {post.summary}
+                    </p>
+                  </Link>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Link
+                      href={`/submit?edit=${encodeURIComponent(post.id)}`}
+                      className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-sm font-bold text-blue-700 transition-colors hover:bg-blue-100"
+                    >
+                      <Pencil className="h-4 w-4" />
+                      编辑
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const confirmed = window.confirm("确认删除这条投稿吗？删除后不可恢复。");
+                        if (!confirmed) return;
+                        deleteSubmission(post.id, user.id, user.name);
+                      }}
+                      className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-sm font-bold text-rose-700 transition-colors hover:bg-rose-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      删除
+                    </button>
                   </div>
-                  <h3 className="mt-3 line-clamp-2 font-black leading-6 text-slate-900 group-hover:text-blue-700">
-                    {post.title}
-                  </h3>
-                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">
-                    {post.summary}
-                  </p>
-                </Link>
+                </div>
               ))}
             </div>
           ) : (

@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   Bookmark,
   Bot,
+  Pencil,
   ExternalLink,
   Heart,
   MessageCircle,
@@ -16,6 +17,7 @@ import {
   Sparkles,
   Star,
   ThumbsUp,
+  Trash2,
 } from "lucide-react";
 
 import { InteractionButton } from "@/components/interaction-button";
@@ -23,6 +25,7 @@ import { PostTypeBadge } from "@/components/post-type-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/hooks/use-auth";
 import { useAiCircleStore } from "@/hooks/use-ai-circle-store";
 import { getPostById, type Comment, type Post } from "@/lib/mock-data";
 import {
@@ -42,6 +45,7 @@ export function PostDetailClient({
   initialComments?: Comment[];
 }) {
   const router = useRouter();
+  const { user } = useAuth();
   const {
     hydrated,
     allPosts,
@@ -54,6 +58,8 @@ export function PostDetailClient({
     addAiComments,
     addGeneratedComments,
     toggleCommentLike,
+    canManageSubmission,
+    deleteSubmission,
   } = useAiCircleStore();
   const [commentText, setCommentText] = useState("");
   const [shared, setShared] = useState(false);
@@ -97,6 +103,7 @@ export function PostDetailClient({
   }
 
   const stats = getPostStats(post);
+  const canManageCurrentSubmission = canManageSubmission(post, user?.id, user?.name);
   const storedComments = getCommentsForPost(post.id);
   const comments = storedComments.length ? storedComments : initialComments;
   const paragraphs = post.content
@@ -238,6 +245,33 @@ export function PostDetailClient({
               </a>
             ) : null}
           </div>
+
+          {canManageCurrentSubmission ? (
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Link
+                href={`/submit?edit=${encodeURIComponent(post.id)}`}
+                className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-sm font-bold text-blue-700 transition-colors hover:bg-blue-100"
+              >
+                <Pencil className="h-4 w-4" />
+                编辑投稿
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  const confirmed = window.confirm("确认删除这条投稿吗？删除后不可恢复。");
+                  if (!confirmed) return;
+                  const deleted = deleteSubmission(post.id, user?.id, user?.name);
+                  if (deleted) {
+                    router.push("/me");
+                  }
+                }}
+                className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-4 py-2 text-sm font-bold text-rose-700 transition-colors hover:bg-rose-100"
+              >
+                <Trash2 className="h-4 w-4" />
+                删除投稿
+              </button>
+            </div>
+          ) : null}
 
           {post.type === "video" ? (
             <div className="mt-6 overflow-hidden rounded-[1.75rem] border border-slate-100 bg-slate-950">

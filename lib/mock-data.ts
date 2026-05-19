@@ -30,6 +30,9 @@ export type Post = {
   commentsCount: number;
   savesCount: number;
   featured?: boolean;
+  submissionOwnerId?: string;
+  submissionOwnerName?: string;
+  submissionOwnerEmail?: string;
 };
 
 export type Comment = {

@@ -17,6 +17,16 @@ import { useAiCircleStore } from "@/hooks/use-ai-circle-store";
 import type { Post } from "@/lib/mock-data";
 import { formatCompactNumber, formatRelativeTime } from "@/lib/utils";
 
+function getStartOfToday() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+function isTodayPost(post: Post) {
+  const referenceTime = post.createdAt;
+  return new Date(referenceTime).getTime() >= getStartOfToday().getTime();
+}
+
 export function RankingClient() {
   const { allPosts, getPostStats } = useAiCircleStore();
 
@@ -26,6 +36,7 @@ export function RankingClient() {
   };
 
   const todayHot = [...allPosts]
+    .filter(isTodayPost)
     .sort(
       (a, b) =>
         withScore(b) - withScore(a) ||
@@ -56,7 +67,7 @@ export function RankingClient() {
           今天 AI 圈都在看什么
         </h1>
         <p className="mt-3 max-w-2xl text-base leading-8 text-slate-500">
-          用点赞、评论、收藏和编辑精选信号，整理出更值得优先阅读的 AI 动态。
+          今日榜单只看今天发布内容的热度信号，避免历史累计热度继续挤占今天的优先位。
         </p>
       </div>
 
