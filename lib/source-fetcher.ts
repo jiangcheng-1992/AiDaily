@@ -9,6 +9,7 @@ import {
   stripHtmlToText,
 } from "@/lib/article-cleaner";
 import { buildGeneratedPostCopy } from "@/lib/post-insights";
+import { isRelevantAiContent } from "@/lib/source-relevance";
 
 export type SourceItem = {
   sourceId: string;
@@ -187,9 +188,14 @@ function matchesSourceKeywords(item: SourceItem, source: AiSource) {
   }
 
   const includeKeywords = source.includeKeywords?.filter(Boolean) ?? [];
-  if (includeKeywords.length === 0) return true;
+  const keywordMatched =
+    includeKeywords.length === 0
+      ? true
+      : includeKeywords.some((keyword) => titleAndBody.includes(keyword.toLowerCase()));
 
-  return includeKeywords.some((keyword) => titleAndBody.includes(keyword.toLowerCase()));
+  if (!keywordMatched) return false;
+
+  return isRelevantAiContent(source, item);
 }
 
 function isFreshEnough(item: SourceItem, source: AiSource) {

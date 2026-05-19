@@ -13,6 +13,7 @@ import {
 } from "@/lib/article-cleaner";
 import { generateAiCommentsForPost } from "@/lib/ai-comment-roles";
 import { buildGeneratedPostCopy } from "@/lib/post-insights";
+import { isRelevantAiContent } from "@/lib/source-relevance";
 import type { Comment, Post } from "@/lib/mock-data";
 
 type ManualIngestResult = {
@@ -63,11 +64,24 @@ export async function ingestArticleByUrl(rawUrl: string): Promise<ManualIngestRe
     ...htmlMetadata.keywords,
     authorityLabel(source.authority),
   ]).slice(0, 8);
+  const candidateTitle = sourceCandidate?.title || htmlMetadata.title || normalizedInputUrl;
+  const relevant = isRelevantAiContent(source, {
+    title: candidateTitle,
+    summary: sourceCandidate?.summary || htmlMetadata.content || copy.summary,
+    content: copy.content,
+    tags,
+    url: sourceUrl,
+  });
+
+  if (!relevant) {
+    throw new Error("内容与 AI 相关性不足，已跳过");
+  }
+
   const post: Post = {
     id: `source-${source.id}-${hashText(sourceUrl || copy.summary || normalizedInputUrl)}`,
     sourceId: source.id,
     type: source.recommendedType,
-    title: sourceCandidate?.title || htmlMetadata.title || normalizedInputUrl,
+    title: candidateTitle,
     summary: copy.summary,
     content: copy.content,
     whyItMatters: copy.whyItMatters,

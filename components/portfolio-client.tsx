@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 const projects = [
   {
     id: "animals-protect",
@@ -39,12 +41,17 @@ export function PortfolioClient() {
             rel="noreferrer"
             className="group block overflow-hidden rounded-[2rem] shadow-soft transition-transform duration-200 hover:-translate-y-1 hover:shadow-lift"
           >
-            <img
-              src={project.imageSrc}
-              alt={project.title}
-              className="block w-full rounded-[2rem]"
-              loading="lazy"
-            />
+            <div className="relative aspect-[2/1] w-full overflow-hidden rounded-[2rem]">
+              <Image
+                src={project.imageSrc}
+                alt={project.title}
+                fill
+                sizes="(min-width: 1024px) 560px, (min-width: 768px) 50vw, 100vw"
+                quality={72}
+                className="object-cover"
+                priority={project.id === "animals-protect"}
+              />
+            </div>
           </a>
         ))}
       </div>
