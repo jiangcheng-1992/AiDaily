@@ -1,6 +1,12 @@
 import { XMLParser } from "fast-xml-parser";
 
 import type { AiSource } from "@/lib/ai-sources";
+import {
+  cleanTitleText,
+  extractArticleTextFromHtml,
+  normalizeArticleText,
+  stripHtmlToText,
+} from "@/lib/article-cleaner";
 import { buildGeneratedPostCopy } from "@/lib/post-insights";
 
 export type SourceItem = {
@@ -102,8 +108,8 @@ function extractRawItems(parsed: unknown): RawFeedItem[] {
 }
 
 function normalizeFeedItem(source: AiSource, item: RawFeedItem): SourceItem {
-  const title = stripHtml(asText(item.title)) || "未命名内容";
-  const content = stripHtml(
+  const title = cleanTitleText(asText(item.title)) || "未命名内容";
+  const content = normalizeArticleText(
     asText(item.description) ||
       asText(item.summary) ||
       asText(item.content) ||
@@ -197,7 +203,7 @@ function isFreshEnough(item: SourceItem, source: AiSource) {
 
 function extractCategories(item: RawFeedItem) {
   return toArray(item.category)
-    .map((entry) => stripHtml(asText(entry)))
+    .map((entry) => stripHtmlToText(asText(entry)))
     .filter(Boolean);
 }
 
@@ -217,7 +223,7 @@ async function hydrateSourceItemContent(source: AiSource, item: SourceItem) {
     if (!response.ok) return finalizeSourceItem(item);
 
     const html = await response.text();
-    const fullText = extractArticleText(html);
+    const fullText = extractArticleTextFromHtml(html, item.title);
     const content = selectRicherText(item.content, fullText);
 
     return finalizeSourceItem({
@@ -277,7 +283,7 @@ function extractHtmlKeywords(html: string) {
       const match = entry.match(/content=["']([^"']+)["']/i);
       return (match?.[1] ?? "").split(/[，,]/);
     })
-    .map((keyword) => stripHtml(keyword))
+    .map((keyword) => stripHtmlToText(keyword))
     .filter(Boolean);
 }
 
@@ -285,40 +291,6 @@ function clipText(value: string, maxLength: number) {
   const normalized = value.trim();
   if (normalized.length <= maxLength) return normalized;
   return `${normalized.slice(0, maxLength - 1)}...`;
-}
-
-function stripHtml(value: string) {
-  return value
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&#39;/g, "'")
-    .replace(/&quot;/g, '"')
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function normalizeArticleText(value: string) {
-  return decodeHtml(value)
-    .replace(/<[^>]*>/g, " ")
-    .replace(/\r/g, "")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n[ \t]+/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .replace(/[ \t]{2,}/g, " ")
-    .trim();
-}
-
-function decodeHtml(value: string) {
-  return value
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&#39;/g, "'")
-    .replace(/&quot;/g, '"');
 }
 
 function delay(ms: number) {

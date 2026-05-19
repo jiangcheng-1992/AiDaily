@@ -3,6 +3,13 @@ import { createHash } from "node:crypto";
 import { XMLParser } from "fast-xml-parser";
 
 import { type AiSource, authoritativeSources } from "@/lib/ai-sources";
+import {
+  cleanTitleText,
+  decodeHtmlEntities,
+  extractArticleTextFromHtml,
+  normalizeArticleText,
+  stripHtmlToText,
+} from "@/lib/article-cleaner";
 import { generateAiCommentsForPost } from "@/lib/ai-comment-roles";
 import { buildGeneratedPostCopy } from "@/lib/post-insights";
 import type { Comment, Post } from "@/lib/mock-data";
@@ -114,7 +121,7 @@ async function findSourceItemByUrl(source: AiSource, rawUrl: string) {
       );
 
       return {
-        title: stripHtml(asText(item.title)),
+        title: cleanTitleText(asText(item.title)),
         url: candidateUrl,
         summary: content,
         content,
@@ -126,7 +133,7 @@ async function findSourceItemByUrl(source: AiSource, rawUrl: string) {
           undefined,
         tags: [
           ...source.tags,
-          ...toArray(item.category).map((entry) => stripHtml(asText(entry))).filter(Boolean),
+          ...toArray(item.category).map((entry) => stripHtmlToText(asText(entry))).filter(Boolean),
         ],
       };
     }
@@ -168,7 +175,7 @@ async function fetchArticleMetadata(rawUrl: string): Promise<HtmlMetadata> {
       readMetaContent(html, "property", "og:url") ||
       undefined,
     keywords: extractHtmlKeywords(html),
-    content: extractArticleText(html, readFirstHeading(html) || readTitleTag(html)),
+    content: extractArticleTextFromHtml(html, readFirstHeading(html) || readTitleTag(html)),
   };
 }
 
@@ -232,12 +239,12 @@ function readMetaContent(html: string, attrName: "name" | "property", attrValue:
     ),
   );
 
-  return decodeHtml(match?.[1] ?? "").trim();
+  return decodeHtmlEntities(match?.[1] ?? "").trim();
 }
 
 function readTitleTag(html: string) {
   const match = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-  return stripHtml(match?.[1] ?? "");
+  return stripHtmlToText(match?.[1] ?? "");
 }
 
 function readLinkHref(html: string, rel: string) {
@@ -245,7 +252,7 @@ function readLinkHref(html: string, rel: string) {
     new RegExp(`<link[^>]+rel=["']${escapeRegExp(rel)}["'][^>]+href=["']([^"']+)["'][^>]*>`, "i"),
   );
 
-  return decodeHtml(match?.[1] ?? "").trim();
+  return decodeHtmlEntities(match?.[1] ?? "").trim();
 }
 
 function readDatePublishedFromJsonLd(html: string) {
@@ -293,26 +300,6 @@ function findStringProperty(value: unknown, key: string): string {
   return "";
 }
 
-function extractArticleText(html: string, preferredTitle = "") {
-  const articleMatch =
-    html.match(/<article[\s\S]*?<\/article>/i) ??
-    html.match(/<main[\s\S]*?<\/main>/i) ??
-    html.match(/<body[\s\S]*?<\/body>/i);
-  const block = articleMatch?.[0] ?? html;
-
-  const normalized = normalizeArticleText(
-    block
-      .replace(/<script[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<\/p>/gi, "\n\n")
-      .replace(/<br\s*\/?>/gi, "\n")
-      .replace(/<\/div>/gi, "\n")
-      .replace(/<\/li>/gi, "\n"),
-  );
-
-  return focusArticleText(normalized, preferredTitle);
-}
-
 function extractHtmlKeywords(html: string) {
   const keywords = html.match(
     /<meta[^>]+(?:name|property)=["'](?:keywords|article:tag)["'][^>]+content=["']([^"']+)["']/gi,
@@ -323,91 +310,8 @@ function extractHtmlKeywords(html: string) {
       const match = entry.match(/content=["']([^"']+)["']/i);
       return (match?.[1] ?? "").split(/[，,]/);
     })
-    .map((keyword) => stripHtml(keyword))
+    .map((keyword) => stripHtmlToText(keyword))
     .filter(Boolean);
-}
-
-function stripHtml(value: string) {
-  return decodeHtml(value)
-    .replace(/<[^>]*>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function normalizeArticleText(value: string) {
-  return decodeHtml(value)
-    .replace(/<[^>]*>/g, " ")
-    .replace(/\r/g, "")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n[ \t]+/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .replace(/[ \t]{2,}/g, " ")
-    .trim();
-}
-
-function decodeHtml(value: string) {
-  return value
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&#39;/g, "'")
-    .replace(/&quot;/g, '"');
-}
-
-function focusArticleText(content: string, preferredTitle: string) {
-  let result = content;
-  const cleanTitle = preferredTitle.replace(/[-|｜]\s*36氪.*$/i, "").trim();
-
-  if (cleanTitle) {
-    const titleIndex = result.indexOf(cleanTitle);
-    if (titleIndex >= 0) {
-      result = result.slice(titleIndex);
-    }
-  }
-
-  const endMarkers = [
-    "\n本文由",
-    "\n评论区",
-    "\n你可能也喜欢这些文章",
-    "\n打开微信“扫一扫”",
-    "\n返回顶部",
-    "\n关于36氪",
-    "\n下一篇",
-    "\n寻求报道",
-  ];
-
-  const cutIndex = endMarkers
-    .map((marker) => result.indexOf(marker))
-    .filter((index) => index > 80)
-    .sort((left, right) => left - right)[0];
-
-  if (typeof cutIndex === "number") {
-    result = result.slice(0, cutIndex);
-  }
-
-  const paragraphs = result
-    .split(/\n{2,}/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean);
-
-  while (paragraphs.length > 0) {
-    const first = paragraphs[0];
-
-    if (cleanTitle && first.includes(cleanTitle)) {
-      paragraphs.shift();
-      continue;
-    }
-
-    if (/^[^。！？!?]{0,40}\d{4}年\d{1,2}月\d{1,2}日/.test(first)) {
-      paragraphs.shift();
-      continue;
-    }
-
-    break;
-  }
-
-  return paragraphs.join("\n\n").trim();
 }
 
 function pickPreferredContent(feedContent: string, htmlContent: string) {
@@ -494,7 +398,7 @@ function escapeRegExp(value: string) {
 
 function readFirstHeading(html: string) {
   const match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-  return stripHtml(match?.[1] ?? "");
+  return stripHtmlToText(match?.[1] ?? "");
 }
 
 function extractRawItems(parsed: unknown): RawFeedItem[] {
