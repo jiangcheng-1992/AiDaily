@@ -93,7 +93,20 @@ export function PostDetailClient({
   const stats = getPostStats(post);
   const storedComments = getCommentsForPost(post.id);
   const comments = storedComments.length ? storedComments : initialComments;
-  const paragraphs = post.content.split(/\n+/).filter(Boolean);
+  const paragraphs = post.content
+    .split(/\n+/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+  const normalizedSummary = post.summary.trim();
+  const displayParagraphs = paragraphs.filter((paragraph, index) => {
+    if (index > 0) return true;
+
+    const normalizedParagraph = paragraph.trim();
+    return (
+      normalizedParagraph !== normalizedSummary &&
+      !normalizedParagraph.startsWith(normalizedSummary.slice(0, 24))
+    );
+  });
 
   const handleShare = async () => {
     const url = `${window.location.origin}/post/${post.id}`;
@@ -196,14 +209,14 @@ export function PostDetailClient({
                 <span>{post.author}</span>
               </>
             ) : null}
-            {post.sourceUrl ? (
+            {post.type === "skill" && post.sourceUrl ? (
               <a
                 href={post.sourceUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1 text-blue-700 hover:underline"
               >
-                {post.type === "skill" ? "查看 GitHub" : "原始来源"}
+                查看 GitHub
                 <ExternalLink className="h-3.5 w-3.5" />
               </a>
             ) : null}
@@ -214,7 +227,7 @@ export function PostDetailClient({
           </p>
 
           <div className="mt-8 space-y-5 text-[16px] leading-8 text-slate-700">
-            {paragraphs.map((paragraph, index) => (
+            {displayParagraphs.map((paragraph, index) => (
               <p key={`${post.id}-p-${index}`}>{paragraph}</p>
             ))}
           </div>
@@ -232,7 +245,7 @@ export function PostDetailClient({
             <section className="rounded-3xl border border-slate-100 bg-slate-50 p-5">
               <div className="flex items-center gap-2 text-sm font-black text-slate-900">
                 <Sparkles className="h-5 w-5 text-violet-600" />
-                站长点评
+                站长总结
               </div>
               <p className="mt-3 text-sm leading-7 text-slate-700">
                 {post.editorComment}

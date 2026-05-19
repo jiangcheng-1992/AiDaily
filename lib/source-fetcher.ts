@@ -1,6 +1,7 @@
 import { XMLParser } from "fast-xml-parser";
 
 import type { AiSource } from "@/lib/ai-sources";
+import { buildGeneratedPostCopy } from "@/lib/post-insights";
 
 export type SourceItem = {
   sourceId: string;
@@ -8,6 +9,7 @@ export type SourceItem = {
   title: string;
   url?: string;
   summary: string;
+  content: string;
   publishedAt?: string;
   tags: string[];
 };
@@ -43,15 +45,17 @@ export async function fetchSourceItems(
   const parsed = parser.parse(xml);
   const rawItems = extractRawItems(parsed);
 
-  return rawItems
-    .slice(0, limit)
+  const candidateCount = Math.max(limit * 6, limit);
+  const normalizedItems = rawItems
+    .slice(0, candidateCount)
     .map((item) => normalizeFeedItem(source, item))
-    .filter(
-      (item) =>
-        hasRequiredFeedFields(item) &&
-        isFreshEnough(item, source) &&
-        matchesSourceKeywords(item, source),
-    );
+    .filter((item) => hasRequiredFeedFields(item) && isFreshEnough(item, source));
+
+  const hydratedItems = await Promise.all(
+    normalizedItems.map((item) => hydrateSourceItemContent(source, item)),
+  );
+
+  return hydratedItems.filter((item) => matchesSourceKeywords(item, source)).slice(0, limit);
 }
 
 async function fetchWithRetry(
@@ -99,7 +103,7 @@ function extractRawItems(parsed: unknown): RawFeedItem[] {
 
 function normalizeFeedItem(source: AiSource, item: RawFeedItem): SourceItem {
   const title = stripHtml(asText(item.title)) || "未命名内容";
-  const summary = stripHtml(
+  const content = stripHtml(
     asText(item.description) ||
       asText(item.summary) ||
       asText(item.content) ||
@@ -117,7 +121,8 @@ function normalizeFeedItem(source: AiSource, item: RawFeedItem): SourceItem {
     sourceName: source.name,
     title,
     url: extractLink(item),
-    summary: summary.slice(0, 260),
+    summary: clipText(content, 260),
+    content,
     publishedAt,
     tags: Array.from(new Set([...source.tags, ...extractCategories(item)])).slice(0, 6),
   };
@@ -164,9 +169,8 @@ function hasRequiredFeedFields(item: SourceItem) {
 }
 
 function matchesSourceKeywords(item: SourceItem, source: AiSource) {
-  const haystack = `${item.title} ${item.summary} ${item.tags.join(" ")} ${item.url ?? ""}`
-    .toLowerCase()
-    .trim();
+  const titleAndBody = `${item.title} ${item.summary} ${item.content}`.toLowerCase().trim();
+  const haystack = `${titleAndBody} ${item.tags.join(" ")} ${item.url ?? ""}`.toLowerCase().trim();
 
   if (!haystack) return true;
 
@@ -178,7 +182,7 @@ function matchesSourceKeywords(item: SourceItem, source: AiSource) {
   const includeKeywords = source.includeKeywords?.filter(Boolean) ?? [];
   if (includeKeywords.length === 0) return true;
 
-  return includeKeywords.some((keyword) => haystack.includes(keyword.toLowerCase()));
+  return includeKeywords.some((keyword) => titleAndBody.includes(keyword.toLowerCase()));
 }
 
 function isFreshEnough(item: SourceItem, source: AiSource) {
@@ -197,6 +201,92 @@ function extractCategories(item: RawFeedItem) {
     .filter(Boolean);
 }
 
+async function hydrateSourceItemContent(source: AiSource, item: SourceItem) {
+  if (!item.url) return item;
+
+  try {
+    const response = await fetchWithRetry(item.url, {
+      headers: {
+        "user-agent":
+          process.env.AIQ_USER_AGENT ??
+          "AIQ/1.0 (+https://github.com/jiangcheng-1992/-AIDaily)",
+        accept: "text/html,application/xhtml+xml",
+      },
+    });
+
+    if (!response.ok) return finalizeSourceItem(item);
+
+    const html = await response.text();
+    const fullText = extractArticleText(html);
+    const content = selectRicherText(item.content, fullText);
+
+    return finalizeSourceItem({
+      ...item,
+      content,
+      summary: clipText(content || item.summary, 260),
+      tags: Array.from(new Set([...item.tags, ...extractHtmlKeywords(html)])).slice(0, 8),
+    });
+  } catch {
+    return finalizeSourceItem(item);
+  }
+}
+
+function finalizeSourceItem(item: SourceItem): SourceItem {
+  const copy = buildGeneratedPostCopy({
+    title: item.title,
+    rawContent: item.content || item.summary,
+    fallbackSummary: item.summary,
+  });
+
+  return {
+    ...item,
+    summary: copy.summary,
+    content: copy.content,
+  };
+}
+
+function selectRicherText(currentText: string, nextText: string) {
+  return nextText.length > currentText.length + 80 ? nextText : currentText;
+}
+
+function extractArticleText(html: string) {
+  const articleMatch =
+    html.match(/<article[\s\S]*?<\/article>/i) ??
+    html.match(/<main[\s\S]*?<\/main>/i) ??
+    html.match(/<body[\s\S]*?<\/body>/i);
+  const block = articleMatch?.[0] ?? html;
+
+  return normalizeArticleText(
+    block
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<\/p>/gi, "\n\n")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/div>/gi, "\n")
+      .replace(/<\/li>/gi, "\n"),
+  );
+}
+
+function extractHtmlKeywords(html: string) {
+  const keywords = html.match(
+    /<meta[^>]+(?:name|property)=["'](?:keywords|article:tag)["'][^>]+content=["']([^"']+)["']/gi,
+  );
+
+  return (keywords ?? [])
+    .flatMap((entry) => {
+      const match = entry.match(/content=["']([^"']+)["']/i);
+      return (match?.[1] ?? "").split(/[，,]/);
+    })
+    .map((keyword) => stripHtml(keyword))
+    .filter(Boolean);
+}
+
+function clipText(value: string, maxLength: number) {
+  const normalized = value.trim();
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, maxLength - 1)}...`;
+}
+
 function stripHtml(value: string) {
   return value
     .replace(/<[^>]*>/g, " ")
@@ -208,6 +298,27 @@ function stripHtml(value: string) {
     .replace(/&quot;/g, '"')
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function normalizeArticleText(value: string) {
+  return decodeHtml(value)
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\r/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n[ \t]+/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
+function decodeHtml(value: string) {
+  return value
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"');
 }
 
 function delay(ms: number) {

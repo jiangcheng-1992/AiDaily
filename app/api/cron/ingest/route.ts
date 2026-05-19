@@ -3,6 +3,7 @@ import {
   readGeneratedFeed,
   writeGeneratedFeed,
 } from "@/lib/generated-feed-store";
+import { validateIngestRequest } from "@/lib/ingest-request-auth";
 import { runIngestPipeline } from "@/lib/ingest-pipeline";
 
 export const runtime = "nodejs";
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
 }
 
 async function handleIngestRequest(request: Request) {
-  const authError = validateCronRequest(request);
+  const authError = validateIngestRequest(request);
 
   if (authError) return authError;
 
@@ -78,25 +79,6 @@ async function handleIngestRequest(request: Request) {
       },
     },
   );
-}
-
-function validateCronRequest(request: Request) {
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (process.env.NODE_ENV !== "production") return null;
-
-  if (!cronSecret) {
-    return Response.json(
-      { ok: false, error: "CRON_SECRET is required in production" },
-      { status: 500 },
-    );
-  }
-
-  if (request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
-    return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
-  }
-
-  return null;
 }
 
 function readPositiveInt(value: string | undefined, fallback: number) {

@@ -1,4 +1,5 @@
 import type { Comment, Post, PostType } from "@/lib/mock-data";
+import { buildRoleComment } from "@/lib/post-insights";
 
 export type AiCommentRole = {
   id: string;
@@ -18,8 +19,7 @@ export const aiCommentRoles: AiCommentRole[] = [
     avatarText: "产",
     focus: "产品定位、用户价值、商业模式",
     preferredTypes: ["product", "tool", "case", "news"],
-    writeComment: (post) =>
-      `从产品角度看，「${post.title}」最值得拆的是用户刚需和使用频次。它不只是一个 AI 动态，更可能成为垂直场景里的新入口。建议继续观察：谁会为它付费，以及它替代的是现有流程里的哪一步。`,
+    writeComment: (post) => buildRoleComment(post, "product-strategist"),
   },
   {
     id: "indie-hacker",
@@ -28,8 +28,7 @@ export const aiCommentRoles: AiCommentRole[] = [
     avatarText: "独",
     focus: "小产品、自动化、快速验证",
     preferredTypes: ["tool", "product", "skill", "case"],
-    writeComment: (post) =>
-      `独立开发者可以先别急着做大而全，围绕「${post.tags[0] ?? "AI"}」切一个很窄的 MVP：信息整理、模板生成、自动化执行或案例库都可以。关键是 48 小时内做出可试用版本，再用真实反馈判断是否继续。`,
+    writeComment: (post) => buildRoleComment(post, "indie-hacker"),
   },
   {
     id: "research-reader",
@@ -38,8 +37,7 @@ export const aiCommentRoles: AiCommentRole[] = [
     avatarText: "研",
     focus: "论文、模型能力、基准评测",
     preferredTypes: ["news", "opinion", "tool"],
-    writeComment: (post) =>
-      `技术上我会重点看两个问题：这个方向是否有可复现证据，以及能力提升来自模型本身还是工作流设计。「${post.title}」值得关注，但最好结合论文、基准和失败案例一起判断。`,
+    writeComment: (post) => buildRoleComment(post, "research-reader"),
   },
   {
     id: "growth-operator",
@@ -48,8 +46,7 @@ export const aiCommentRoles: AiCommentRole[] = [
     avatarText: "增",
     focus: "增长路径、内容分发、转化效率",
     preferredTypes: ["case", "skill", "product"],
-    writeComment: () =>
-      `这条内容对增长侧的启发是：AI 不只是提效工具，也能变成内容生产和用户触达的放大器。若要落地，可以先选一个高频内容场景，做出前后效率对比，再用案例数据说服团队或客户。`,
+    writeComment: (post) => buildRoleComment(post, "growth-operator"),
   },
   {
     id: "creator-coach",
@@ -58,8 +55,7 @@ export const aiCommentRoles: AiCommentRole[] = [
     avatarText: "创",
     focus: "创作者工作流、选题、交付形式",
     preferredTypes: ["skill", "case", "opinion"],
-    writeComment: (post) =>
-      `创作者可以把这条动态拆成一个选题：新能力是什么、普通人怎么用、能不能形成一套可复制流程。真正有价值的内容不是转述新闻，而是把「${post.tags[0] ?? "AI"}」翻译成读者今天就能试的行动清单。`,
+    writeComment: (post) => buildRoleComment(post, "creator-coach"),
   },
   {
     id: "risk-observer",
@@ -68,8 +64,7 @@ export const aiCommentRoles: AiCommentRole[] = [
     avatarText: "风",
     focus: "风险边界、合规、可靠性",
     preferredTypes: ["news", "opinion", "product", "case"],
-    writeComment: () =>
-      "这里也要留意风险边界：数据来源、版权、幻觉、企业合规和用户过度依赖都可能影响落地。越接近真实业务，越需要保留人工审核和可追溯记录。",
+    writeComment: (post) => buildRoleComment(post, "risk-observer"),
   },
 ];
 

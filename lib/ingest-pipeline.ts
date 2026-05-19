@@ -8,6 +8,7 @@ import {
   type GitHubRepo,
 } from "@/lib/github-skills";
 import type { Comment, Post } from "@/lib/mock-data";
+import { buildGeneratedPostCopy } from "@/lib/post-insights";
 import { fetchSourceItems, type SourceItem } from "@/lib/source-fetcher";
 
 export type IngestRunResult = {
@@ -166,21 +167,22 @@ function sourceItemToPost(item: SourceItem, source: AiSource): Post {
   const collectedAt = new Date().toISOString();
   const publishedAt = toIsoDate(item.publishedAt);
   const createdAt = publishedAt || collectedAt;
-  const summary =
-    item.summary ||
-    `来自 ${item.sourceName} 的最新 AI 动态，AI圈已纳入定时信息源。`;
+  const copy = buildGeneratedPostCopy({
+    title: item.title,
+    rawContent: item.content || item.summary,
+    fallbackSummary:
+      item.summary || `来自 ${item.sourceName} 的最新 AI 动态，AI圈已纳入定时信息源。`,
+  });
 
   return {
     id: `source-${item.sourceId}-${hashText(item.url || item.title)}`,
     sourceId: item.sourceId,
     type: source.recommendedType,
     title: item.title,
-    summary,
-    content: `${summary}\n\n原始来源：${item.sourceName}\n原文时间：${publishedAt ? new Date(publishedAt).toLocaleString("zh-CN") : "未提供"}\n抓取时间：${new Date(collectedAt).toLocaleString("zh-CN")}\n\n说明：该内容来自 AI圈离线抓取任务。RSS/Atom 源通常不提供点赞和评论数据，因此互动数不会被编造；详情页会附带 AI 角色评论作为社区视角补充。`,
-    whyItMatters:
-      "这是来自权威 AI 信息源的最新变化，适合用于判断模型、产品、开发工具和创作者机会的方向。",
-    editorComment:
-      "AI圈抓取机器人已收录这条动态。建议点开原文核对细节，再结合 AI 评论里的产品、技术和风险视角判断是否值得跟进。",
+    summary: copy.summary,
+    content: copy.content,
+    whyItMatters: copy.whyItMatters,
+    editorComment: copy.editorComment,
     sourceName: item.sourceName,
     sourceUrl: item.url,
     tags: uniqueTags([...item.tags, authorityLabel(source.authority)]).slice(0, 6),
