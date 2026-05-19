@@ -47,7 +47,7 @@ export async function ingestArticleByUrl(rawUrl: string): Promise<ManualIngestRe
   }
 
   const sourceCandidate = await findSourceItemByUrl(source, normalizedInputUrl);
-  const htmlMetadata = await fetchArticleMetadata(normalizedInputUrl);
+  const htmlMetadata = await fetchArticleMetadataWithFallback(normalizedInputUrl, Boolean(sourceCandidate));
   const sourceUrl = sourceCandidate?.url ?? htmlMetadata.canonicalUrl ?? normalizedInputUrl;
   const rawContent = pickPreferredContent(sourceCandidate?.content ?? "", htmlMetadata.content);
   const copy = buildGeneratedPostCopy({
@@ -143,6 +143,21 @@ async function findSourceItemByUrl(source: AiSource, rawUrl: string) {
   }
 
   return null;
+}
+
+async function fetchArticleMetadataWithFallback(rawUrl: string, allowEmptyFallback: boolean) {
+  try {
+    return await fetchArticleMetadata(rawUrl);
+  } catch (error) {
+    if (!allowEmptyFallback) {
+      throw error;
+    }
+
+    return {
+      keywords: [],
+      content: "",
+    } satisfies HtmlMetadata;
+  }
 }
 
 async function fetchArticleMetadata(rawUrl: string): Promise<HtmlMetadata> {
