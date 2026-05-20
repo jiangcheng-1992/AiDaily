@@ -56,6 +56,7 @@ const DOUYIN_HEADERS = {
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
   referer: "https://www.douyin.com/",
   accept: "application/json, text/plain, */*",
+  "accept-language": "zh-CN,zh;q=0.9,en;q=0.8",
 };
 
 const VIDEO_TITLE_KEYWORDS = [
@@ -114,6 +115,7 @@ const CAPTION_NOISE_PATTERNS = [
 ];
 
 const MAX_VIDEO_AGE_DAYS = 90;
+const DOUYIN_HOME_URL = "https://www.douyin.com/";
 
 export async function fetchDouyinVideoItems({
   sourceLimit = 6,
@@ -177,16 +179,43 @@ async function fetchSourceAwemes(secUserId: string, candidateCount: number) {
   const pageSize = Math.min(Math.max(candidateCount, 12), 18);
   const awemes: DouyinAweme[] = [];
   let cursor = 0;
+  const cookie = await getDouyinCookie();
 
   for (let page = 0; page < 3 && awemes.length < candidateCount; page += 1) {
     const endpoint = new URL("https://www.douyin.com/aweme/v1/web/aweme/post/");
+    endpoint.searchParams.set("device_platform", "webapp");
     endpoint.searchParams.set("sec_user_id", secUserId);
+    endpoint.searchParams.set("channel", "channel_pc_web");
     endpoint.searchParams.set("count", String(pageSize));
     endpoint.searchParams.set("max_cursor", String(cursor));
     endpoint.searchParams.set("aid", "6383");
+    endpoint.searchParams.set("pc_client_type", "1");
+    endpoint.searchParams.set("version_code", "190600");
+    endpoint.searchParams.set("version_name", "19.6.0");
+    endpoint.searchParams.set("cookie_enabled", "true");
+    endpoint.searchParams.set("platform", "PC");
+    endpoint.searchParams.set("downlink", "10");
+    endpoint.searchParams.set("effective_type", "4g");
+    endpoint.searchParams.set("round_trip_time", "50");
+    endpoint.searchParams.set("browser_language", "zh-CN");
+    endpoint.searchParams.set("browser_platform", "Win32");
+    endpoint.searchParams.set("browser_name", "Chrome");
+    endpoint.searchParams.set("browser_version", "136.0.0.0");
+    endpoint.searchParams.set("browser_online", "true");
+    endpoint.searchParams.set("engine_name", "Blink");
+    endpoint.searchParams.set("engine_version", "136.0.0.0");
+    endpoint.searchParams.set("os_name", "Windows");
+    endpoint.searchParams.set("os_version", "10");
+    endpoint.searchParams.set("cpu_core_num", "8");
+    endpoint.searchParams.set("device_memory", "8");
+    endpoint.searchParams.set("screen_width", "1440");
+    endpoint.searchParams.set("screen_height", "900");
 
     const response = await fetch(endpoint, {
-      headers: DOUYIN_HEADERS,
+      headers: {
+        ...DOUYIN_HEADERS,
+        cookie,
+      },
       cache: "no-store",
     });
 
@@ -194,7 +223,12 @@ async function fetchSourceAwemes(secUserId: string, candidateCount: number) {
       throw new Error(`Douyin returned HTTP ${response.status}`);
     }
 
-    const data = (await response.json()) as DouyinAwemeResponse;
+    const rawText = await response.text();
+    if (!rawText.trim()) {
+      throw new Error("Douyin returned empty body");
+    }
+
+    const data = safeParseDouyinJson(rawText);
     if (data.status_code && data.status_code !== 0) {
       throw new Error(`Douyin returned status_code=${data.status_code}`);
     }
@@ -209,6 +243,40 @@ async function fetchSourceAwemes(secUserId: string, candidateCount: number) {
   }
 
   return awemes.slice(0, candidateCount);
+}
+
+async function getDouyinCookie() {
+  try {
+    const response = await fetch(DOUYIN_HOME_URL, {
+      headers: {
+        "user-agent": DOUYIN_HEADERS["user-agent"],
+        accept: "text/html,application/xhtml+xml",
+        "accept-language": DOUYIN_HEADERS["accept-language"],
+      },
+      cache: "no-store",
+    });
+    const setCookie = response.headers.get("set-cookie") ?? "";
+    const ttwid = extractCookie(setCookie, "ttwid");
+    const msToken = extractCookie(setCookie, "msToken");
+    return [ttwid ? `ttwid=${ttwid}` : "", msToken ? `msToken=${msToken}` : ""]
+      .filter(Boolean)
+      .join("; ");
+  } catch {
+    return "";
+  }
+}
+
+function safeParseDouyinJson(rawText: string): DouyinAwemeResponse {
+  try {
+    return JSON.parse(rawText) as DouyinAwemeResponse;
+  } catch {
+    throw new Error(`Douyin returned non-JSON body: ${rawText.slice(0, 120)}`);
+  }
+}
+
+function extractCookie(setCookieHeader: string, cookieName: string) {
+  const match = setCookieHeader.match(new RegExp(`${cookieName}=([^;]+)`));
+  return match?.[1] ?? "";
 }
 
 function normalizeDouyinAweme(
