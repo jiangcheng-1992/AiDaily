@@ -50,6 +50,20 @@ type DouyinAweme = {
   };
 };
 
+type SeoVideoObject = {
+  "@type"?: string;
+  name?: string;
+  description?: string;
+  thumbnailUrl?: string | string[];
+  uploadDate?: string;
+  duration?: string;
+  creator?: {
+    name?: string;
+    url?: string;
+  };
+  commentCount?: number | string;
+};
+
 const DOUYIN_HEADERS = {
   "user-agent":
     process.env.AIQ_USER_AGENT ??
@@ -57,6 +71,13 @@ const DOUYIN_HEADERS = {
   referer: "https://www.douyin.com/",
   accept: "application/json, text/plain, */*",
   "accept-language": "zh-CN,zh;q=0.9,en;q=0.8",
+};
+const DOUYIN_SPIDER_HEADERS = {
+  "user-agent":
+    process.env.AIQ_DOUYIN_SPIDER_UA ??
+    "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+  accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  "accept-language": DOUYIN_HEADERS["accept-language"],
 };
 
 const VIDEO_TITLE_KEYWORDS = [
@@ -163,16 +184,52 @@ async function fetchSourceVideos(
   itemLimit: number,
 ): Promise<DouyinVideoItem[]> {
   const candidateCount = Math.min(Math.max(itemLimit * 12, 18), 36);
-  const awemes = await fetchSourceAwemes(source.secUserId, candidateCount);
-  const items = awemes
-    .map((aweme) => normalizeDouyinAweme(source, aweme))
-    .filter(isDouyinVideoItem)
+  try {
+    const awemes = await fetchSourceAwemes(source.secUserId, candidateCount);
+    return awemes
+      .map((aweme) => normalizeDouyinAweme(source, aweme))
+      .filter(isDouyinVideoItem)
+      .filter(isFreshVideoItem)
+      .filter((item) => matchesKeywords(item, source))
+      .sort(compareDouyinVideoItems)
+      .slice(0, itemLimit);
+  } catch (error) {
+    return fetchSourceVideosFromSeoPages(source, itemLimit, error);
+  }
+}
+
+async function fetchSourceVideosFromSeoPages(
+  source: DouyinVideoSource,
+  itemLimit: number,
+  originalError: unknown,
+): Promise<DouyinVideoItem[]> {
+  const seoVideoUrls = await fetchSeoVideoUrls(source.profileUrl);
+  const candidateUrls = seoVideoUrls.slice(0, Math.max(itemLimit * 8, 16));
+
+  if (!candidateUrls.length) {
+    throw originalError instanceof Error
+      ? originalError
+      : new Error("Douyin SEO fallback found no video links");
+  }
+
+  const settled = await Promise.allSettled(
+    candidateUrls.map((url) => fetchSeoVideoItem(source, url)),
+  );
+  const items = settled
+    .flatMap((result) => (result.status === "fulfilled" ? [result.value] : []))
+    .filter((item): item is DouyinVideoItem => Boolean(item))
     .filter(isFreshVideoItem)
     .filter((item) => matchesKeywords(item, source))
     .sort(compareDouyinVideoItems)
     .slice(0, itemLimit);
 
-  return items;
+  if (items.length > 0) {
+    return items;
+  }
+
+  throw originalError instanceof Error
+    ? originalError
+    : new Error("Douyin SEO fallback produced no usable videos");
 }
 
 async function fetchSourceAwemes(secUserId: string, candidateCount: number) {
@@ -264,6 +321,116 @@ async function getDouyinCookie() {
   } catch {
     return "";
   }
+}
+
+async function fetchSeoVideoUrls(profileUrl: string) {
+  const html = await fetchDouyinSeoHtml(profileUrl);
+  const absoluteUrls = Array.from(html.matchAll(/https:\/\/www\.douyin\.com\/video\/\d+/g)).map(
+    (match) => match[0],
+  );
+  const relativeUrls = Array.from(html.matchAll(/\/video\/\d+/g)).map(
+    (match) => `https://www.douyin.com${match[0]}`,
+  );
+
+  return Array.from(new Set([...relativeUrls, ...absoluteUrls]));
+}
+
+async function fetchSeoVideoItem(
+  source: DouyinVideoSource,
+  videoUrl: string,
+): Promise<DouyinVideoItem | null> {
+  const html = await fetchDouyinSeoHtml(videoUrl);
+  const meta = extractMetaTags(html);
+  const seoVideo = extractSeoVideoObject(html);
+  const rawTitle = decodeHtmlEntities(
+    seoVideo?.name || meta["lark:url:video_title"] || meta["og:title"] || "",
+  ).replace(/\s*-\s*抖音$/, "");
+  const rawDescription = decodeHtmlEntities(
+    seoVideo?.description || meta.description || meta["og:description"] || rawTitle,
+  );
+  const caption = sanitizeCaptionText(normalizeCaption(rawTitle || rawDescription));
+  const normalizedDescription = stripSeoDescriptionTail(rawDescription);
+  const title = buildVideoTitle(caption || normalizedDescription || rawTitle, source);
+  const summary = normalizedDescription || caption || title;
+  const coverImageUrl = normalizeSeoCoverUrl(
+    meta["lark:url:video_cover_image_url"],
+    seoVideo?.thumbnailUrl,
+  );
+  const publishedAt = toIsoDate(seoVideo?.uploadDate);
+  const likesCount = 0;
+  const commentsCount = parseSeoCount(seoVideo?.commentCount);
+  const savesCount = 0;
+  const durationMs = parseIsoDurationMs(seoVideo?.duration);
+  const author = decodeHtmlEntities(seoVideo?.creator?.name || source.name.replace(/^抖音 · /, ""));
+
+  if (!title) return null;
+
+  return {
+    sourceId: source.id,
+    sourceName: source.name,
+    title,
+    summary: buildVideoSummary(summary, title),
+    content: summary || title,
+    url: videoUrl,
+    coverImageUrl,
+    durationMs,
+    author,
+    publishedAt,
+    likesCount,
+    commentsCount,
+    savesCount,
+    hotScore: computeVideoHotScore({
+      likesCount,
+      commentsCount,
+      savesCount,
+      publishedAt,
+    }),
+    tags: buildVideoTags(`${rawTitle} ${summary}`.trim(), source.tags),
+    profileUrl: seoVideo?.creator?.url || source.profileUrl,
+  };
+}
+
+async function fetchDouyinSeoHtml(url: string) {
+  const response = await fetch(url, {
+    headers: DOUYIN_SPIDER_HEADERS,
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Douyin SEO fallback returned HTTP ${response.status}`);
+  }
+
+  return response.text();
+}
+
+function extractMetaTags(html: string) {
+  const tags: Record<string, string> = {};
+  const regex = /<meta[^>]+(?:name|property)="([^"]+)"[^>]+content="([^"]*)"/g;
+
+  for (const match of html.matchAll(regex)) {
+    tags[match[1]] = decodeHtmlEntities(match[2]);
+  }
+
+  return tags;
+}
+
+function extractSeoVideoObject(html: string) {
+  const blocks = Array.from(
+    html.matchAll(/<script[^>]+type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g),
+  );
+
+  for (const block of blocks) {
+    try {
+      const parsed = JSON.parse(block[1]) as SeoVideoObject;
+      if (parsed?.["@type"] === "VideoObject") {
+        return parsed;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
 }
 
 function safeParseDouyinJson(rawText: string): DouyinAwemeResponse {
@@ -375,12 +542,14 @@ function computeHotScore(aweme: DouyinAweme) {
   const likes = aweme.statistics?.digg_count ?? 0;
   const comments = aweme.statistics?.comment_count ?? 0;
   const saves = aweme.statistics?.collect_count ?? 0;
-  const publishedAtMs = aweme.create_time ? aweme.create_time * 1000 : Date.now();
-  const ageHours = Math.max(1, (Date.now() - publishedAtMs) / (1000 * 60 * 60));
-  const engagement = likes + comments * 18 + saves * 24;
-  const decay = Math.pow(Math.max(ageHours, 6), 0.42);
+  const publishedAt = aweme.create_time ? new Date(aweme.create_time * 1000).toISOString() : undefined;
 
-  return Math.round(engagement / decay);
+  return computeVideoHotScore({
+    likesCount: likes,
+    commentsCount: comments,
+    savesCount: saves,
+    publishedAt,
+  });
 }
 
 function compareDouyinVideoItems(left: DouyinVideoItem, right: DouyinVideoItem) {
@@ -468,6 +637,81 @@ function normalizeHeadlineCompare(value: string) {
 
 function clipTitle(value: string, maxLength: number) {
   return value.length <= maxLength ? value : `${value.slice(0, maxLength - 1).trim()}…`;
+}
+
+function computeVideoHotScore({
+  likesCount,
+  commentsCount,
+  savesCount,
+  publishedAt,
+}: {
+  likesCount: number;
+  commentsCount: number;
+  savesCount: number;
+  publishedAt?: string;
+}) {
+  const publishedAtMs = publishedAt ? new Date(publishedAt).getTime() : Date.now();
+  const safePublishedAtMs = Number.isNaN(publishedAtMs) ? Date.now() : publishedAtMs;
+  const ageHours = Math.max(1, (Date.now() - safePublishedAtMs) / (1000 * 60 * 60));
+  const engagement = likesCount + commentsCount * 18 + savesCount * 24;
+  const decay = Math.pow(Math.max(ageHours, 6), 0.42);
+
+  return Math.round(engagement / decay);
+}
+
+function parseSeoCount(value: string | number | undefined) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (!value) return 0;
+
+  const numeric = Number(String(value).replace(/,/g, "").trim());
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function parseIsoDurationMs(value?: string) {
+  if (!value) return undefined;
+  const match = value.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/);
+
+  if (!match) return undefined;
+
+  const hours = Number(match[1] ?? 0);
+  const minutes = Number(match[2] ?? 0);
+  const seconds = Number(match[3] ?? 0);
+  return (hours * 60 * 60 + minutes * 60 + seconds) * 1000;
+}
+
+function toIsoDate(value?: string) {
+  if (!value) return undefined;
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+}
+
+function normalizeSeoCoverUrl(metaCover?: string, thumbnailUrl?: string | string[]) {
+  const raw =
+    metaCover ||
+    (Array.isArray(thumbnailUrl) ? thumbnailUrl.find(Boolean) : thumbnailUrl) ||
+    "";
+
+  return raw ? decodeHtmlEntities(raw) : undefined;
+}
+
+function stripSeoDescriptionTail(value: string) {
+  return value
+    .replace(/\s*-\s*[^-]{1,40}于\d{8}发布在抖音.*$/u, "")
+    .replace(/来抖音，记录美好生活！?$/u, "")
+    .trim();
+}
+
+function decodeHtmlEntities(value: string) {
+  return value
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/gi, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#(\d+);/g, (_, code: string) => String.fromCodePoint(Number(code)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, code: string) => String.fromCodePoint(parseInt(code, 16)));
 }
 
 function matchesKeywords(item: DouyinVideoItem, source: DouyinVideoSource) {
