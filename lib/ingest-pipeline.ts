@@ -239,6 +239,7 @@ function douyinItemToPost(item: DouyinVideoItem): Post {
     sourceName: item.sourceName,
     sourceUrl: item.url,
     videoUrl: item.videoUrl,
+    videoEmbedUrl: item.videoEmbedUrl,
     coverImageUrl: item.coverImageUrl,
     durationMs: item.durationMs,
     profileUrl: item.profileUrl,

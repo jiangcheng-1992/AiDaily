@@ -19,6 +19,7 @@ export type Post = {
   sourceName: string;
   sourceUrl?: string;
   videoUrl?: string;
+  videoEmbedUrl?: string;
   coverImageUrl?: string;
   durationMs?: number;
   profileUrl?: string;

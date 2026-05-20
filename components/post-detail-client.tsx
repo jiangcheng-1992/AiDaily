@@ -120,6 +120,8 @@ export function PostDetailClient({
       !normalizedParagraph.startsWith(normalizedSummary.slice(0, 24))
     );
   });
+  const videoEmbedUrl =
+    post.type === "video" ? post.videoEmbedUrl ?? buildDouyinEmbedUrl(post.sourceUrl) : undefined;
 
   const handleShare = async () => {
     const url = `${window.location.origin}/post/${post.id}`;
@@ -274,7 +276,7 @@ export function PostDetailClient({
           ) : null}
 
           {post.type === "video" ? (
-            <div className="mt-6 overflow-hidden rounded-[1.75rem] border border-slate-100 bg-slate-950">
+            <div className="mx-auto mt-6 max-w-[380px] overflow-hidden rounded-[1.75rem] border border-slate-100 bg-slate-950 shadow-lift">
               {post.videoUrl ? (
                 <video
                   controls
@@ -283,6 +285,16 @@ export function PostDetailClient({
                   poster={post.coverImageUrl}
                   className="aspect-[9/16] w-full bg-black object-contain"
                   src={post.videoUrl}
+                />
+              ) : videoEmbedUrl ? (
+                <iframe
+                  title={post.title}
+                  src={videoEmbedUrl}
+                  loading="lazy"
+                  allow="fullscreen; autoplay; encrypted-media; picture-in-picture"
+                  allowFullScreen
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  className="aspect-[9/16] w-full border-0 bg-black"
                 />
               ) : post.coverImageUrl ? (
                 <div className="relative">
@@ -294,7 +306,7 @@ export function PostDetailClient({
                   <div className="absolute inset-0 flex items-center justify-center bg-black/35">
                     <div className="inline-flex items-center gap-2 rounded-full bg-black/70 px-4 py-2 text-sm font-bold text-white">
                       <Play className="h-4 w-4 fill-current" />
-                      视频暂不可直播
+                      视频暂不可站内播放
                     </div>
                   </div>
                 </div>
@@ -302,7 +314,7 @@ export function PostDetailClient({
               <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 text-sm text-slate-200">
                 <div className="inline-flex items-center gap-2">
                   <Play className="h-4 w-4" />
-                  <span>站内播放</span>
+                  <span>{post.videoUrl ? "站内播放" : videoEmbedUrl ? "站内嵌入播放" : "视频预览"}</span>
                   <span className="h-1 w-1 rounded-full bg-slate-500" />
                   <span>{formatVideoDuration(post.durationMs)}</span>
                 </div>
@@ -511,4 +523,11 @@ export function PostDetailClient({
       </Card>
     </div>
   );
+}
+
+function buildDouyinEmbedUrl(sourceUrl?: string) {
+  if (!sourceUrl) return undefined;
+
+  const videoId = sourceUrl.match(/\/video\/(\d+)/)?.[1] ?? sourceUrl.match(/\/share\/video\/(\d+)/)?.[1];
+  return videoId ? `https://www.iesdouyin.com/share/video/${videoId}` : undefined;
 }

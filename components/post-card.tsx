@@ -91,11 +91,11 @@ export function PostCard({
         </h2>
 
         {post.type === "video" && post.coverImageUrl ? (
-          <div className="relative mt-4 overflow-hidden rounded-[1.5rem] bg-slate-100">
+          <div className="relative mx-auto mt-4 max-w-[260px] overflow-hidden rounded-[1.5rem] bg-slate-100 shadow-soft">
             <img
               src={post.coverImageUrl}
               alt={post.title}
-              className="h-[320px] w-full object-cover"
+              className="aspect-[9/16] w-full object-cover"
               loading="lazy"
             />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/5 to-transparent" />

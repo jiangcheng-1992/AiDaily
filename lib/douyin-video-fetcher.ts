@@ -9,6 +9,7 @@ export type DouyinVideoItem = {
   content: string;
   url: string;
   videoUrl?: string;
+  videoEmbedUrl?: string;
   coverImageUrl?: string;
   durationMs?: number;
   author?: string;
@@ -203,13 +204,13 @@ async function fetchSourceVideosFromSeoPages(
   itemLimit: number,
   originalError: unknown,
 ): Promise<DouyinVideoItem[]> {
-  const seoVideoUrls = await fetchSeoVideoUrls(source.profileUrl);
+  const seoVideoUrls = await fetchSeoVideoUrls(source);
   const candidateUrls = seoVideoUrls.slice(0, Math.max(itemLimit * 8, 16));
 
   if (!candidateUrls.length) {
-    throw originalError instanceof Error
-      ? originalError
-      : new Error("Douyin SEO fallback found no video links");
+    throw new Error(
+      `Douyin SEO fallback found no video links after API error: ${formatErrorMessage(originalError)}`,
+    );
   }
 
   const settled = await Promise.allSettled(
@@ -227,9 +228,11 @@ async function fetchSourceVideosFromSeoPages(
     return items;
   }
 
-  throw originalError instanceof Error
-    ? originalError
-    : new Error("Douyin SEO fallback produced no usable videos");
+  throw new Error(
+    `Douyin SEO fallback produced no usable videos from ${candidateUrls.length} links after API error: ${formatErrorMessage(
+      originalError,
+    )}`,
+  );
 }
 
 async function fetchSourceAwemes(secUserId: string, candidateCount: number) {
@@ -323,16 +326,17 @@ async function getDouyinCookie() {
   }
 }
 
-async function fetchSeoVideoUrls(profileUrl: string) {
-  const html = await fetchDouyinSeoHtml(profileUrl);
-  const absoluteUrls = Array.from(html.matchAll(/https:\/\/www\.douyin\.com\/video\/\d+/g)).map(
-    (match) => match[0],
-  );
-  const relativeUrls = Array.from(html.matchAll(/\/video\/\d+/g)).map(
-    (match) => `https://www.douyin.com${match[0]}`,
+async function fetchSeoVideoUrls(source: DouyinVideoSource) {
+  const profileUrls = [
+    source.profileUrl,
+    `https://www.iesdouyin.com/share/user/${source.secUserId}`,
+  ];
+  const settled = await Promise.allSettled(profileUrls.map((url) => fetchDouyinSeoHtml(url)));
+  const urls = settled.flatMap((result) =>
+    result.status === "fulfilled" ? extractVideoUrlsFromSeoHtml(result.value) : [],
   );
 
-  return Array.from(new Set([...relativeUrls, ...absoluteUrls]));
+  return Array.from(new Set(urls));
 }
 
 async function fetchSeoVideoItem(
@@ -356,6 +360,7 @@ async function fetchSeoVideoItem(
     meta["lark:url:video_cover_image_url"],
     seoVideo?.thumbnailUrl,
   );
+  const videoEmbedUrl = normalizeSeoEmbedUrl(meta["lark:url:video_iframe_url"], videoUrl);
   const publishedAt = toIsoDate(seoVideo?.uploadDate);
   const likesCount = 0;
   const commentsCount = parseSeoCount(seoVideo?.commentCount);
@@ -372,6 +377,7 @@ async function fetchSeoVideoItem(
     summary: buildVideoSummary(summary, title),
     content: summary || title,
     url: videoUrl,
+    videoEmbedUrl,
     coverImageUrl,
     durationMs,
     author,
@@ -388,6 +394,28 @@ async function fetchSeoVideoItem(
     tags: buildVideoTags(`${rawTitle} ${summary}`.trim(), source.tags),
     profileUrl: seoVideo?.creator?.url || source.profileUrl,
   };
+}
+
+function extractVideoUrlsFromSeoHtml(html: string) {
+  const absoluteDouyinUrls = Array.from(
+    html.matchAll(/https:\/\/www\.douyin\.com\/video\/\d+/g),
+  ).map((match) => match[0]);
+  const absoluteShareUrls = Array.from(
+    html.matchAll(/https:\/\/www\.iesdouyin\.com\/share\/video\/\d+/g),
+  ).map((match) => match[0]);
+  const relativeDouyinUrls = Array.from(html.matchAll(/\/video\/\d+/g)).map(
+    (match) => `https://www.douyin.com${match[0]}`,
+  );
+  const relativeShareUrls = Array.from(html.matchAll(/\/share\/video\/\d+/g)).map(
+    (match) => `https://www.iesdouyin.com${match[0]}`,
+  );
+
+  return [
+    ...relativeDouyinUrls,
+    ...relativeShareUrls,
+    ...absoluteDouyinUrls,
+    ...absoluteShareUrls,
+  ];
 }
 
 async function fetchDouyinSeoHtml(url: string) {
@@ -470,6 +498,7 @@ function normalizeDouyinAweme(
     content: caption || title,
     url,
     videoUrl,
+    videoEmbedUrl: buildDouyinEmbedUrl(aweme.aweme_id),
     coverImageUrl,
     durationMs: aweme.video?.duration,
     author: aweme.author?.nickname || source.name.replace(/^抖音 · /, ""),
@@ -693,6 +722,27 @@ function normalizeSeoCoverUrl(metaCover?: string, thumbnailUrl?: string | string
     "";
 
   return raw ? decodeHtmlEntities(raw) : undefined;
+}
+
+function normalizeSeoEmbedUrl(metaEmbedUrl: string | undefined, videoUrl: string) {
+  if (metaEmbedUrl) {
+    return decodeHtmlEntities(metaEmbedUrl);
+  }
+
+  const videoId = extractDouyinVideoId(videoUrl);
+  return videoId ? buildDouyinEmbedUrl(videoId) : undefined;
+}
+
+function buildDouyinEmbedUrl(videoId: string) {
+  return `https://www.iesdouyin.com/share/video/${videoId}`;
+}
+
+function extractDouyinVideoId(value: string) {
+  return value.match(/\/(?:share\/)?video\/(\d+)/)?.[1];
+}
+
+function formatErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Unknown error";
 }
 
 function stripSeoDescriptionTail(value: string) {
