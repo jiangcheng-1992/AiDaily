@@ -16,6 +16,7 @@ export type SourceItem = {
   sourceName: string;
   title: string;
   url?: string;
+  coverImageUrl?: string;
   summary: string;
   content: string;
   publishedAt?: string;
@@ -111,6 +112,7 @@ function extractRawItems(parsed: unknown): RawFeedItem[] {
 
 function normalizeFeedItem(source: AiSource, item: RawFeedItem): SourceItem {
   const title = cleanTitleText(asText(item.title)) || "未命名内容";
+  const url = extractLink(item);
   const content = normalizeArticleText(
     asText(item.description) ||
       asText(item.summary) ||
@@ -128,7 +130,8 @@ function normalizeFeedItem(source: AiSource, item: RawFeedItem): SourceItem {
     sourceId: source.id,
     sourceName: source.name,
     title,
-    url: extractLink(item),
+    url,
+    coverImageUrl: extractFeedImageUrl(item, url),
     summary: clipText(content, 260),
     content,
     publishedAt,
@@ -214,6 +217,24 @@ function extractCategories(item: RawFeedItem) {
     .filter(Boolean);
 }
 
+function extractFeedImageUrl(item: RawFeedItem, articleUrl?: string) {
+  const candidates = [
+    readMediaUrl(item["media:content"]),
+    readMediaUrl(item["media:thumbnail"]),
+    readMediaUrl(item.enclosure),
+    extractFirstImageFromHtml(
+      [
+        asText(item.description),
+        asText(item.summary),
+        asText(item.content),
+        asText(item["content:encoded"]),
+      ].join(" "),
+    ),
+  ].map((url) => absolutizeUrl(url, articleUrl));
+
+  return candidates.find(isUsableArticleImage);
+}
+
 async function hydrateSourceItemContent(source: AiSource, item: SourceItem) {
   if (!item.url) return item;
 
@@ -232,9 +253,11 @@ async function hydrateSourceItemContent(source: AiSource, item: SourceItem) {
     const html = await response.text();
     const fullText = extractArticleTextFromHtml(html, item.title, item.url);
     const content = selectRicherText(item.content, fullText);
+    const coverImageUrl = item.coverImageUrl || extractHtmlImageUrl(html, item.url);
 
     return finalizeSourceItem({
       ...item,
+      coverImageUrl,
       content,
       summary: clipText(content || item.summary, 260),
       tags: Array.from(new Set([...item.tags, ...extractHtmlKeywords(html)])).slice(0, 8),
@@ -280,6 +303,79 @@ function extractHtmlKeywords(html: string) {
     .filter(Boolean);
 }
 
+function extractHtmlImageUrl(html: string, pageUrl?: string) {
+  const candidates = [
+    readMetaContent(html, "property", "og:image"),
+    readMetaContent(html, "name", "twitter:image"),
+    readMetaContent(html, "property", "twitter:image"),
+    extractFirstImageFromHtml(html),
+  ].map((url) => absolutizeUrl(url, pageUrl));
+
+  return candidates.find(isUsableArticleImage);
+}
+
+function readMetaContent(html: string, attrName: "name" | "property", attrValue: string) {
+  const match = html.match(
+    new RegExp(
+      `<meta[^>]+${attrName}=["']${escapeRegExp(attrValue)}["'][^>]+content=["']([^"']+)["'][^>]*>`,
+      "i",
+    ),
+  );
+
+  return stripHtmlToText(match?.[1] ?? "");
+}
+
+function readMediaUrl(value: unknown): string | undefined {
+  const entries = toArray(value);
+
+  for (const entry of entries) {
+    if (!entry || typeof entry !== "object") continue;
+
+    const record = entry as Record<string, unknown>;
+    const medium = asText(record["@_medium"]).toLowerCase();
+    const type = asText(record["@_type"]).toLowerCase();
+    const url = asText(record["@_url"]) || asText(record.url) || asText(record["@_href"]);
+
+    if (!url) continue;
+    if (medium && medium !== "image") continue;
+    if (type && !type.startsWith("image/")) continue;
+
+    return url;
+  }
+
+  return undefined;
+}
+
+function extractFirstImageFromHtml(html: string) {
+  const matches = Array.from(html.matchAll(/<img[^>]+(?:src|data-src)=["']([^"']+)["'][^>]*>/gi));
+
+  for (const match of matches) {
+    const imageUrl = stripHtmlToText(match[1]);
+    if (isUsableArticleImage(imageUrl)) return imageUrl;
+  }
+
+  return undefined;
+}
+
+function absolutizeUrl(value: string | undefined, pageUrl?: string) {
+  if (!value) return undefined;
+  if (!pageUrl) return value;
+
+  try {
+    return new URL(value, pageUrl).toString();
+  } catch {
+    return value;
+  }
+}
+
+function isUsableArticleImage(value: string | undefined): value is string {
+  if (!value) return false;
+  if (/^(data:|blob:)/i.test(value)) return false;
+  if (/\.(svg|gif)(\?|#|$)/i.test(value)) return false;
+  if (/(avatar|logo|icon|sprite|wechat|qrcode|qr-code|barcode)/i.test(value)) return false;
+  return /^https?:\/\//i.test(value) || value.startsWith("//") || value.startsWith("/");
+}
+
 function clipText(value: string, maxLength: number) {
   const normalized = value.trim();
   if (normalized.length <= maxLength) return normalized;
@@ -288,4 +384,8 @@ function clipText(value: string, maxLength: number) {
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

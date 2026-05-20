@@ -90,6 +90,17 @@ export function PostCard({
           {post.title}
         </h2>
 
+        {post.type !== "video" && post.coverImageUrl ? (
+          <div className="mt-4 overflow-hidden rounded-[1.35rem] border border-slate-100 bg-slate-100">
+            <img
+              src={post.coverImageUrl}
+              alt={post.title}
+              className="aspect-[16/9] w-full object-cover"
+              loading="lazy"
+            />
+          </div>
+        ) : null}
+
         {post.type === "video" && post.coverImageUrl ? (
           <div className="relative mx-auto mt-4 max-w-[260px] overflow-hidden rounded-[1.5rem] bg-slate-100 shadow-soft">
             <img

@@ -209,6 +209,7 @@ function sourceItemToPost(item: SourceItem, source: AiSource): Post {
     editorComment: copy.editorComment,
     sourceName: item.sourceName,
     sourceUrl: item.url,
+    coverImageUrl: item.coverImageUrl,
     tags: uniqueTags([...item.tags, authorityLabel(source.authority)]).slice(0, 6),
     createdAt,
     collectedAt,

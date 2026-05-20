@@ -275,6 +275,17 @@ export function PostDetailClient({
             </div>
           ) : null}
 
+          {post.type !== "video" && post.coverImageUrl ? (
+            <figure className="mt-6 overflow-hidden rounded-[1.75rem] border border-slate-100 bg-slate-100 shadow-soft">
+              <img
+                src={post.coverImageUrl}
+                alt={post.title}
+                className="max-h-[480px] w-full object-cover"
+                loading="lazy"
+              />
+            </figure>
+          ) : null}
+
           {post.type === "video" ? (
             <div className="mx-auto mt-6 max-w-[380px] overflow-hidden rounded-[1.75rem] border border-slate-100 bg-slate-950 shadow-lift">
               {post.videoUrl ? (

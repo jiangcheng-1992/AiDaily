@@ -27,6 +27,7 @@ type HtmlMetadata = {
   publishedAt?: string;
   author?: string;
   canonicalUrl?: string;
+  coverImageUrl?: string;
   keywords: string[];
   content: string;
 };
@@ -88,6 +89,7 @@ export async function ingestArticleByUrl(rawUrl: string): Promise<ManualIngestRe
     editorComment: copy.editorComment,
     sourceName: source.name,
     sourceUrl,
+    coverImageUrl: sourceCandidate?.coverImageUrl || htmlMetadata.coverImageUrl,
     author: htmlMetadata.author,
     tags,
     createdAt: publishedAt || collectedAt,
@@ -146,6 +148,7 @@ async function findSourceItemByUrl(source: AiSource, rawUrl: string) {
           asText(item.updated) ||
           asText(item.date) ||
           undefined,
+        coverImageUrl: extractFeedImageUrl(item),
         tags: [
           ...source.tags,
           ...toArray(item.category).map((entry) => stripHtmlToText(asText(entry))).filter(Boolean),
@@ -203,6 +206,9 @@ async function fetchArticleMetadata(rawUrl: string): Promise<HtmlMetadata> {
     canonicalUrl:
       readLinkHref(html, "canonical") ||
       readMetaContent(html, "property", "og:url") ||
+      undefined,
+    coverImageUrl:
+      extractHtmlImageUrl(html, rawUrl) ||
       undefined,
     keywords: extractHtmlKeywords(html),
     content: extractArticleTextFromHtml(
@@ -346,6 +352,87 @@ function extractHtmlKeywords(html: string) {
     })
     .map((keyword) => stripHtmlToText(keyword))
     .filter(Boolean);
+}
+
+function extractFeedImageUrl(item: RawFeedItem) {
+  const articleUrl = extractLink(item);
+  const candidates = [
+    readMediaUrl(item["media:content"]),
+    readMediaUrl(item["media:thumbnail"]),
+    readMediaUrl(item.enclosure),
+    extractFirstImageFromHtml(
+      [
+        asText(item.description),
+        asText(item.summary),
+        asText(item.content),
+        asText(item["content:encoded"]),
+      ].join(" "),
+    ),
+  ].map((url) => absolutizeUrl(url, articleUrl));
+
+  return candidates.find(isUsableArticleImage);
+}
+
+function extractHtmlImageUrl(html: string, pageUrl?: string) {
+  const candidates = [
+    readMetaContent(html, "property", "og:image"),
+    readMetaContent(html, "name", "twitter:image"),
+    readMetaContent(html, "property", "twitter:image"),
+    extractFirstImageFromHtml(html),
+  ].map((url) => absolutizeUrl(url, pageUrl));
+
+  return candidates.find(isUsableArticleImage);
+}
+
+function readMediaUrl(value: unknown): string | undefined {
+  const entries = toArray(value);
+
+  for (const entry of entries) {
+    if (!entry || typeof entry !== "object") continue;
+
+    const record = entry as Record<string, unknown>;
+    const medium = asText(record["@_medium"]).toLowerCase();
+    const type = asText(record["@_type"]).toLowerCase();
+    const url = asText(record["@_url"]) || asText(record.url) || asText(record["@_href"]);
+
+    if (!url) continue;
+    if (medium && medium !== "image") continue;
+    if (type && !type.startsWith("image/")) continue;
+
+    return url;
+  }
+
+  return undefined;
+}
+
+function extractFirstImageFromHtml(html: string) {
+  const matches = Array.from(html.matchAll(/<img[^>]+(?:src|data-src)=["']([^"']+)["'][^>]*>/gi));
+
+  for (const match of matches) {
+    const imageUrl = stripHtmlToText(match[1]);
+    if (isUsableArticleImage(imageUrl)) return imageUrl;
+  }
+
+  return undefined;
+}
+
+function absolutizeUrl(value: string | undefined, pageUrl?: string) {
+  if (!value) return undefined;
+  if (!pageUrl) return value;
+
+  try {
+    return new URL(value, pageUrl).toString();
+  } catch {
+    return value;
+  }
+}
+
+function isUsableArticleImage(value: string | undefined): value is string {
+  if (!value) return false;
+  if (/^(data:|blob:)/i.test(value)) return false;
+  if (/\.(svg|gif)(\?|#|$)/i.test(value)) return false;
+  if (/(avatar|logo|icon|sprite|wechat|qrcode|qr-code|barcode)/i.test(value)) return false;
+  return /^https?:\/\//i.test(value) || value.startsWith("//") || value.startsWith("/");
 }
 
 function pickPreferredContent(feedContent: string, htmlContent: string) {
