@@ -243,6 +243,7 @@ function extractFeedImageUrls(item: RawFeedItem, articleUrl?: string) {
 
 async function hydrateSourceItemContent(source: AiSource, item: SourceItem) {
   if (!item.url) return item;
+  if (shouldSkipHtmlHydration(source, item)) return finalizeSourceItem(item);
 
   try {
     const response = await fetchWithRetry(item.url, {
@@ -389,6 +390,8 @@ function isUsableArticleImage(value: string | undefined): value is string {
   const normalized = value.toLowerCase();
   if (/^(data:|blob:)/i.test(value)) return false;
   if (/\.(svg|gif)(\?|#|$)/i.test(value)) return false;
+  if (/staticx\.36krcdn\.com\/36kr-web\/static\//i.test(normalized)) return false;
+  if (/\/36kr-web\/static\//i.test(normalized)) return false;
   if (
     /(avatar|logo|icon|sprite|wechat|qrcode|qr-code|barcode|placeholder|default|head\.jpg)/i.test(
       normalized,
@@ -403,6 +406,9 @@ function isUsableArticleImage(value: string | undefined): value is string {
     return false;
   }
   if (/(qbitai[-_]?logo|qbitai_icon|qrcode_qbitai)/i.test(normalized)) return false;
+  if (/(logo_|logowhite|code_production|dailyplanet|jingzhun|krspace|aly\.|bytey\.|gaodi\.|getui\.|ftnn\.|renren@2x|lingke\.)/i.test(normalized)) {
+    return false;
+  }
   return /^https?:\/\//i.test(value) || value.startsWith("//") || value.startsWith("/");
 }
 
@@ -430,4 +436,11 @@ function delay(ms: number) {
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function shouldSkipHtmlHydration(source: AiSource, item: SourceItem) {
+  if (!item.url) return false;
+
+  // 36kr 快讯页正文里常混入站点静态素材和导航内容，直接使用 RSS 摘要更稳。
+  return source.id === "kr36-ai" && /36kr\.com\/newsflashes\//i.test(item.url);
 }

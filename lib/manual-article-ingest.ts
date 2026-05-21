@@ -193,6 +193,7 @@ async function fetchArticleMetadata(rawUrl: string): Promise<HtmlMetadata> {
   }
 
   const html = await response.text();
+  const skipHtmlBody = shouldSkipHtmlBodyExtraction(rawUrl);
 
   return {
     title:
@@ -214,15 +215,17 @@ async function fetchArticleMetadata(rawUrl: string): Promise<HtmlMetadata> {
       readMetaContent(html, "property", "og:url") ||
       undefined,
     coverImageUrl:
-      extractHtmlImageUrl(html, rawUrl) ||
+      (!skipHtmlBody ? extractHtmlImageUrl(html, rawUrl) : undefined) ||
       undefined,
-    imageUrls: extractHtmlImageUrls(html, rawUrl),
+    imageUrls: skipHtmlBody ? [] : extractHtmlImageUrls(html, rawUrl),
     keywords: extractHtmlKeywords(html),
-    content: extractArticleTextFromHtml(
-      html,
-      readFirstHeading(html) || readTitleTag(html),
-      rawUrl,
-    ),
+    content: skipHtmlBody
+      ? ""
+      : extractArticleTextFromHtml(
+          html,
+          readFirstHeading(html) || readTitleTag(html),
+          rawUrl,
+        ),
   };
 }
 
@@ -450,6 +453,8 @@ function isUsableArticleImage(value: string | undefined): value is string {
   const normalized = value.toLowerCase();
   if (/^(data:|blob:)/i.test(value)) return false;
   if (/\.(svg|gif)(\?|#|$)/i.test(value)) return false;
+  if (/staticx\.36krcdn\.com\/36kr-web\/static\//i.test(normalized)) return false;
+  if (/\/36kr-web\/static\//i.test(normalized)) return false;
   if (
     /(avatar|logo|icon|sprite|wechat|qrcode|qr-code|barcode|placeholder|default|head\.jpg)/i.test(
       normalized,
@@ -464,6 +469,9 @@ function isUsableArticleImage(value: string | undefined): value is string {
     return false;
   }
   if (/(qbitai[-_]?logo|qbitai_icon|qrcode_qbitai)/i.test(normalized)) return false;
+  if (/(logo_|logowhite|code_production|dailyplanet|jingzhun|krspace|aly\.|bytey\.|gaodi\.|getui\.|ftnn\.|renren@2x|lingke\.)/i.test(normalized)) {
+    return false;
+  }
   return /^https?:\/\//i.test(value) || value.startsWith("//") || value.startsWith("/");
 }
 
@@ -567,6 +575,10 @@ function escapeRegExp(value: string) {
 function readFirstHeading(html: string) {
   const match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
   return stripHtmlToText(match?.[1] ?? "");
+}
+
+function shouldSkipHtmlBodyExtraction(rawUrl: string) {
+  return /36kr\.com\/newsflashes\//i.test(rawUrl);
 }
 
 function extractRawItems(parsed: unknown): RawFeedItem[] {

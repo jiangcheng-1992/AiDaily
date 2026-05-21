@@ -11,6 +11,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
+import { ExternalImage } from "@/components/external-image";
 import { InteractionButton } from "@/components/interaction-button";
 import { PostTypeBadge } from "@/components/post-type-badge";
 import { Card } from "@/components/ui/card";
@@ -91,14 +92,13 @@ export function PostCard({
         </h2>
 
         {post.type !== "video" && post.coverImageUrl ? (
-          <div className="mt-4 overflow-hidden rounded-[1.35rem] border border-slate-100 bg-slate-100">
-            <img
-              src={post.coverImageUrl}
-              alt={post.title}
-              className="aspect-[16/9] w-full object-cover"
-              loading="lazy"
-            />
-          </div>
+          <ExternalImage
+            src={post.coverImageUrl}
+            alt={post.title}
+            loading="lazy"
+            wrapperClassName="mt-4 overflow-hidden rounded-[1.35rem] border border-slate-100 bg-slate-100"
+            className="aspect-[16/9] w-full object-cover"
+          />
         ) : null}
 
         {post.type === "video" && post.coverImageUrl ? (

@@ -20,6 +20,7 @@ import {
   Trash2,
 } from "lucide-react";
 
+import { ExternalImage } from "@/components/external-image";
 import { InteractionButton } from "@/components/interaction-button";
 import { PostTypeBadge } from "@/components/post-type-badge";
 import { Button } from "@/components/ui/button";
@@ -290,17 +291,15 @@ export function PostDetailClient({
           {post.type !== "video" && articleImageUrls.length ? (
             <div className="mt-6 space-y-4">
               {articleImageUrls.map((imageUrl, index) => (
-                <figure
+                <ExternalImage
                   key={`${post.id}-image-${index}`}
-                  className="overflow-hidden rounded-[1.4rem] border border-slate-100 bg-slate-100 shadow-soft"
-                >
-                  <img
-                    src={imageUrl}
-                    alt={`${post.title} 配图 ${index + 1}`}
-                    className="max-h-[520px] w-full object-contain"
-                    loading={index === 0 ? "eager" : "lazy"}
-                  />
-                </figure>
+                  src={imageUrl}
+                  alt={`${post.title} 配图 ${index + 1}`}
+                  wrapperAs="figure"
+                  wrapperClassName="overflow-hidden rounded-[1.4rem] border border-slate-100 bg-slate-100 shadow-soft"
+                  className="max-h-[520px] w-full object-contain"
+                  loading={index === 0 ? "eager" : "lazy"}
+                />
               ))}
             </div>
           ) : null}
