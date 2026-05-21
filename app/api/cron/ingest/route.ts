@@ -57,18 +57,26 @@ async function handleIngestRequest(request: Request) {
     douyinItemLimit,
   });
   const current = await readGeneratedFeed({ includeSkills: true });
-  const mergedFeed = mergeGeneratedFeed({
-    current,
-    incomingPosts: run.posts,
-    incomingComments: run.comments,
-    limit: readPositiveInt(process.env.GENERATED_FEED_LIMIT, 120),
-  });
+  const hasIncomingFeed = run.posts.length > 0 || Object.keys(run.comments).length > 0;
+  const mergedFeed = hasIncomingFeed
+    ? mergeGeneratedFeed({
+        current,
+        incomingPosts: run.posts,
+        incomingComments: run.comments,
+        limit: readPositiveInt(process.env.GENERATED_FEED_LIMIT, 120),
+      })
+    : {
+        ...current,
+        policyVersion: current.policyVersion,
+        updatedAt: current.updatedAt ?? run.fetchedAt,
+      };
   const nextFeed =
     refreshAiComments || hasOutdatedAiComments(mergedFeed)
       ? await rebuildFeedAiComments(mergedFeed, { force: refreshAiComments })
       : mergedFeed;
+  const wouldClearExistingFeed = current.posts.length > 0 && nextFeed.posts.length === 0;
 
-  if (!dryRun) {
+  if (!dryRun && !wouldClearExistingFeed) {
     await writeGeneratedFeed(nextFeed);
   }
   const attemptedCount =
@@ -79,7 +87,8 @@ async function handleIngestRequest(request: Request) {
     {
       ok: ingestOk,
       dryRun,
-      persisted: !dryRun,
+      persisted: !dryRun && !wouldClearExistingFeed,
+      skippedPersistBecauseEmpty: wouldClearExistingFeed,
       refreshAiComments,
       fetchedAt: run.fetchedAt,
       sourceCount: run.sourceCount,
