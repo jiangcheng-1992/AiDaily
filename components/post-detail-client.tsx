@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -66,6 +66,7 @@ export function PostDetailClient({
   const [shared, setShared] = useState(false);
   const [aiCommentNotice, setAiCommentNotice] = useState("");
   const [isGeneratingAiComments, setIsGeneratingAiComments] = useState(false);
+  const [videoStarted, setVideoStarted] = useState(false);
 
   const post = useMemo(
     () => getPostById(allPosts, postId) ?? initialPost,
@@ -123,6 +124,7 @@ export function PostDetailClient({
   });
   const videoEmbedUrl =
     post.type === "video" ? post.videoEmbedUrl ?? buildDouyinEmbedUrl(post.sourceUrl) : undefined;
+  const hasPlayableVideo = post.type === "video" && Boolean(post.videoUrl || videoEmbedUrl);
   const articleImageUrls = useMemo(() => {
     if (post.type === "video") return [];
 
@@ -135,6 +137,10 @@ export function PostDetailClient({
       return true;
     });
   }, [post.coverImageUrl, post.imageUrls, post.type]);
+
+  useEffect(() => {
+    setVideoStarted(false);
+  }, [post.id]);
 
   const handleShare = async () => {
     const url = `${window.location.origin}/post/${post.id}`;
@@ -306,9 +312,38 @@ export function PostDetailClient({
 
           {post.type === "video" ? (
             <div className="mx-auto mt-6 max-w-[300px] overflow-hidden rounded-[1.75rem] border border-slate-100 bg-slate-950 shadow-lift sm:max-w-[320px]">
-              {post.videoUrl ? (
+              {hasPlayableVideo && !videoStarted ? (
+                <button
+                  type="button"
+                  onClick={() => setVideoStarted(true)}
+                  className="group relative block w-full bg-black text-left"
+                  aria-label={`播放视频：${post.title}`}
+                >
+                  {post.coverImageUrl ? (
+                    <>
+                      <div
+                        className="absolute inset-0 bg-cover bg-center opacity-25 blur-xl"
+                        style={{ backgroundImage: `url(${post.coverImageUrl})` }}
+                      />
+                      <img
+                        src={post.coverImageUrl}
+                        alt={post.title}
+                        className="relative aspect-[9/16] w-full object-contain"
+                      />
+                    </>
+                  ) : (
+                    <div className="aspect-[9/16] w-full bg-black" />
+                  )}
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/22 transition-colors group-hover:bg-black/30">
+                    <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/92 text-slate-950 shadow-2xl transition-transform group-hover:scale-105">
+                      <Play className="ml-1 h-9 w-9 fill-current" />
+                    </div>
+                  </div>
+                </button>
+              ) : post.videoUrl ? (
                 <video
                   controls
+                  autoPlay
                   playsInline
                   preload="metadata"
                   poster={post.coverImageUrl}
@@ -347,7 +382,17 @@ export function PostDetailClient({
               <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 text-sm text-slate-200">
                 <div className="inline-flex items-center gap-2">
                   <Play className="h-4 w-4" />
-                  <span>{post.videoUrl ? "站内播放" : videoEmbedUrl ? "站内嵌入播放" : "视频预览"}</span>
+                  <span>
+                    {post.videoUrl
+                      ? videoStarted
+                        ? "站内播放"
+                        : "点击封面播放"
+                      : videoEmbedUrl
+                        ? videoStarted
+                          ? "站内嵌入播放"
+                          : "点击封面播放"
+                        : "视频预览"}
+                  </span>
                   <span className="h-1 w-1 rounded-full bg-slate-500" />
                   <span>{formatVideoDuration(post.durationMs)}</span>
                 </div>
