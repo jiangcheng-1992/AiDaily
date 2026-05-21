@@ -212,7 +212,7 @@ function isGroundedRoleComment(post: Post, content: string) {
     /^值得关注的是/,
     /^这说明/,
     /^可以看出/,
-    /值得关注|引发关注|非常重要|未来可期|拭目以待/,
+    /^(值得关注|引发关注|非常重要|未来可期|拭目以待)[，。,.]/,
   ];
   if (genericPatterns.some((pattern) => pattern.test(normalized))) {
     return false;
@@ -225,13 +225,17 @@ function isGroundedRoleComment(post: Post, content: string) {
 function extractGroundingTerms(post: Post) {
   const candidates = [
     post.sourceName,
+    post.author ?? "",
     ...post.tags,
     ...post.title.split(/[\s,，。:：/|｜()（）【】\-]/),
     ...post.summary.split(/[\s,，。:：/|｜()（）【】\-]/),
+    ...post.content.split(/[\s,，。:：/|｜()（）【】\-]/),
+    ...post.whyItMatters.split(/[\s,，。:：/|｜()（）【】\-]/),
+    ...post.editorComment.split(/[\s,，。:：/|｜()（）【】\-]/),
   ]
     .map((part) => part.trim())
-    .filter((part) => part.length >= 2)
+    .filter((part) => part.length >= 2 || /\d/.test(part))
     .filter((part) => !/^(AI|视频|文章|内容|评论|来源)$/.test(part));
 
-  return Array.from(new Set(candidates)).slice(0, 24);
+  return Array.from(new Set(candidates)).slice(0, 80);
 }
