@@ -45,7 +45,7 @@ export function SkillsClient({ initialPosts = [] }: { initialPosts?: Post[] }) {
       <div className="mb-5 rounded-[2rem] bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 p-6 text-white shadow-soft">
         <h1 className="text-3xl font-black tracking-normal">热门 Skill</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-blue-50">
-          这里集中展示 GitHub 热门 AI Skill 和站内技巧内容，每条都会标出 GitHub 链接、用途说明和真实热度指标。
+          这里会持续抓取 GitHub 爆款热门和近期增速快的 AI Skill，每条都会标出适用场景、怎么用、GitHub 链接和真实热度指标。
         </p>
       </div>
 

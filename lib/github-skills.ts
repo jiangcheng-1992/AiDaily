@@ -12,8 +12,11 @@ export type GitHubRepo = {
   watchers_count: number;
   language: string | null;
   topics?: string[];
+  created_at: string;
   pushed_at: string;
   updated_at: string;
+  selectionLabel?: string;
+  selectionReason?: string;
   owner: {
     login: string;
   };
@@ -36,20 +39,22 @@ type GitHubIssue = {
   pull_request?: unknown;
 };
 
-const skillQueries = [
-  "topic:llm stars:>500 fork:false",
-  "topic:ai-agent stars:>300 fork:false",
-  "topic:rag stars:>300 fork:false",
-  "topic:prompt-engineering stars:>300 fork:false",
-  "topic:mcp stars:>100 fork:false",
-  "topic:generative-ai stars:>500 fork:false",
-];
+type SkillQueryConfig = {
+  label: "爆款热门" | "增速快";
+  query: string;
+  sort: "stars" | "updated";
+};
 
 export async function fetchHotGithubSkillRepos(limit = 8) {
   if (limit <= 0) return [];
 
+  const skillQueries = buildSkillQueries();
   const results = await Promise.allSettled(
-    skillQueries.map((query) => searchRepositories(query, Math.ceil(limit / 2))),
+    skillQueries.map((config) =>
+      searchRepositories(config.query, Math.max(3, Math.ceil(limit / 2)), config.sort).then(
+        (repos) => ({ config, repos }),
+      ),
+    ),
   );
   const failures = results.filter((result) => result.status === "rejected");
 
@@ -57,17 +62,53 @@ export async function fetchHotGithubSkillRepos(limit = 8) {
     throw new Error("All GitHub skill searches failed");
   }
 
-  const repos = results
-    .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
-    .sort((a, b) => b.stargazers_count - a.stargazers_count);
-  const seen = new Set<number>();
+  const merged = new Map<
+    number,
+    {
+      repo: GitHubRepo;
+      labels: Set<SkillQueryConfig["label"]>;
+      score: number;
+    }
+  >();
 
-  return repos
-    .filter((repo) => {
-      if (seen.has(repo.id)) return false;
-      seen.add(repo.id);
-      return true;
-    })
+  for (const result of results) {
+    if (result.status !== "fulfilled") continue;
+
+    const { config, repos } = result.value;
+    for (const repo of repos) {
+      const score = computeRepoTrendScore(repo, config.label);
+      const existing = merged.get(repo.id);
+
+      if (!existing) {
+        merged.set(repo.id, {
+          repo,
+          labels: new Set([config.label]),
+          score,
+        });
+        continue;
+      }
+
+      existing.labels.add(config.label);
+      if (score > existing.score) {
+        existing.repo = repo;
+        existing.score = score;
+      }
+    }
+  }
+
+  return Array.from(merged.values())
+    .map(({ repo, labels, score }) => ({
+      ...repo,
+      selectionLabel: formatSelectionLabel(labels),
+      selectionReason: buildSelectionReason(repo, labels),
+      _trendScore: score,
+    }))
+    .sort(
+      (a, b) =>
+        b._trendScore - a._trendScore ||
+        b.stargazers_count - a.stargazers_count ||
+        new Date(b.pushed_at).getTime() - new Date(a.pushed_at).getTime(),
+    )
     .slice(0, limit);
 }
 
@@ -93,15 +134,133 @@ export async function fetchGithubRepoIssueComments(
     }));
 }
 
-async function searchRepositories(query: string, perPage: number) {
+async function searchRepositories(query: string, perPage: number, sort: "stars" | "updated") {
   const url = new URL("https://api.github.com/search/repositories");
   url.searchParams.set("q", query);
-  url.searchParams.set("sort", "stars");
+  url.searchParams.set("sort", sort);
   url.searchParams.set("order", "desc");
   url.searchParams.set("per_page", String(perPage));
 
   const data = await githubFetch<GitHubSearchResponse>(url.toString());
   return data.items ?? [];
+}
+
+function buildSkillQueries(): SkillQueryConfig[] {
+  const recentPushDate = formatGithubDate(180);
+  const risingCreateDate = formatGithubDate(90);
+  const risingPushDate = formatGithubDate(21);
+
+  return [
+    {
+      label: "爆款热门",
+      query: `topic:llm stars:>500 pushed:>=${recentPushDate} fork:false`,
+      sort: "stars",
+    },
+    {
+      label: "爆款热门",
+      query: `topic:ai-agent stars:>250 pushed:>=${recentPushDate} fork:false`,
+      sort: "stars",
+    },
+    {
+      label: "爆款热门",
+      query: `topic:rag stars:>250 pushed:>=${recentPushDate} fork:false`,
+      sort: "stars",
+    },
+    {
+      label: "爆款热门",
+      query: `topic:generative-ai stars:>500 pushed:>=${recentPushDate} fork:false`,
+      sort: "stars",
+    },
+    {
+      label: "增速快",
+      query:
+        `topic:llm stars:>80 created:>=${risingCreateDate} pushed:>=${risingPushDate} fork:false`,
+      sort: "updated",
+    },
+    {
+      label: "增速快",
+      query:
+        `topic:ai-agent stars:>60 created:>=${risingCreateDate} pushed:>=${risingPushDate} fork:false`,
+      sort: "updated",
+    },
+    {
+      label: "增速快",
+      query:
+        `topic:mcp stars:>40 created:>=${risingCreateDate} pushed:>=${risingPushDate} fork:false`,
+      sort: "updated",
+    },
+    {
+      label: "增速快",
+      query:
+        `topic:prompt-engineering stars:>60 created:>=${risingCreateDate} pushed:>=${risingPushDate} fork:false`,
+      sort: "updated",
+    },
+  ];
+}
+
+function computeRepoTrendScore(repo: GitHubRepo, label: SkillQueryConfig["label"]) {
+  const starsScore = Math.log10(repo.stargazers_count + 1) * 120;
+  const forksScore = Math.log10(repo.forks_count + 1) * 48;
+  const issueScore = Math.log10(repo.open_issues_count + 1) * 22;
+  const daysSincePush = diffDays(repo.pushed_at);
+  const daysSinceCreate = diffDays(repo.created_at || repo.updated_at);
+  const pushBonus = Math.max(0, 21 - daysSincePush) * 3;
+
+  if (label === "增速快") {
+    const newRepoBonus = Math.max(0, 60 - daysSinceCreate) * 4;
+    return starsScore * 0.7 + forksScore * 0.7 + issueScore + pushBonus + newRepoBonus;
+  }
+
+  const matureBonus = daysSincePush <= 7 ? 24 : Math.max(0, 30 - daysSincePush);
+  return starsScore + forksScore + issueScore + pushBonus + matureBonus;
+}
+
+function formatSelectionLabel(labels: Set<SkillQueryConfig["label"]>) {
+  if (labels.has("爆款热门") && labels.has("增速快")) {
+    return "爆款热门 + 增速快";
+  }
+
+  if (labels.has("增速快")) return "增速快";
+  return "爆款热门";
+}
+
+function buildSelectionReason(repo: GitHubRepo, labels: Set<SkillQueryConfig["label"]>) {
+  const stars = repo.stargazers_count.toLocaleString("zh-CN");
+  const forks = repo.forks_count.toLocaleString("zh-CN");
+  const pushDays = diffDays(repo.pushed_at);
+  const createdDays = diffDays(repo.created_at || repo.updated_at);
+
+  if (labels.has("爆款热门") && labels.has("增速快")) {
+    return `既有 ${stars} stars / ${forks} forks 的开发者验证，又在近 ${Math.max(
+      1,
+      pushDays,
+    )} 天保持活跃更新，属于值得持续跟踪的强势仓库。`;
+  }
+
+  if (labels.has("增速快")) {
+    return `仓库创建约 ${Math.max(
+      1,
+      createdDays,
+    )} 天，近 ${Math.max(1, pushDays)} 天仍在快速迭代，适合优先跟踪新一波工具和工作流方向。`;
+  }
+
+  return `已积累 ${stars} stars / ${forks} forks，且最近 ${Math.max(
+    1,
+    pushDays,
+  )} 天仍有更新，属于已被开发者验证的高热度 AI Skill。`;
+}
+
+function diffDays(value?: string) {
+  if (!value) return 999;
+  const ms = new Date(value).getTime();
+  if (Number.isNaN(ms)) return 999;
+  return Math.max(1, Math.round((Date.now() - ms) / (1000 * 60 * 60 * 24)));
+}
+
+function formatGithubDate(daysAgo: number) {
+  const date = new Date();
+  date.setDate(date.getDate() - daysAgo);
+  return date.toISOString().slice(0, 10);
 }
 
 async function githubFetch<T>(url: string): Promise<T> {

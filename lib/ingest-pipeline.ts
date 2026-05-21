@@ -257,26 +257,40 @@ function douyinItemToPost(item: DouyinVideoItem): Post {
 
 function githubRepoToPost(repo: GitHubRepo): Post {
   const topics = repo.topics ?? [];
+  const skillUsage = describeGithubSkillUsage(repo);
+  const selectionLabel = repo.selectionLabel ?? "爆款热门";
+  const selectionReason =
+    repo.selectionReason ??
+    "该仓库近期保持活跃更新，并已得到 GitHub 开发者的真实使用验证。";
   const tags = uniqueTags([
     "GitHub",
     "AI Skill",
+    ...selectionLabel.split(" + "),
     repo.language || "",
     ...topics.slice(0, 5),
   ]).slice(0, 8);
-  const useCase = describeGithubSkillUse(repo);
   const description = repo.description || "暂无仓库简介";
   const githubUrl = repo.html_url;
 
   return {
     id: `github-${repo.id}`,
     type: "skill",
-    title: `GitHub 热门 AI Skill：${repo.full_name}`,
-    summary: `${description}。用途：${useCase}`,
-    content: `GitHub 链接：${githubUrl}\n\n这个 Skill 能用来：${useCase}\n\n仓库简介：${description}。\n\n真实 GitHub 指标：${repo.stargazers_count.toLocaleString("zh-CN")} stars、${repo.forks_count.toLocaleString("zh-CN")} forks、${repo.open_issues_count.toLocaleString("zh-CN")} open issues。主要语言：${repo.language || "未标注"}。最近推送：${new Date(repo.pushed_at).toLocaleString("zh-CN")}。\n\nAI圈会把 GitHub stars 作为点赞基数、forks 作为收藏基数，并抓取热门 issue 标题作为真实讨论线索。`,
+    title: `GitHub ${selectionLabel} AI Skill：${repo.full_name}`,
+    summary: `${description}。适用场景：${skillUsage.scenarios}。怎么用：${skillUsage.howToUse}`,
+    content:
+      `GitHub 链接：${githubUrl}\n\n` +
+      `入选原因：${selectionReason}\n\n` +
+      `适用场景：${skillUsage.scenarios}\n\n` +
+      `怎么用：${skillUsage.howToUse}\n\n` +
+      `更适合谁：${skillUsage.bestFor}\n\n` +
+      `这个 Skill 能解决的问题：${skillUsage.useCase}\n\n` +
+      `仓库简介：${description}。\n\n` +
+      `真实 GitHub 指标：${repo.stargazers_count.toLocaleString("zh-CN")} stars、${repo.forks_count.toLocaleString("zh-CN")} forks、${repo.open_issues_count.toLocaleString("zh-CN")} open issues。主要语言：${repo.language || "未标注"}。创建时间：${new Date(repo.created_at).toLocaleDateString("zh-CN")}。最近推送：${new Date(repo.pushed_at).toLocaleString("zh-CN")}。\n\n` +
+      "AI圈会持续抓取 GitHub 爆款热门和近期增速快的 Skill，并抓取热门 issue 标题作为真实讨论线索。",
     whyItMatters:
-      `这个仓库可用于${useCase}。GitHub 的 stars、forks 和 issue 活跃度是开发者真实投票，高热度 AI Skill 往往意味着可复用工作流、开发范式或垂直工具机会正在形成。`,
+      `${selectionLabel} 仓库往往能提前反映开发者真实需求变化。这个 Skill 可用于${skillUsage.useCase}，尤其适合${skillUsage.bestFor}，一旦进入团队流程，往往会快速沉淀成可复用工作流。`,
     editorComment:
-      "看这类仓库不要只看 stars，还要看最近提交、issues 是否活跃、README 是否能快速复现。能被复用到你当前项目里的，才是真正有价值的 skill。",
+      `看这类仓库不要只看 stars，还要看最近提交、issues 是否活跃、README 是否能快速复现。优先从“${skillUsage.scenarios}”里选一个高频场景先落地，再决定是否扩成更大的 AI 工作流。`,
     sourceName: "GitHub Repo",
     sourceUrl: githubUrl,
     author: repo.owner.login,
@@ -292,7 +306,7 @@ function githubRepoToPost(repo: GitHubRepo): Post {
   };
 }
 
-function describeGithubSkillUse(repo: GitHubRepo) {
+function describeGithubSkillUsage(repo: GitHubRepo) {
   const text = [
     repo.full_name,
     repo.description ?? "",
@@ -302,31 +316,73 @@ function describeGithubSkillUse(repo: GitHubRepo) {
     .join(" ")
     .toLowerCase();
 
+  if (text.includes("workflow") || text.includes("automation") || text.includes("n8n")) {
+    return {
+      useCase: "把 AI 节点、数据库、表单、邮件和外部 API 串成自动化工作流",
+      scenarios: "客服分发、线索跟进、内容发布、表单处理和内部审批自动化",
+      howToUse:
+        "先挑一个高频重复流程做试点，再接入触发器、HTTP/数据库节点和 LLM 节点，最后补人工审核与失败重试。",
+      bestFor: "运营、销售、客服和内部流程自动化团队",
+    };
+  }
+
   if (text.includes("agent")) {
-    return "搭建 AI Agent、自动化任务执行和多步骤工作流";
+    return {
+      useCase: "搭建 AI Agent、自动化任务执行和多步骤工作流",
+      scenarios: "研究助手、企业 Copilot、任务分解执行和跨系统操作代理",
+      howToUse:
+        "从一个明确输入输出的任务开始，先定义工具调用边界，再补日志、权限控制和人工兜底。",
+      bestFor: "想做企业助手、Agent 工作流或自动执行链路的开发者",
+    };
   }
 
   if (text.includes("rag") || text.includes("retrieval") || text.includes("vector")) {
-    return "构建知识库问答、文档检索和带引用的 AI 搜索";
+    return {
+      useCase: "构建知识库问答、文档检索和带引用的 AI 搜索",
+      scenarios: "企业知识库、客服问答、文档助手和垂直搜索",
+      howToUse:
+        "先准备高质量文档切片和权限范围，再接入检索、重排和引用展示，最后补召回评测。",
+      bestFor: "做企业知识库、客服机器人和文档问答产品的团队",
+    };
   }
 
   if (text.includes("mcp") || text.includes("model-context-protocol")) {
-    return "把外部工具、数据源和本地能力接入大模型上下文";
+    return {
+      useCase: "把外部工具、数据源和本地能力接入大模型上下文",
+      scenarios: "让 AI 调数据库、连本地文件、调用浏览器和企业内部系统",
+      howToUse:
+        "先接最常用的 1 到 2 个工具能力，再定义权限、入参与错误返回格式，最后接到现有聊天或 Agent 界面。",
+      bestFor: "在做 AI 编程、Agent 平台或企业内部助手的人",
+    };
   }
 
   if (text.includes("prompt")) {
-    return "沉淀提示词模板、评测提示效果和复用提示工程流程";
+    return {
+      useCase: "沉淀提示词模板、评测提示效果和复用提示工程流程",
+      scenarios: "内容生产、AI 编程规范、客服回复模板和多角色 Prompt 管理",
+      howToUse:
+        "先把高频任务拆成模板，再加版本管理、A/B 评测和失败样本复盘，避免 Prompt 只停在个人经验。",
+      bestFor: "做内容团队、AI 产品和提示词资产沉淀的团队",
+    };
   }
 
   if (text.includes("llm") || text.includes("chatbot") || text.includes("chatgpt")) {
-    return "开发 LLM 应用、聊天机器人和模型调用工程能力";
+    return {
+      useCase: "开发 LLM 应用、聊天机器人和模型调用工程能力",
+      scenarios: "AI 问答、Copilot、对话机器人和多模型调用网关",
+      howToUse:
+        "从一个窄场景对话入口开始，先跑通上下文、模型切换和日志监控，再逐步补权限和成本控制。",
+      bestFor: "需要快速搭建 AI 应用原型和对话产品的开发者",
+    };
   }
 
-  if (text.includes("workflow") || text.includes("automation")) {
-    return "编排自动化工作流，减少重复操作并连接多个工具";
-  }
-
-  return "学习和复用 AI 应用工程实践，快速验证可落地的工具能力";
+  return {
+    useCase: "学习和复用 AI 应用工程实践，快速验证可落地的工具能力",
+    scenarios: "内部工具增强、团队提效和 AI 功能试点验证",
+    howToUse:
+      "先选一个最痛的重复动作做小范围上线，再根据实际反馈决定是否继续扩功能或接更多系统。",
+    bestFor: "想把 AI 能力尽快接进现有业务流程的产品和工程团队",
+  };
 }
 
 function authorityLabel(authority: AiSource["authority"]) {

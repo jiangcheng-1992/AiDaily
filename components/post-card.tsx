@@ -102,20 +102,26 @@ export function PostCard({
         ) : null}
 
         {post.type === "video" && post.coverImageUrl ? (
-          <div className="relative mx-auto mt-4 max-w-[260px] overflow-hidden rounded-[1.5rem] bg-slate-100 shadow-soft">
-            <img
-              src={post.coverImageUrl}
-              alt={post.title}
-              className="aspect-[9/16] w-full object-cover"
-              loading="lazy"
+          <div className="relative mx-auto mt-4 max-w-[210px] rounded-[1.5rem] border border-slate-200 bg-slate-950/95 p-2 shadow-soft sm:max-w-[220px]">
+            <div
+              className="absolute inset-0 rounded-[1.5rem] bg-cover bg-center opacity-25 blur-xl"
+              style={{ backgroundImage: `url(${post.coverImageUrl})` }}
             />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/5 to-transparent" />
-            <div className="absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-full bg-black/70 px-3 py-1.5 text-xs font-bold text-white">
-              <Play className="h-3.5 w-3.5 fill-current" />
-              观看视频
-            </div>
-            <div className="absolute bottom-4 right-4 rounded-full bg-black/70 px-3 py-1.5 text-xs font-bold text-white">
-              {formatVideoDuration(post.durationMs)}
+            <div className="relative overflow-hidden rounded-[1.15rem]">
+              <img
+                src={post.coverImageUrl}
+                alt={post.title}
+                className="aspect-[9/16] w-full bg-black object-contain"
+                loading="lazy"
+              />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/5 to-transparent" />
+              <div className="absolute bottom-3 left-3 inline-flex items-center gap-2 rounded-full bg-black/70 px-3 py-1.5 text-xs font-bold text-white">
+                <Play className="h-3.5 w-3.5 fill-current" />
+                观看视频
+              </div>
+              <div className="absolute bottom-3 right-3 rounded-full bg-black/70 px-3 py-1.5 text-xs font-bold text-white">
+                {formatVideoDuration(post.durationMs)}
+              </div>
             </div>
           </div>
         ) : null}

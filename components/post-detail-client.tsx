@@ -287,7 +287,7 @@ export function PostDetailClient({
           ) : null}
 
           {post.type === "video" ? (
-            <div className="mx-auto mt-6 max-w-[380px] overflow-hidden rounded-[1.75rem] border border-slate-100 bg-slate-950 shadow-lift">
+            <div className="mx-auto mt-6 max-w-[300px] overflow-hidden rounded-[1.75rem] border border-slate-100 bg-slate-950 shadow-lift sm:max-w-[320px]">
               {post.videoUrl ? (
                 <video
                   controls
@@ -308,11 +308,15 @@ export function PostDetailClient({
                   className="aspect-[9/16] w-full border-0 bg-black"
                 />
               ) : post.coverImageUrl ? (
-                <div className="relative">
+                <div className="relative bg-black">
+                  <div
+                    className="absolute inset-0 bg-cover bg-center opacity-25 blur-xl"
+                    style={{ backgroundImage: `url(${post.coverImageUrl})` }}
+                  />
                   <img
                     src={post.coverImageUrl}
                     alt={post.title}
-                    className="aspect-[9/16] w-full object-cover"
+                    className="relative aspect-[9/16] w-full object-contain"
                   />
                   <div className="absolute inset-0 flex items-center justify-center bg-black/35">
                     <div className="inline-flex items-center gap-2 rounded-full bg-black/70 px-4 py-2 text-sm font-bold text-white">

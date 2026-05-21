@@ -483,10 +483,7 @@ function normalizeDouyinAweme(
   const title = buildVideoTitle(caption, source);
   const url = aweme.share_url?.trim();
   const videoUrl = aweme.video?.play_addr?.url_list?.[0]?.trim();
-  const coverImageUrl =
-    aweme.video?.dynamic_cover?.url_list?.[0]?.trim() ||
-    aweme.video?.cover?.url_list?.[0]?.trim() ||
-    aweme.video?.origin_cover?.url_list?.[0]?.trim();
+  const coverImageUrl = pickDouyinCoverUrl(aweme.video);
 
   if (!title || !url) return null;
 
@@ -721,7 +718,7 @@ function normalizeSeoCoverUrl(metaCover?: string, thumbnailUrl?: string | string
     (Array.isArray(thumbnailUrl) ? thumbnailUrl.find(Boolean) : thumbnailUrl) ||
     "";
 
-  return raw ? decodeHtmlEntities(raw) : undefined;
+  return normalizeDouyinAssetUrl(raw);
 }
 
 function normalizeSeoEmbedUrl(metaEmbedUrl: string | undefined, videoUrl: string) {
@@ -762,6 +759,23 @@ function decodeHtmlEntities(value: string) {
     .replace(/&gt;/g, ">")
     .replace(/&#(\d+);/g, (_, code: string) => String.fromCodePoint(Number(code)))
     .replace(/&#x([0-9a-f]+);/gi, (_, code: string) => String.fromCodePoint(parseInt(code, 16)));
+}
+
+function pickDouyinCoverUrl(video?: DouyinAweme["video"]) {
+  return normalizeDouyinAssetUrl(
+    video?.origin_cover?.url_list?.find(Boolean) ||
+      video?.cover?.url_list?.find(Boolean) ||
+      video?.dynamic_cover?.url_list?.find(Boolean),
+  );
+}
+
+function normalizeDouyinAssetUrl(value?: string) {
+  if (!value) return undefined;
+
+  const decoded = decodeHtmlEntities(value).trim();
+  if (!decoded) return undefined;
+  if (decoded.startsWith("//")) return `https:${decoded}`;
+  return decoded;
 }
 
 function matchesKeywords(item: DouyinVideoItem, source: DouyinVideoSource) {
