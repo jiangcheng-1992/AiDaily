@@ -90,7 +90,7 @@ async function generateWithOpenAI(
       body: JSON.stringify({
         model: process.env.AI_COMMENT_MODEL ?? "gpt-4.1-mini",
         instructions:
-          "你是「AI圈」社区的 AI 评论生成器。请用中文生成像真实社区用户写出的短评论，必须直接表达观点和判断，具体、克制、有信息量。不要营销腔，不要编造外部事实，不要空话套话。",
+          "你是「AI圈」社区的 AI 评论生成器。请用中文生成像真实社区用户写出的短评论，必须直接表达观点和判断，具体、克制、有信息量。不要营销腔，不要编造外部事实，不要空话套话。每条评论都必须紧扣这篇内容里已经出现的具体事实、动作、数字或限制，不能写成放在哪篇文章都成立的万能评论。",
         input: buildPrompt(post, roles),
         text: {
           format: {
@@ -154,9 +154,11 @@ function buildPrompt(post: Post, roles: typeof aiCommentRoles) {
       "只评论帖子中已经给出的信息，不扩展未经证实的事实。",
       "评论应像真实中文社区用户，而不是公告、广告或新闻稿。",
       "每条评论 80 到 160 个中文字符左右。",
-      "必须引用文章中的具体动作、限制、数字或业务变化来分析，不要泛泛总结。",
+      "每条评论必须锚定至少 1 个文中已经出现的具体动作、限制、数字、结果或业务变化来分析。",
+      "评论里要体现这个角色最在意的判断角度，例如产品价值、可复现性、增长、风险等，但必须围绕文中事实展开。",
       "不要重复标题，不要只说‘值得关注’‘很重要’这类空泛判断。",
       "不要复述摘要和正文，不要把原文换个说法重写一遍，直接输出你的判断和立场。",
+      "如果文中事实不足以支撑某个强判断，就明确指出信息还不够，不要硬写结论。",
     ],
     post: {
       title: post.title,
@@ -167,6 +169,10 @@ function buildPrompt(post: Post, roles: typeof aiCommentRoles) {
       editorComment: post.editorComment,
       tags: post.tags,
       sourceName: post.sourceName,
+    },
+    grounding: {
+      requiredStyle:
+        "先点出你抓住的那条具体事实，再给出判断。评论必须让人一眼看出你是在评论这篇文章，而不是任意一篇 AI 新闻。",
     },
     roles: roles.map((role) => ({
       roleId: role.id,
