@@ -62,12 +62,25 @@ export async function readGeneratedFeed(
 
 export async function writeGeneratedFeed(feed: GeneratedFeed) {
   const filePath = getGeneratedFeedPath();
+  const nextFeed = sanitizeGeneratedFeed(feed, { includeSkills: true });
+
+  if (nextFeed.posts.length === 0 && existsSync(filePath)) {
+    try {
+      const current = JSON.parse(await readFile(filePath, "utf8")) as GeneratedFeed;
+      if (Array.isArray(current.posts) && current.posts.length > 0) {
+        throw new Error(
+          `Refusing to overwrite existing feed with empty feed at ${filePath}`,
+        );
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("Refusing to overwrite")) {
+        throw error;
+      }
+    }
+  }
+
   await mkdir(dirname(filePath), { recursive: true });
-  await writeFile(
-    filePath,
-    JSON.stringify(sanitizeGeneratedFeed(feed, { includeSkills: true }), null, 2),
-    "utf8",
-  );
+  await writeFile(filePath, JSON.stringify(nextFeed, null, 2), "utf8");
 }
 
 export function mergeGeneratedFeed({

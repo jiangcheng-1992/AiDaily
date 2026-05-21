@@ -223,19 +223,40 @@ function isGroundedRoleComment(post: Post, content: string) {
 }
 
 function extractGroundingTerms(post: Post) {
-  const candidates = [
+  const sourceText = [
     post.sourceName,
     post.author ?? "",
     ...post.tags,
-    ...post.title.split(/[\s,，。:：/|｜()（）【】\-]/),
-    ...post.summary.split(/[\s,，。:：/|｜()（）【】\-]/),
-    ...post.content.split(/[\s,，。:：/|｜()（）【】\-]/),
-    ...post.whyItMatters.split(/[\s,，。:：/|｜()（）【】\-]/),
-    ...post.editorComment.split(/[\s,，。:：/|｜()（）【】\-]/),
+    post.title,
+    post.summary,
+    post.content,
+    post.whyItMatters,
+    post.editorComment,
   ]
+    .filter(Boolean)
+    .join("\n");
+
+  const candidates = Array.from(
+    sourceText.matchAll(/[\p{Script=Han}A-Za-z0-9][\p{Script=Han}A-Za-z0-9._%+-]{1,}/gu),
+    (match) => match[0],
+  )
+    .flatMap((part) => splitLongChineseTerm(part))
     .map((part) => part.trim())
-    .filter((part) => part.length >= 2 || /\d/.test(part))
+    .filter((part) => part.length >= 2)
     .filter((part) => !/^(AI|视频|文章|内容|评论|来源)$/.test(part));
 
   return Array.from(new Set(candidates)).slice(0, 80);
+}
+
+function splitLongChineseTerm(term: string) {
+  if (term.length <= 10) return [term];
+
+  const parts = term.split(/(?=[A-Z][a-z])|(?<=[A-Za-z])(?=\p{Script=Han})|(?<=\p{Script=Han})(?=[A-Za-z0-9])/gu);
+  const windows: string[] = [];
+
+  for (let index = 0; index < term.length - 3; index += 4) {
+    windows.push(term.slice(index, index + 6));
+  }
+
+  return [term, ...parts, ...windows];
 }
