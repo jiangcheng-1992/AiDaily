@@ -23,7 +23,8 @@ export function HomeClient({ initialPosts = [] }: { initialPosts?: Post[] }) {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
   const sourcePosts = useMemo(() => {
-    if (!hydrated && initialPosts.length > 0) {
+    const generatedOrSubmissionPosts = allPosts.filter((post) => post.type !== "skill");
+    if (initialPosts.length > 0 && (!hydrated || generatedOrSubmissionPosts.length === 0)) {
       return initialPosts;
     }
 

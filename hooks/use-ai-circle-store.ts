@@ -8,7 +8,6 @@ import {
   type Post,
   type PostType,
   mockComments,
-  mockPosts,
 } from "@/lib/mock-data";
 import { normalizeTags } from "@/lib/utils";
 
@@ -211,7 +210,7 @@ export function useAiCircleStore() {
   }, []);
 
   const allPosts = useMemo(
-    () => dedupePosts([...submissions, ...generatedFeed.posts, ...mockPosts]),
+    () => dedupePosts([...submissions, ...generatedFeed.posts]),
     [generatedFeed.posts, submissions],
   );
 

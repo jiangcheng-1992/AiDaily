@@ -3,6 +3,7 @@ import {
   readGeneratedFeed,
 } from "@/lib/generated-feed-store";
 import { getAuthPersistenceInfo } from "@/lib/auth-store";
+import { getMiniMaxTextStatus } from "@/lib/minimax-text";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,6 +11,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const feed = await readGeneratedFeed();
   const authPersistence = getAuthPersistenceInfo();
+  const textAi = getMiniMaxTextStatus();
 
   return Response.json({
     ok: true,
@@ -32,9 +34,9 @@ export async function GET() {
       ),
     },
     aiComments: {
-      backend: process.env.OPENAI_API_KEY?.trim() ? "openai" : "local",
-      model: process.env.AI_COMMENT_MODEL ?? "gpt-4.1-mini",
-      configured: Boolean(process.env.OPENAI_API_KEY?.trim()),
+      backend: textAi.backend,
+      model: textAi.model,
+      configured: textAi.configured,
     },
     authPersistence,
   });

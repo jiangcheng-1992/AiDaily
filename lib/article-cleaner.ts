@@ -11,6 +11,18 @@ const LEADING_NOISE_EXACT = new Set([
   "听闻",
   "返回顶部",
   "举报",
+  "企业号",
+  "企服点评",
+  "企业服务",
+  "核心服务",
+  "创投平台",
+  "AI测评网",
+  "快讯",
+  "资讯, 推荐",
+  "财经",
+  "自助报道",
+  "城市",
+  "最新",
   "-->",
 ]);
 
@@ -25,6 +37,15 @@ const LEADING_NOISE_REGEXES = [
   /^\d{4}[-/年]\d{1,2}[-/月]\d{1,2}(日)?$/,
   /^\d{1,2}:\d{2}(:\d{2})?$/,
   /^[A-Za-z0-9_]+$/,
+];
+
+const STRUCTURAL_NOISE_REGEXES = [
+  /^(36氪|36Kr|36KR)(Auto|出海|研究院|企服点评|财经|职场|未来消费|智能涌现|城市|创投|暗涌|硬氪|媒体品牌|\s|·|\/|[A-Za-z])+$/i,
+  /^(创投发布|寻找报道|核心服务|企业号|企业服务|创投平台|AI测评网|快讯|资讯[,，、\s]推荐|财经|自助报道|城市|最新)(\s|$)/,
+  /^(LP源计划|VClub|VClub投资机构库|投资机构职位推介|投资人认证|投资人服务)(\s|$)/i,
+  /^(关于36氪|加入我们|商务合作|友情链接|用户协议|隐私政策|违法和不良信息|未成年人保护|京ICP备|京公网安备)/,
+  /^本站由\s*阿里云.*提供计算与安全服务/,
+  /^©\s*20\d{2}/,
 ];
 
 const TAIL_NOISE_MARKERS = [
@@ -50,6 +71,12 @@ const TAIL_NOISE_MARKERS = [
   "\n搜索：",
   "\n关于量子位",
   "\n加入我们",
+  "\n关于36氪",
+  "\n企业号",
+  "\n核心服务",
+  "\n创投平台",
+  "\n自助报道",
+  "\n违法和不良信息",
 ];
 
 const TAIL_NOISE_TEXT_MARKERS = [
@@ -128,6 +155,8 @@ export function extractArticleBlocksFromHtml(
 
   for (const segment of segments) {
     const fragment = segment[0];
+    const text = extractReadableTextFromHtmlBlock(fragment);
+    if (isLikelyInlineNoise(text, cleanTitle)) continue;
 
     for (const image of extractImageBlocksFromHtml(fragment, pageUrl)) {
       const normalizedUrl = image.url.replace(/^http:\/\//i, "https://");
@@ -136,10 +165,8 @@ export function extractArticleBlocksFromHtml(
       contentBlocks.push(image);
     }
 
-    const text = extractReadableTextFromHtmlBlock(fragment);
     if (!text) continue;
     if (cleanTitle && (text === cleanTitle || text.startsWith(cleanTitle))) continue;
-    if (isLikelyInlineNoise(text, cleanTitle)) continue;
     if (seenParagraphs.has(text)) continue;
     seenParagraphs.add(text);
     contentBlocks.push({
@@ -148,7 +175,7 @@ export function extractArticleBlocksFromHtml(
     });
   }
 
-  return trimLeadingNoiseBlocks(contentBlocks, cleanTitle);
+  return trimBoundaryNoiseBlocks(contentBlocks, cleanTitle);
 }
 
 export function decodeHtmlEntities(value: string) {
@@ -194,10 +221,18 @@ function focusArticleText(content: string, preferredTitle: string) {
   const paragraphs = result
     .split(/\n{2,}|\n/)
     .map((paragraph) => paragraph.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((paragraph) => !isLikelyInlineNoise(paragraph, cleanTitle));
 
   while (paragraphs.length > 0 && isLeadingNoise(paragraphs[0], cleanTitle)) {
     paragraphs.shift();
+  }
+
+  while (
+    paragraphs.length > 0 &&
+    isLikelyTailNoise(paragraphs[paragraphs.length - 1], cleanTitle)
+  ) {
+    paragraphs.pop();
   }
 
   return paragraphs.join("\n\n").trim();
@@ -207,6 +242,7 @@ function isLeadingNoise(paragraph: string, cleanTitle: string) {
   if (cleanTitle && paragraph.includes(cleanTitle)) return true;
   if (LEADING_NOISE_EXACT.has(paragraph)) return true;
   if (LEADING_NOISE_REGEXES.some((regex) => regex.test(paragraph))) return true;
+  if (STRUCTURAL_NOISE_REGEXES.some((regex) => regex.test(paragraph))) return true;
 
   const shortLine = paragraph.length <= 18 && !/[。！？!?]/.test(paragraph);
   if (shortLine) return true;
@@ -264,11 +300,21 @@ function extractReadableTextFromHtmlBlock(fragment: string) {
   );
 }
 
-function trimLeadingNoiseBlocks(blocks: ArticleContentBlock[], cleanTitle: string) {
-  const result = [...blocks];
+function trimBoundaryNoiseBlocks(blocks: ArticleContentBlock[], cleanTitle: string) {
+  const result = blocks.filter((block) => {
+    if (block.type !== "paragraph") return true;
+    return !isLikelyInlineNoise(block.text, cleanTitle);
+  });
 
   while (result[0]?.type === "paragraph" && isLeadingNoise(result[0].text, cleanTitle)) {
     result.shift();
+  }
+
+  while (true) {
+    const lastBlock = result[result.length - 1];
+    if (lastBlock?.type !== "paragraph") break;
+    if (!isLikelyTailNoise(lastBlock.text, cleanTitle)) break;
+    result.pop();
   }
 
   return result;
@@ -278,8 +324,14 @@ function isLikelyInlineNoise(text: string, cleanTitle: string) {
   if (!text) return true;
   if (LEADING_NOISE_EXACT.has(text)) return true;
   if (LEADING_NOISE_REGEXES.some((regex) => regex.test(text))) return true;
+  if (STRUCTURAL_NOISE_REGEXES.some((regex) => regex.test(text))) return true;
   if (cleanTitle && text.includes(cleanTitle) && text.length <= cleanTitle.length + 12) return true;
   return false;
+}
+
+function isLikelyTailNoise(text: string, cleanTitle: string) {
+  if (isLikelyInlineNoise(text, cleanTitle)) return true;
+  return TAIL_NOISE_TEXT_MARKERS.some((marker) => text.includes(marker));
 }
 
 function trimHtmlTailBySite(html: string, pageUrl?: string) {
@@ -299,16 +351,91 @@ function trimHtmlTailBySite(html: string, pageUrl?: string) {
     ]);
   }
 
+  if (hostname.endsWith("36kr.com")) {
+    return cutAtFirstMarker(html, [
+      "<footer",
+      "关于36氪",
+      "本站由阿里云",
+      "违法和不良信息",
+      "相关推荐",
+      "推荐阅读",
+      "热门文章",
+    ]);
+  }
+
   return html;
 }
 
 function extractArticleHtmlBlock(html: string, pageUrl?: string) {
-  const articleMatch =
-    html.match(/<article[\s\S]*?<\/article>/i) ??
-    html.match(/<main[\s\S]*?<\/main>/i) ??
-    html.match(/<body[\s\S]*?<\/body>/i);
+  const preparedHtml = stripStructuralHtml(html);
+  const siteBlock = extractSiteArticleHtmlBlock(preparedHtml, pageUrl);
+  if (siteBlock) return trimHtmlTailBySite(siteBlock, pageUrl);
 
-  return trimHtmlTailBySite(articleMatch?.[0] ?? html, pageUrl);
+  const articleMatch =
+    preparedHtml.match(/<article[\s\S]*?<\/article>/i) ??
+    preparedHtml.match(/<main[\s\S]*?<\/main>/i) ??
+    preparedHtml.match(/<body[\s\S]*?<\/body>/i);
+
+  return trimHtmlTailBySite(articleMatch?.[0] ?? preparedHtml, pageUrl);
+}
+
+function extractSiteArticleHtmlBlock(html: string, pageUrl?: string) {
+  const hostname = pageUrl ? getHostname(pageUrl) : "";
+
+  if (hostname.endsWith("36kr.com")) {
+    return extractAroundClassKeyword(html, [
+      "articleDetailContent",
+      "article-content",
+      "articleContent",
+      "kr-rich-text",
+      "rich-text",
+      "detail-content",
+      "article-main",
+    ]);
+  }
+
+  return extractAroundClassKeyword(html, [
+    "article-content",
+    "post-content",
+    "entry-content",
+    "rich-text",
+    "content-body",
+  ]);
+}
+
+function extractAroundClassKeyword(html: string, keywords: string[]) {
+  const keywordPattern = keywords.map(escapeRegExp).join("|");
+  const match = html.match(
+    new RegExp(
+      `<([a-z][\\w:-]*)[^>]+(?:class|id)=["'][^"']*(?:${keywordPattern})[^"']*["'][^>]*>`,
+      "i",
+    ),
+  );
+
+  if (!match || match.index === undefined) return "";
+
+  const fromStart = html.slice(match.index);
+  return cutAtFirstMarker(fromStart, [
+    "<aside",
+    "<footer",
+    "相关推荐",
+    "推荐阅读",
+    "热门文章",
+    "关于36氪",
+    "本站由阿里云",
+    "违法和不良信息",
+  ]);
+}
+
+function stripStructuralHtml(html: string) {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<header[\s\S]*?<\/header>/gi, " ")
+    .replace(/<nav[\s\S]*?<\/nav>/gi, " ")
+    .replace(/<footer[\s\S]*?<\/footer>/gi, " ")
+    .replace(/<aside[\s\S]*?<\/aside>/gi, " ");
 }
 
 function cutAtFirstMarker(content: string, markers: string[]) {
@@ -319,6 +446,10 @@ function cutAtFirstMarker(content: string, markers: string[]) {
 
   if (typeof cutIndex !== "number") return content;
   return content.slice(0, cutIndex);
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function getHostname(value: string) {

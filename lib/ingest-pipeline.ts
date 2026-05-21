@@ -8,7 +8,7 @@ import {
 } from "@/lib/github-skills";
 import type { Comment, Post } from "@/lib/mock-data";
 import { buildGeneratedPostId } from "@/lib/post-identity";
-import { buildGeneratedPostCopy } from "@/lib/post-insights";
+import { buildProductionPostCopy } from "@/lib/post-insights";
 import { fetchSourceItems, type SourceItem } from "@/lib/source-fetcher";
 
 export type IngestRunResult = {
@@ -53,7 +53,11 @@ export async function runIngestPipeline({
     sourceLimit: douyinSourceLimit,
     itemLimit: douyinItemLimit,
   });
-  const douyinPosts = douyinResults.flatMap((result) => result.items.map(douyinItemToPost));
+  const douyinPosts = (
+    await Promise.all(
+      douyinResults.flatMap((result) => result.items.map((item) => douyinItemToPost(item))),
+    )
+  ).filter(Boolean);
   const githubResult = await fetchGithubPosts(githubLimit);
   const githubAttempted = githubLimit > 0;
   const posts = [...githubResult.posts, ...sourcePosts, ...douyinPosts].sort(
@@ -138,7 +142,7 @@ async function fetchSourcesWithLimit(
           source,
           ok: true,
           count: items.length,
-          posts: items.map((item) => sourceItemToPost(item, source)),
+          posts: await Promise.all(items.map((item) => sourceItemToPost(item, source))),
         });
       } catch (error) {
         results.push({
@@ -168,7 +172,7 @@ async function fetchGithubPosts(limit: number): Promise<{
   try {
     const repos = await fetchHotGithubSkillRepos(limit);
     const comments: Record<string, Comment[]> = {};
-    const posts = repos.map(githubRepoToPost);
+    const posts = await Promise.all(repos.map((repo) => githubRepoToPost(repo)));
     const commentResults = await Promise.allSettled(
       repos.map((repo) => fetchGithubRepoIssueComments(repo, 2)),
     );
@@ -189,15 +193,18 @@ async function fetchGithubPosts(limit: number): Promise<{
   }
 }
 
-function sourceItemToPost(item: SourceItem, source: AiSource): Post {
+async function sourceItemToPost(item: SourceItem, source: AiSource): Promise<Post> {
   const collectedAt = new Date().toISOString();
   const publishedAt = toIsoDate(item.publishedAt);
   const createdAt = publishedAt || collectedAt;
-  const copy = buildGeneratedPostCopy({
+  const tags = uniqueTags([...item.tags, authorityLabel(source.authority)]).slice(0, 6);
+  const copy = await buildProductionPostCopy({
     title: item.title,
     rawContent: item.content || item.summary,
     fallbackSummary:
       item.summary || `来自 ${item.sourceName} 的最新 AI 动态，AI圈已纳入定时信息源。`,
+    sourceName: item.sourceName,
+    tags,
   });
 
   return {
@@ -219,7 +226,7 @@ function sourceItemToPost(item: SourceItem, source: AiSource): Post {
     coverImageUrl: item.coverImageUrl,
     imageUrls: item.imageUrls,
     contentBlocks: item.contentBlocks,
-    tags: uniqueTags([...item.tags, authorityLabel(source.authority)]).slice(0, 6),
+    tags,
     createdAt,
     collectedAt,
     likesCount: 0,
@@ -228,13 +235,16 @@ function sourceItemToPost(item: SourceItem, source: AiSource): Post {
   };
 }
 
-function douyinItemToPost(item: DouyinVideoItem): Post {
+async function douyinItemToPost(item: DouyinVideoItem): Promise<Post> {
   const collectedAt = new Date().toISOString();
   const createdAt = item.publishedAt || collectedAt;
-  const copy = buildGeneratedPostCopy({
+  const tags = uniqueTags(item.tags).slice(0, 8);
+  const copy = await buildProductionPostCopy({
     title: item.title,
     rawContent: item.content,
     fallbackSummary: item.summary,
+    sourceName: item.sourceName,
+    tags,
   });
 
   return {
@@ -259,7 +269,7 @@ function douyinItemToPost(item: DouyinVideoItem): Post {
     durationMs: item.durationMs,
     profileUrl: item.profileUrl,
     author: item.author,
-    tags: uniqueTags(item.tags).slice(0, 8),
+    tags,
     createdAt,
     collectedAt,
     likesCount: item.likesCount,
@@ -269,7 +279,7 @@ function douyinItemToPost(item: DouyinVideoItem): Post {
   };
 }
 
-function githubRepoToPost(repo: GitHubRepo): Post {
+async function githubRepoToPost(repo: GitHubRepo): Promise<Post> {
   const topics = repo.topics ?? [];
   const skillUsage = describeGithubSkillUsage(repo);
   const selectionLabel = repo.selectionLabel ?? "爆款热门";
@@ -285,26 +295,32 @@ function githubRepoToPost(repo: GitHubRepo): Post {
   ]).slice(0, 8);
   const description = repo.description || "暂无仓库简介";
   const githubUrl = repo.html_url;
+  const content =
+    `GitHub 链接：${githubUrl}\n\n` +
+    `入选原因：${selectionReason}\n\n` +
+    `适用场景：${skillUsage.scenarios}\n\n` +
+    `怎么用：${skillUsage.howToUse}\n\n` +
+    `更适合谁：${skillUsage.bestFor}\n\n` +
+    `这个 Skill 能解决的问题：${skillUsage.useCase}\n\n` +
+    `仓库简介：${description}。\n\n` +
+    `真实 GitHub 指标：${repo.stargazers_count.toLocaleString("zh-CN")} stars、${repo.forks_count.toLocaleString("zh-CN")} forks、${repo.open_issues_count.toLocaleString("zh-CN")} open issues。主要语言：${repo.language || "未标注"}。创建时间：${new Date(repo.created_at).toLocaleDateString("zh-CN")}。最近推送：${new Date(repo.pushed_at).toLocaleString("zh-CN")}。\n\n` +
+    "AI圈会持续抓取 GitHub 爆款热门和近期增速快的 Skill，并抓取热门 issue 标题作为真实讨论线索。";
+  const copy = await buildProductionPostCopy({
+    title: `GitHub ${selectionLabel} AI Skill：${repo.full_name}`,
+    rawContent: content,
+    fallbackSummary: `${description}。适用场景：${skillUsage.scenarios}。怎么用：${skillUsage.howToUse}`,
+    sourceName: "GitHub Repo",
+    tags,
+  });
 
   return {
     id: `github-${repo.id}`,
     type: "skill",
     title: `GitHub ${selectionLabel} AI Skill：${repo.full_name}`,
-    summary: `${description}。适用场景：${skillUsage.scenarios}。怎么用：${skillUsage.howToUse}`,
-    content:
-      `GitHub 链接：${githubUrl}\n\n` +
-      `入选原因：${selectionReason}\n\n` +
-      `适用场景：${skillUsage.scenarios}\n\n` +
-      `怎么用：${skillUsage.howToUse}\n\n` +
-      `更适合谁：${skillUsage.bestFor}\n\n` +
-      `这个 Skill 能解决的问题：${skillUsage.useCase}\n\n` +
-      `仓库简介：${description}。\n\n` +
-      `真实 GitHub 指标：${repo.stargazers_count.toLocaleString("zh-CN")} stars、${repo.forks_count.toLocaleString("zh-CN")} forks、${repo.open_issues_count.toLocaleString("zh-CN")} open issues。主要语言：${repo.language || "未标注"}。创建时间：${new Date(repo.created_at).toLocaleDateString("zh-CN")}。最近推送：${new Date(repo.pushed_at).toLocaleString("zh-CN")}。\n\n` +
-      "AI圈会持续抓取 GitHub 爆款热门和近期增速快的 Skill，并抓取热门 issue 标题作为真实讨论线索。",
-    whyItMatters:
-      `${selectionLabel} 仓库往往能提前反映开发者真实需求变化。这个 Skill 可用于${skillUsage.useCase}，尤其适合${skillUsage.bestFor}，一旦进入团队流程，往往会快速沉淀成可复用工作流。`,
-    editorComment:
-      `看这类仓库不要只看 stars，还要看最近提交、issues 是否活跃、README 是否能快速复现。优先从“${skillUsage.scenarios}”里选一个高频场景先落地，再决定是否扩成更大的 AI 工作流。`,
+    summary: copy.summary,
+    content: copy.content,
+    whyItMatters: copy.whyItMatters,
+    editorComment: copy.editorComment,
     sourceName: "GitHub Repo",
     sourceUrl: githubUrl,
     author: repo.owner.login,

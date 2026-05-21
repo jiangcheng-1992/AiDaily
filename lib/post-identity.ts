@@ -58,6 +58,9 @@ export function buildGeneratedPostIdentityKey({
   type?: Post["type"];
 }) {
   const identity = buildPostIdentityValue({ sourceUrl, title, type });
+  if (type === "video" && identity.startsWith("douyin:")) {
+    return `video::${identity}`;
+  }
   return `${sourceId ?? "unknown"}::${identity}`;
 }
 
@@ -131,7 +134,22 @@ function normalizeIdentityTitle(title?: string) {
 }
 
 function extractDouyinVideoId(value: string) {
-  return value.match(/\/(?:share\/)?video\/(\d+)/)?.[1] ?? "";
+  const pathMatch = value.match(/\/(?:share\/)?video\/(\d+)/)?.[1];
+  if (pathMatch) return pathMatch;
+
+  try {
+    const url = new URL(value);
+    return (
+      url.searchParams.get("modal_id") ||
+      url.searchParams.get("aweme_id") ||
+      url.searchParams.get("item_id") ||
+      url.searchParams.get("object_id") ||
+      url.searchParams.get("video_id") ||
+      ""
+    );
+  } catch {
+    return value.match(/(?:modal_id|aweme_id|item_id|object_id|video_id)=(\d+)/)?.[1] ?? "";
+  }
 }
 
 function hashText(value: string) {

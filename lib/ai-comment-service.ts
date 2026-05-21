@@ -4,17 +4,8 @@ import {
   generateAiCommentsForPost,
   selectRolesForPost,
 } from "@/lib/ai-comment-roles";
+import { generateMiniMaxText, hasMiniMaxTextAccess } from "@/lib/minimax-text";
 import type { Comment, Post } from "@/lib/mock-data";
-
-type OpenAIResponse = {
-  output_text?: string;
-  output?: Array<{
-    content?: Array<{
-      text?: string;
-      type?: string;
-    }>;
-  }>;
-};
 
 type RoleCommentPayload = {
   comments: Array<{
@@ -29,7 +20,7 @@ export async function generateProductionAiComments({
 }: {
   post: Post;
   existingRoleIds?: string[];
-}): Promise<{ provider: "openai" | "local"; comments: Comment[] }> {
+}): Promise<{ provider: "minimax" | "local"; comments: Comment[] }> {
   const roles = selectRolesForPost(post).filter(
     (role) => !existingRoleIds.includes(role.id),
   );
@@ -38,7 +29,7 @@ export async function generateProductionAiComments({
     return { provider: "local", comments: [] };
   }
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!hasMiniMaxTextAccess()) {
     return {
       provider: "local",
       comments: generateAiCommentsForPost(post, existingRoleIds),
@@ -46,7 +37,7 @@ export async function generateProductionAiComments({
   }
 
   try {
-    const payload = await generateWithOpenAI(post, roles);
+    const payload = await generateWithMiniMax(post, roles);
     const comments = payload.comments
       .map((item, index) => {
         const role = roles.find((candidate) => candidate.id === item.roleId);
@@ -61,9 +52,9 @@ export async function generateProductionAiComments({
       })
       .filter((comment): comment is Comment => Boolean(comment));
 
-    if (comments.length) return { provider: "openai", comments };
+    if (comments.length) return { provider: "minimax", comments };
   } catch (error) {
-    console.warn("AI comment generation fell back to local templates", error);
+    console.warn("MiniMax comment generation fell back to local templates", error);
   }
 
   return {
@@ -72,79 +63,23 @@ export async function generateProductionAiComments({
   };
 }
 
-async function generateWithOpenAI(
+async function generateWithMiniMax(
   post: Post,
   roles: typeof aiCommentRoles,
 ): Promise<RoleCommentPayload> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20000);
+  const text = await generateMiniMaxText({
+    systemPrompt:
+      "你是「AI圈」社区的 AI 评论生成器。请用中文生成像真实社区用户写出的短评论，必须直接表达观点和判断，具体、克制、有信息量。不要营销腔，不要编造外部事实，不要空话套话。每条评论都必须紧扣这篇内容里已经出现的具体事实、动作、数字或限制，不能写成放在哪篇文章都成立的万能评论。只输出 JSON，不要额外解释。",
+    userPrompt: buildPrompt(post, roles),
+    temperature: 0.35,
+  });
+  const parsed = parseRoleCommentPayload(text);
 
-  try {
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: process.env.AI_COMMENT_MODEL ?? "gpt-4.1-mini",
-        instructions:
-          "你是「AI圈」社区的 AI 评论生成器。请用中文生成像真实社区用户写出的短评论，必须直接表达观点和判断，具体、克制、有信息量。不要营销腔，不要编造外部事实，不要空话套话。每条评论都必须紧扣这篇内容里已经出现的具体事实、动作、数字或限制，不能写成放在哪篇文章都成立的万能评论。",
-        input: buildPrompt(post, roles),
-        text: {
-          format: {
-            type: "json_schema",
-            name: "ai_circle_role_comments",
-            strict: true,
-            schema: {
-              type: "object",
-              additionalProperties: false,
-              required: ["comments"],
-              properties: {
-                comments: {
-                  type: "array",
-                  minItems: 1,
-                  maxItems: roles.length,
-                  items: {
-                    type: "object",
-                    additionalProperties: false,
-                    required: ["roleId", "content"],
-                    properties: {
-                      roleId: {
-                        type: "string",
-                        enum: roles.map((role) => role.id),
-                      },
-                      content: {
-                        type: "string",
-                        minLength: 24,
-                        maxLength: 220,
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenAI returned HTTP ${response.status}`);
-    }
-
-    const data = (await response.json()) as OpenAIResponse;
-    const parsed = parseRoleCommentPayload(extractResponseText(data));
-
-    if (!Array.isArray(parsed.comments)) {
-      throw new Error("OpenAI response did not include comments array");
-    }
-
-    return parsed;
-  } finally {
-    clearTimeout(timeout);
+  if (!Array.isArray(parsed.comments)) {
+    throw new Error("MiniMax response did not include comments array");
   }
+
+  return parsed;
 }
 
 function buildPrompt(post: Post, roles: typeof aiCommentRoles) {
@@ -211,19 +146,6 @@ function buildRoleAngleInstruction(roleId: string) {
     default:
       return "必须从角色视角做判断。";
   }
-}
-
-function extractResponseText(response: OpenAIResponse) {
-  if (response.output_text) return response.output_text;
-
-  const text = response.output
-    ?.flatMap((item) => item.content ?? [])
-    .map((content) => content.text)
-    .filter(Boolean)
-    .join("\n");
-
-  if (!text) throw new Error("OpenAI response did not include text output");
-  return text;
 }
 
 function parseRoleCommentPayload(value: string): RoleCommentPayload {

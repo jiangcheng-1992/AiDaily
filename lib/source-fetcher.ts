@@ -10,7 +10,7 @@ import {
   stripHtmlToText,
 } from "@/lib/article-cleaner";
 import type { ArticleContentBlock } from "@/lib/mock-data";
-import { buildGeneratedPostCopy } from "@/lib/post-insights";
+import { buildProductionPostCopy } from "@/lib/post-insights";
 import { isRelevantAiContent } from "@/lib/source-relevance";
 
 export type SourceItem = {
@@ -297,11 +297,13 @@ async function hydrateSourceItemContent(source: AiSource, item: SourceItem) {
   }
 }
 
-function finalizeSourceItem(item: SourceItem): SourceItem {
-  const copy = buildGeneratedPostCopy({
+async function finalizeSourceItem(item: SourceItem): Promise<SourceItem> {
+  const copy = await buildProductionPostCopy({
     title: item.title,
     rawContent: item.content || item.summary,
     fallbackSummary: item.summary,
+    sourceName: item.sourceName,
+    tags: item.tags,
   });
 
   return {

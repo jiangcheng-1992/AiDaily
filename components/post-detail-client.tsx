@@ -70,7 +70,10 @@ export function PostDetailClient({
   const [videoLoading, setVideoLoading] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
   const [videoLoadProgress, setVideoLoadProgress] = useState(0);
+  const [videoSlow, setVideoSlow] = useState(false);
+  const [videoFailed, setVideoFailed] = useState(false);
   const loadProgressTimerRef = useRef<number | null>(null);
+  const videoElementRef = useRef<HTMLVideoElement | null>(null);
 
   const post = useMemo(
     () => getPostById(allPosts, postId) ?? initialPost,
@@ -165,6 +168,8 @@ export function PostDetailClient({
     setVideoLoading(false);
     setVideoReady(false);
     setVideoLoadProgress(0);
+    setVideoSlow(false);
+    setVideoFailed(false);
   }, [post.id]);
 
   useEffect(() => {
@@ -178,8 +183,8 @@ export function PostDetailClient({
 
     loadProgressTimerRef.current = window.setInterval(() => {
       setVideoLoadProgress((current) => {
-        if (current >= 86) return current;
-        return Math.min(current + (current < 36 ? 12 : 6), 86);
+        if (current >= 92) return current;
+        return Math.min(current + (current < 36 ? 14 : 7), 92);
       });
     }, 180);
 
@@ -190,6 +195,17 @@ export function PostDetailClient({
       }
     };
   }, [videoLoading]);
+
+  useEffect(() => {
+    if (!videoLoading || videoReady) return;
+
+    const slowTimer = window.setTimeout(() => {
+      setVideoSlow(true);
+      setVideoLoadProgress((current) => Math.max(current, 92));
+    }, 3200);
+
+    return () => window.clearTimeout(slowTimer);
+  }, [videoLoading, videoReady]);
 
   const handleShare = async () => {
     const url = `${window.location.origin}/post/${post.id}`;
@@ -228,14 +244,14 @@ export function PostDetailClient({
 
       const data = (await response.json()) as {
         ok: boolean;
-        provider: "openai" | "local";
+        provider: "minimax" | "local";
         comments: Comment[];
       };
       const added = addGeneratedComments(post.id, data.comments ?? []);
 
       setAiCommentNotice(
         added.length
-          ? `已通过${data.provider === "openai" ? "正式模型" : "本地角色"}生成 ${added.length} 条 AI 评论`
+          ? `已通过${data.provider === "minimax" ? "MiniMax" : "本地角色"}生成 ${added.length} 条 AI 评论`
           : "这篇帖子已经生成过 AI 角色评论",
       );
     } catch {
@@ -255,11 +271,27 @@ export function PostDetailClient({
     setVideoStarted(true);
     setVideoReady(false);
     setVideoLoading(true);
-    setVideoLoadProgress(10);
+    setVideoLoadProgress(16);
+    setVideoSlow(false);
+    setVideoFailed(false);
+
+    window.setTimeout(() => {
+      void videoElementRef.current?.play().catch(() => {
+        setVideoSlow(true);
+      });
+    }, 0);
   };
 
   const markVideoReady = () => {
     setVideoReady(true);
+    setVideoLoading(false);
+    setVideoLoadProgress(100);
+    setVideoSlow(false);
+  };
+
+  const markVideoFailed = () => {
+    setVideoFailed(true);
+    setVideoSlow(true);
     setVideoLoading(false);
     setVideoLoadProgress(100);
   };
@@ -430,6 +462,7 @@ export function PostDetailClient({
                     </>
                   ) : null}
                   <video
+                    ref={videoElementRef}
                     controls
                     autoPlay
                     playsInline
@@ -444,17 +477,26 @@ export function PostDetailClient({
                     onCanPlay={markVideoReady}
                     onPlaying={markVideoReady}
                     onWaiting={handleVideoBuffering}
+                    onError={markVideoFailed}
                     onProgress={() => {
                       if (!videoReady) {
-                        setVideoLoadProgress((current) => Math.max(current, 45));
+                        setVideoLoadProgress((current) => Math.max(current, 58));
                       }
                     }}
                   />
-                  {videoLoading ? (
+                  {videoLoading || videoSlow || videoFailed ? (
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 top-0 flex items-end bg-gradient-to-t from-black/60 via-black/10 to-transparent p-4">
-                      <div className="w-full rounded-2xl bg-black/70 px-4 py-3 text-white shadow-2xl backdrop-blur-sm">
+                      <div className="pointer-events-auto w-full rounded-2xl bg-black/70 px-4 py-3 text-white shadow-2xl backdrop-blur-sm">
                         <div className="flex items-center justify-between gap-3 text-xs font-bold">
-                          <span>{videoReady ? "缓冲中..." : "视频加载中..."}</span>
+                          <span>
+                            {videoFailed
+                              ? "站内播放失败"
+                              : videoSlow
+                                ? "源站加载较慢，可先去原视频"
+                                : videoReady
+                                  ? "缓冲中..."
+                                  : "视频加载中..."}
+                          </span>
                           <span>{videoLoadProgress}%</span>
                         </div>
                         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/15">
@@ -463,6 +505,16 @@ export function PostDetailClient({
                             style={{ width: `${videoLoadProgress}%` }}
                           />
                         </div>
+                        {(videoSlow || videoFailed) && post.sourceUrl ? (
+                          <a
+                            href={post.sourceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-3 inline-flex rounded-full bg-white px-3 py-1.5 text-xs font-black text-slate-950"
+                          >
+                            去抖音原视频
+                          </a>
+                        ) : null}
                       </div>
                     </div>
                   ) : null}
@@ -499,13 +551,15 @@ export function PostDetailClient({
                       "relative aspect-[9/16] w-full border-0 bg-black transition-opacity duration-300",
                       videoReady ? "opacity-100" : "opacity-0",
                     )}
-                    onLoad={markVideoReady}
+                    onLoad={() => {
+                      window.setTimeout(markVideoReady, 900);
+                    }}
                   />
-                  {videoLoading ? (
+                  {videoLoading || videoSlow ? (
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 top-0 flex items-end bg-gradient-to-t from-black/60 via-black/10 to-transparent p-4">
-                      <div className="w-full rounded-2xl bg-black/70 px-4 py-3 text-white shadow-2xl backdrop-blur-sm">
+                      <div className="pointer-events-auto w-full rounded-2xl bg-black/70 px-4 py-3 text-white shadow-2xl backdrop-blur-sm">
                         <div className="flex items-center justify-between gap-3 text-xs font-bold">
-                          <span>视频加载中...</span>
+                          <span>{videoSlow ? "源站加载较慢，可先去原视频" : "视频加载中..."}</span>
                           <span>{videoLoadProgress}%</span>
                         </div>
                         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/15">
@@ -514,6 +568,16 @@ export function PostDetailClient({
                             style={{ width: `${videoLoadProgress}%` }}
                           />
                         </div>
+                        {videoSlow && post.sourceUrl ? (
+                          <a
+                            href={post.sourceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-3 inline-flex rounded-full bg-white px-3 py-1.5 text-xs font-black text-slate-950"
+                          >
+                            去抖音原视频
+                          </a>
+                        ) : null}
                       </div>
                     </div>
                   ) : null}

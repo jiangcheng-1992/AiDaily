@@ -11,7 +11,7 @@ import {
   stripHtmlToText,
 } from "@/lib/article-cleaner";
 import { generateProductionAiComments } from "@/lib/ai-comment-service";
-import { buildGeneratedPostCopy } from "@/lib/post-insights";
+import { buildProductionPostCopy } from "@/lib/post-insights";
 import { buildGeneratedPostId } from "@/lib/post-identity";
 import { isRelevantAiContent } from "@/lib/source-relevance";
 import type { ArticleContentBlock, Comment, Post } from "@/lib/mock-data";
@@ -54,10 +54,12 @@ export async function ingestArticleByUrl(rawUrl: string): Promise<ManualIngestRe
   const htmlMetadata = await fetchArticleMetadataWithFallback(normalizedInputUrl, Boolean(sourceCandidate));
   const sourceUrl = sourceCandidate?.url ?? htmlMetadata.canonicalUrl ?? normalizedInputUrl;
   const rawContent = pickPreferredContent(sourceCandidate?.content ?? "", htmlMetadata.content);
-  const copy = buildGeneratedPostCopy({
+  const copy = await buildProductionPostCopy({
     title: sourceCandidate?.title || htmlMetadata.title || normalizedInputUrl,
     rawContent,
     fallbackSummary: sourceCandidate?.summary || htmlMetadata.content || rawContent,
+    sourceName: source.name,
+    tags: sourceCandidate?.tags ?? [],
   });
   const publishedAt = toIsoDate(sourceCandidate?.publishedAt ?? htmlMetadata.publishedAt);
   const collectedAt = new Date().toISOString();

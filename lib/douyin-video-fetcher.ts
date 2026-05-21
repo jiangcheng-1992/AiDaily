@@ -361,6 +361,7 @@ async function fetchSeoVideoItem(
     seoVideo?.thumbnailUrl,
   );
   const videoEmbedUrl = normalizeSeoEmbedUrl(meta["lark:url:video_iframe_url"], videoUrl);
+  const videoId = extractDouyinVideoId(videoUrl);
   const publishedAt = toIsoDate(seoVideo?.uploadDate);
   const likesCount = 0;
   const commentsCount = parseSeoCount(seoVideo?.commentCount);
@@ -376,7 +377,7 @@ async function fetchSeoVideoItem(
     title,
     summary: buildVideoSummary(summary, title),
     content: summary || title,
-    url: videoUrl,
+    url: videoId ? buildDouyinVideoUrl(videoId) : videoUrl,
     videoEmbedUrl,
     coverImageUrl,
     durationMs,
@@ -481,7 +482,9 @@ function normalizeDouyinAweme(
   const rawCaption = normalizeCaption(aweme.desc ?? "");
   const caption = sanitizeCaptionText(rawCaption);
   const title = buildVideoTitle(caption, source);
-  const url = aweme.share_url?.trim();
+  const url = aweme.aweme_id
+    ? buildDouyinVideoUrl(aweme.aweme_id)
+    : canonicalizeDouyinVideoUrl(aweme.share_url?.trim());
   const videoUrl = aweme.video?.play_addr?.url_list?.[0]?.trim();
   const coverImageUrl = pickDouyinCoverUrl(aweme.video);
 
@@ -730,12 +733,37 @@ function normalizeSeoEmbedUrl(metaEmbedUrl: string | undefined, videoUrl: string
   return videoId ? buildDouyinEmbedUrl(videoId) : undefined;
 }
 
+function buildDouyinVideoUrl(videoId: string) {
+  return `https://www.douyin.com/video/${videoId}`;
+}
+
 function buildDouyinEmbedUrl(videoId: string) {
   return `https://www.iesdouyin.com/share/video/${videoId}`;
 }
 
 function extractDouyinVideoId(value: string) {
-  return value.match(/\/(?:share\/)?video\/(\d+)/)?.[1];
+  const pathMatch = value.match(/\/(?:share\/)?video\/(\d+)/)?.[1];
+  if (pathMatch) return pathMatch;
+
+  try {
+    const url = new URL(value);
+    return (
+      url.searchParams.get("modal_id") ||
+      url.searchParams.get("aweme_id") ||
+      url.searchParams.get("item_id") ||
+      url.searchParams.get("object_id") ||
+      url.searchParams.get("video_id") ||
+      undefined
+    );
+  } catch {
+    return value.match(/(?:modal_id|aweme_id|item_id|object_id|video_id)=(\d+)/)?.[1];
+  }
+}
+
+function canonicalizeDouyinVideoUrl(value?: string) {
+  if (!value) return "";
+  const videoId = extractDouyinVideoId(value);
+  return videoId ? buildDouyinVideoUrl(videoId) : value;
 }
 
 function formatErrorMessage(error: unknown) {

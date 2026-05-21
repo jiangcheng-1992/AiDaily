@@ -1,4 +1,5 @@
 import type { Post } from "@/lib/mock-data";
+import { generateMiniMaxText, hasMiniMaxTextAccess } from "@/lib/minimax-text";
 
 type InsightTheme =
   | "media"
@@ -16,6 +17,19 @@ type PostInsight = {
   theme: InsightTheme;
   paragraphs: string[];
   evidence: string[];
+  summary: string;
+  whyItMatters: string;
+  editorComment: string;
+};
+
+type GeneratedPostCopy = {
+  summary: string;
+  content: string;
+  whyItMatters: string;
+  editorComment: string;
+};
+
+type GeneratedPostCopyPayload = {
   summary: string;
   whyItMatters: string;
   editorComment: string;
@@ -72,7 +86,7 @@ export function buildGeneratedPostCopy({
   title: string;
   rawContent: string;
   fallbackSummary?: string;
-}) {
+}): GeneratedPostCopy {
   const cleanedContent = cleanDisplayContent(rawContent);
   const insight = analyzePostText({
     title,
@@ -86,6 +100,51 @@ export function buildGeneratedPostCopy({
     whyItMatters: insight.whyItMatters,
     editorComment: insight.editorComment,
   };
+}
+
+export async function buildProductionPostCopy({
+  title,
+  rawContent,
+  fallbackSummary,
+  sourceName,
+  tags = [],
+}: {
+  title: string;
+  rawContent: string;
+  fallbackSummary?: string;
+  sourceName?: string;
+  tags?: string[];
+}): Promise<GeneratedPostCopy & { provider: "minimax" | "local" }> {
+  const localCopy = buildGeneratedPostCopy({
+    title,
+    rawContent,
+    fallbackSummary,
+  });
+
+  if (!hasMiniMaxTextAccess()) {
+    return { provider: "local", ...localCopy };
+  }
+
+  try {
+    const payload = await generateCopyWithMiniMax({
+      title,
+      cleanedContent: localCopy.content,
+      fallbackSummary: localCopy.summary,
+      sourceName,
+      tags,
+    });
+
+    return {
+      provider: "minimax",
+      content: localCopy.content,
+      summary: clip(payload.summary.trim(), 160) || localCopy.summary,
+      whyItMatters: clip(payload.whyItMatters.trim(), 220) || localCopy.whyItMatters,
+      editorComment: clip(payload.editorComment.trim(), 260) || localCopy.editorComment,
+    };
+  } catch (error) {
+    console.warn("MiniMax post copy generation fell back to local insights", error);
+    return { provider: "local", ...localCopy };
+  }
 }
 
 export function cleanDisplayContent(content: string) {
@@ -468,4 +527,60 @@ function buildRiskComment(
 function clip(value: string, maxLength: number) {
   if (value.length <= maxLength) return value;
   return `${value.slice(0, maxLength - 1)}...`;
+}
+
+async function generateCopyWithMiniMax({
+  title,
+  cleanedContent,
+  fallbackSummary,
+  sourceName,
+  tags,
+}: {
+  title: string;
+  cleanedContent: string;
+  fallbackSummary: string;
+  sourceName?: string;
+  tags: string[];
+}) {
+  const text = await generateMiniMaxText({
+    systemPrompt:
+      "你是 AI 圈内容编辑。请根据给定文章信息生成中文 JSON，字段只允许有 summary、whyItMatters、editorComment。三段文案必须明显贴合文章事实，不能套话，不能复述标题，不能编造原文没有的外部信息。summary 用 1 到 2 句讲清核心事实；whyItMatters 解释这条内容为什么值得关注；editorComment 要像站长写的判断，给出更具体的价值、风险或后续观察点。只输出 JSON，不要额外说明。",
+    userPrompt: JSON.stringify({
+      task: "生成 AI 圈帖子文案",
+      constraints: [
+        "必须只基于提供的标题、正文、来源、标签来写，不能补外部资料。",
+        "文案要点出原文里的具体动作、限制、数字、结果或场景，不能写成任何文章都适用的通用结论。",
+        "summary 控制在 40 到 120 个中文字符。",
+        "whyItMatters 控制在 70 到 170 个中文字符。",
+        "editorComment 控制在 90 到 220 个中文字符。",
+        "不要使用“值得关注”“引发关注”“说明了一切”等空泛表达开头。",
+        "站长总结必须体现判断，不要只是换个说法重写正文。",
+      ],
+      article: {
+        title,
+        sourceName,
+        tags,
+        fallbackSummary,
+        contentExcerpt: clip(cleanedContent, 5000),
+      },
+      outputShape: {
+        summary: "一句到两句中文摘要",
+        whyItMatters: "为什么重要",
+        editorComment: "站长总结",
+      },
+    }),
+    temperature: 0.25,
+  });
+
+  return parseGeneratedPostCopyPayload(text);
+}
+
+function parseGeneratedPostCopyPayload(value: string): GeneratedPostCopyPayload {
+  const cleanValue = value
+    .trim()
+    .replace(/^```(?:json)?/i, "")
+    .replace(/```$/i, "")
+    .trim();
+
+  return JSON.parse(cleanValue) as GeneratedPostCopyPayload;
 }
