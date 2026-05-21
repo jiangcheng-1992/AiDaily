@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { autoIngestSourceIds, extractGeneratedSourceId } from "@/lib/ai-sources";
 import { autoIngestDouyinSourceIds } from "@/lib/douyin-video-sources";
 import type { Comment, Post } from "@/lib/mock-data";
+import { buildIdentityKeyFromPost } from "@/lib/post-identity";
 
 export type GeneratedFeed = {
   policyVersion?: string;
@@ -80,11 +81,35 @@ export function mergeGeneratedFeed({
   limit?: number;
 }): GeneratedFeed {
   const postMap = new Map<string, Post>();
+  const postIdentityMap = new Map<string, string>();
 
-  for (const post of current.posts) postMap.set(post.id, post);
-  for (const post of incomingPosts) postMap.set(post.id, post);
+  for (const post of current.posts) {
+    postMap.set(post.id, post);
+    postIdentityMap.set(post.id, buildIdentityKeyFromPost(post));
+  }
+  for (const post of incomingPosts) {
+    const existing = postMap.get(post.id);
+    const mergedPost = mergePosts(existing, post);
+    postMap.set(post.id, mergedPost);
+    postIdentityMap.set(post.id, buildIdentityKeyFromPost(mergedPost));
+  }
 
-  const posts = Array.from(postMap.values())
+  const dedupedPosts = new Map<string, Post>();
+  const identityAliases = new Map<string, Set<string>>();
+  for (const post of postMap.values()) {
+    const identityKey = postIdentityMap.get(post.id) ?? buildIdentityKeyFromPost(post);
+    const existing = dedupedPosts.get(identityKey);
+    const mergedPost = mergePosts(existing, post);
+    dedupedPosts.set(identityKey, mergedPost);
+
+    if (!identityAliases.has(identityKey)) {
+      identityAliases.set(identityKey, new Set<string>());
+    }
+    identityAliases.get(identityKey)?.add(post.id);
+    identityAliases.get(identityKey)?.add(mergedPost.id);
+  }
+
+  const posts = Array.from(dedupedPosts.values())
     .sort(
       (a, b) =>
         new Date(b.collectedAt ?? b.createdAt).getTime() -
@@ -95,10 +120,12 @@ export function mergeGeneratedFeed({
   const comments: Record<string, Comment[]> = {};
 
   for (const post of posts) {
-    const mergedComments = [
-      ...(current.comments[post.id] ?? []),
-      ...(incomingComments[post.id] ?? []),
-    ];
+    const identityKey = buildIdentityKeyFromPost(post);
+    const aliasIds = identityAliases.get(identityKey) ?? new Set([post.id]);
+    const mergedComments = Array.from(aliasIds).flatMap((postId) => [
+      ...(current.comments[postId] ?? []),
+      ...(incomingComments[postId] ?? []),
+    ]);
     const seen = new Set<string>();
 
     comments[post.id] = mergedComments.filter((comment) => {
@@ -116,6 +143,31 @@ export function mergeGeneratedFeed({
       Object.entries(comments).filter(([postId]) => postIds.has(postId)),
     ),
   };
+}
+
+function mergePosts(existing: Post | undefined, incoming: Post) {
+  if (!existing) return incoming;
+
+  const earliestCollectedAt = pickEarlierDate(existing.collectedAt, incoming.collectedAt);
+  const earliestCreatedAt = pickEarlierDate(existing.createdAt, incoming.createdAt);
+
+  return {
+    ...existing,
+    ...incoming,
+    id: existing.id,
+    createdAt: earliestCreatedAt ?? incoming.createdAt ?? existing.createdAt,
+    collectedAt: earliestCollectedAt ?? incoming.collectedAt ?? existing.collectedAt,
+    likesCount: Math.max(existing.likesCount ?? 0, incoming.likesCount ?? 0),
+    commentsCount: Math.max(existing.commentsCount ?? 0, incoming.commentsCount ?? 0),
+    savesCount: Math.max(existing.savesCount ?? 0, incoming.savesCount ?? 0),
+  };
+}
+
+function pickEarlierDate(left?: string, right?: string) {
+  if (!left) return right;
+  if (!right) return left;
+
+  return new Date(left).getTime() <= new Date(right).getTime() ? left : right;
 }
 
 function sanitizeGeneratedFeed(

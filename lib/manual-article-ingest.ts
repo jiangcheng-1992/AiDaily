@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 import { XMLParser } from "fast-xml-parser";
 
 import { type AiSource, authoritativeSources } from "@/lib/ai-sources";
@@ -13,6 +11,7 @@ import {
 } from "@/lib/article-cleaner";
 import { generateAiCommentsForPost } from "@/lib/ai-comment-roles";
 import { buildGeneratedPostCopy } from "@/lib/post-insights";
+import { buildGeneratedPostId } from "@/lib/post-identity";
 import { isRelevantAiContent } from "@/lib/source-relevance";
 import type { Comment, Post } from "@/lib/mock-data";
 
@@ -80,7 +79,12 @@ export async function ingestArticleByUrl(rawUrl: string): Promise<ManualIngestRe
   }
 
   const post: Post = {
-    id: `source-${source.id}-${hashText(sourceUrl || copy.summary || normalizedInputUrl)}`,
+    id: buildGeneratedPostId({
+      sourceId: source.id,
+      sourceUrl,
+      title: candidateTitle || copy.summary || normalizedInputUrl,
+      type: source.recommendedType,
+    }),
     sourceId: source.id,
     type: source.recommendedType,
     title: candidateTitle,
@@ -551,10 +555,6 @@ function uniqueTags(tags: string[]) {
     .map((tag) => tag.trim())
     .filter(Boolean)
     .filter((tag, index, arr) => arr.indexOf(tag) === index);
-}
-
-function hashText(value: string) {
-  return createHash("sha1").update(value).digest("hex").slice(0, 12);
 }
 
 function toIsoDate(value?: string) {

@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 import { autoIngestSources, type AiSource } from "@/lib/ai-sources";
 import { generateAiCommentsForPost } from "@/lib/ai-comment-roles";
 import { fetchDouyinVideoItems, type DouyinVideoItem } from "@/lib/douyin-video-fetcher";
@@ -9,6 +7,7 @@ import {
   type GitHubRepo,
 } from "@/lib/github-skills";
 import type { Comment, Post } from "@/lib/mock-data";
+import { buildGeneratedPostId } from "@/lib/post-identity";
 import { buildGeneratedPostCopy } from "@/lib/post-insights";
 import { fetchSourceItems, type SourceItem } from "@/lib/source-fetcher";
 
@@ -199,7 +198,12 @@ function sourceItemToPost(item: SourceItem, source: AiSource): Post {
   });
 
   return {
-    id: `source-${item.sourceId}-${hashText(item.url || item.title)}`,
+    id: buildGeneratedPostId({
+      sourceId: item.sourceId,
+      sourceUrl: item.url,
+      title: item.title,
+      type: source.recommendedType,
+    }),
     sourceId: item.sourceId,
     type: source.recommendedType,
     title: item.title,
@@ -230,7 +234,12 @@ function douyinItemToPost(item: DouyinVideoItem): Post {
   });
 
   return {
-    id: `source-${item.sourceId}-${hashText(item.url || item.title)}`,
+    id: buildGeneratedPostId({
+      sourceId: item.sourceId,
+      sourceUrl: item.url,
+      title: item.title,
+      type: "video",
+    }),
     sourceId: item.sourceId,
     type: "video",
     title: item.title,
@@ -410,8 +419,4 @@ function uniqueTags(tags: string[]) {
     .map((tag) => tag.trim())
     .filter(Boolean)
     .filter((tag, index, arr) => arr.indexOf(tag) === index);
-}
-
-function hashText(value: string) {
-  return createHash("sha1").update(value).digest("hex").slice(0, 12);
 }
