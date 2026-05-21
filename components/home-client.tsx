@@ -58,7 +58,7 @@ export function HomeClient({ initialPosts = [] }: { initialPosts?: Post[] }) {
 
   return (
     <div>
-      <section className="mx-auto grid max-w-7xl gap-6 px-4 pt-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
+      <section className="mx-auto grid max-w-7xl gap-4 px-3 pt-3 sm:px-6 lg:gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
         <div className="min-w-0 space-y-5">
           {selectedTag ? (
             <div className="flex items-center justify-between rounded-3xl border border-blue-100 bg-white/85 px-4 py-3 shadow-soft backdrop-blur">
@@ -112,7 +112,7 @@ export function HomeClient({ initialPosts = [] }: { initialPosts?: Post[] }) {
           </div>
         </aside>
 
-        <div className="lg:hidden">
+        <div className="pb-2 lg:hidden">
           <HomeSidebar posts={sourcePosts} onTagClick={setSelectedTag} />
         </div>
       </section>

@@ -122,6 +122,18 @@ export function PostDetailClient({
   });
   const videoEmbedUrl =
     post.type === "video" ? post.videoEmbedUrl ?? buildDouyinEmbedUrl(post.sourceUrl) : undefined;
+  const articleImageUrls = useMemo(() => {
+    if (post.type === "video") return [];
+
+    const seen = new Set<string>();
+    return [post.coverImageUrl, ...(post.imageUrls ?? [])].filter((url): url is string => {
+      if (!url) return false;
+      const normalized = url.replace(/^http:\/\//i, "https://");
+      if (seen.has(normalized)) return false;
+      seen.add(normalized);
+      return true;
+    });
+  }, [post.coverImageUrl, post.imageUrls, post.type]);
 
   const handleShare = async () => {
     const url = `${window.location.origin}/post/${post.id}`;
@@ -275,15 +287,22 @@ export function PostDetailClient({
             </div>
           ) : null}
 
-          {post.type !== "video" && post.coverImageUrl ? (
-            <figure className="mt-6 overflow-hidden rounded-[1.75rem] border border-slate-100 bg-slate-100 shadow-soft">
-              <img
-                src={post.coverImageUrl}
-                alt={post.title}
-                className="max-h-[480px] w-full object-cover"
-                loading="lazy"
-              />
-            </figure>
+          {post.type !== "video" && articleImageUrls.length ? (
+            <div className="mt-6 space-y-4">
+              {articleImageUrls.map((imageUrl, index) => (
+                <figure
+                  key={`${post.id}-image-${index}`}
+                  className="overflow-hidden rounded-[1.4rem] border border-slate-100 bg-slate-100 shadow-soft"
+                >
+                  <img
+                    src={imageUrl}
+                    alt={`${post.title} 配图 ${index + 1}`}
+                    className="max-h-[520px] w-full object-contain"
+                    loading={index === 0 ? "eager" : "lazy"}
+                  />
+                </figure>
+              ))}
+            </div>
           ) : null}
 
           {post.type === "video" ? (

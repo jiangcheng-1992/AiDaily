@@ -17,6 +17,7 @@ export type SourceItem = {
   title: string;
   url?: string;
   coverImageUrl?: string;
+  imageUrls?: string[];
   summary: string;
   content: string;
   publishedAt?: string;
@@ -132,6 +133,7 @@ function normalizeFeedItem(source: AiSource, item: RawFeedItem): SourceItem {
     title,
     url,
     coverImageUrl: extractFeedImageUrl(item, url),
+    imageUrls: extractFeedImageUrls(item, url),
     summary: clipText(content, 260),
     content,
     publishedAt,
@@ -218,11 +220,15 @@ function extractCategories(item: RawFeedItem) {
 }
 
 function extractFeedImageUrl(item: RawFeedItem, articleUrl?: string) {
+  return extractFeedImageUrls(item, articleUrl)[0];
+}
+
+function extractFeedImageUrls(item: RawFeedItem, articleUrl?: string) {
   const candidates = [
     readMediaUrl(item["media:content"]),
     readMediaUrl(item["media:thumbnail"]),
     readMediaUrl(item.enclosure),
-    extractFirstImageFromHtml(
+    ...extractImageUrlsFromHtml(
       [
         asText(item.description),
         asText(item.summary),
@@ -232,7 +238,7 @@ function extractFeedImageUrl(item: RawFeedItem, articleUrl?: string) {
     ),
   ].map((url) => absolutizeUrl(url, articleUrl));
 
-  return candidates.find(isUsableArticleImage);
+  return uniqueImageUrls(candidates);
 }
 
 async function hydrateSourceItemContent(source: AiSource, item: SourceItem) {
@@ -253,11 +259,14 @@ async function hydrateSourceItemContent(source: AiSource, item: SourceItem) {
     const html = await response.text();
     const fullText = extractArticleTextFromHtml(html, item.title, item.url);
     const content = selectRicherText(item.content, fullText);
-    const coverImageUrl = item.coverImageUrl || extractHtmlImageUrl(html, item.url);
+    const htmlImageUrls = extractHtmlImageUrls(html, item.url);
+    const imageUrls = uniqueImageUrls([...(item.imageUrls ?? []), ...htmlImageUrls]);
+    const coverImageUrl = item.coverImageUrl || imageUrls[0] || extractHtmlImageUrl(html, item.url);
 
     return finalizeSourceItem({
       ...item,
       coverImageUrl,
+      imageUrls,
       content,
       summary: clipText(content || item.summary, 260),
       tags: Array.from(new Set([...item.tags, ...extractHtmlKeywords(html)])).slice(0, 8),
@@ -304,14 +313,18 @@ function extractHtmlKeywords(html: string) {
 }
 
 function extractHtmlImageUrl(html: string, pageUrl?: string) {
+  return extractHtmlImageUrls(html, pageUrl)[0];
+}
+
+function extractHtmlImageUrls(html: string, pageUrl?: string) {
   const candidates = [
+    ...extractImageUrlsFromHtml(html),
     readMetaContent(html, "property", "og:image"),
     readMetaContent(html, "name", "twitter:image"),
     readMetaContent(html, "property", "twitter:image"),
-    extractFirstImageFromHtml(html),
   ].map((url) => absolutizeUrl(url, pageUrl));
 
-  return candidates.find(isUsableArticleImage);
+  return uniqueImageUrls(candidates);
 }
 
 function readMetaContent(html: string, attrName: "name" | "property", attrValue: string) {
@@ -346,15 +359,18 @@ function readMediaUrl(value: unknown): string | undefined {
   return undefined;
 }
 
-function extractFirstImageFromHtml(html: string) {
-  const matches = Array.from(html.matchAll(/<img[^>]+(?:src|data-src)=["']([^"']+)["'][^>]*>/gi));
+function extractImageUrlsFromHtml(html: string) {
+  const matches = Array.from(
+    html.matchAll(/<img[^>]+(?:src|data-src|data-original)=["']([^"']+)["'][^>]*>/gi),
+  );
+  const urls: string[] = [];
 
   for (const match of matches) {
     const imageUrl = stripHtmlToText(match[1]);
-    if (isUsableArticleImage(imageUrl)) return imageUrl;
+    if (isUsableArticleImage(imageUrl)) urls.push(imageUrl);
   }
 
-  return undefined;
+  return urls;
 }
 
 function absolutizeUrl(value: string | undefined, pageUrl?: string) {
@@ -370,10 +386,36 @@ function absolutizeUrl(value: string | undefined, pageUrl?: string) {
 
 function isUsableArticleImage(value: string | undefined): value is string {
   if (!value) return false;
+  const normalized = value.toLowerCase();
   if (/^(data:|blob:)/i.test(value)) return false;
   if (/\.(svg|gif)(\?|#|$)/i.test(value)) return false;
-  if (/(avatar|logo|icon|sprite|wechat|qrcode|qr-code|barcode)/i.test(value)) return false;
+  if (
+    /(avatar|logo|icon|sprite|wechat|qrcode|qr-code|barcode|placeholder|default|head\.jpg)/i.test(
+      normalized,
+    )
+  ) {
+    return false;
+  }
+  if (/(^|\/)\d{2,4}-\d{2,4}x\d{2,4}\.(jpe?g|png|webp)(\?|#|$)/i.test(normalized)) {
+    return false;
+  }
+  if (/(^|\/)\d{2,4}x\d{2,4}\.(jpe?g|png|webp)(\?|#|$)/i.test(normalized)) {
+    return false;
+  }
+  if (/(qbitai[-_]?logo|qbitai_icon|qrcode_qbitai)/i.test(normalized)) return false;
   return /^https?:\/\//i.test(value) || value.startsWith("//") || value.startsWith("/");
+}
+
+function uniqueImageUrls(urls: Array<string | undefined>) {
+  const seen = new Set<string>();
+
+  return urls.filter((url): url is string => {
+    if (!isUsableArticleImage(url)) return false;
+    const normalized = url.replace(/^http:\/\//i, "https://");
+    if (seen.has(normalized)) return false;
+    seen.add(normalized);
+    return true;
+  });
 }
 
 function clipText(value: string, maxLength: number) {

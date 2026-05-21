@@ -26,7 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-      <body className="antialiased">
+      <body className="overflow-x-hidden antialiased">
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
           strategy="afterInteractive"
@@ -40,7 +40,7 @@ export default function RootLayout({
           `}
         </Script>
         <SiteHeader />
-        <main className="pb-24 md:pb-12">{children}</main>
+        <main className="pb-[calc(6.6rem+env(safe-area-inset-bottom))] md:pb-12">{children}</main>
         <MobileTabbar />
       </body>
     </html>

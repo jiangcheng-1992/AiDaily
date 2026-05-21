@@ -21,6 +21,7 @@ export type Post = {
   videoUrl?: string;
   videoEmbedUrl?: string;
   coverImageUrl?: string;
+  imageUrls?: string[];
   durationMs?: number;
   profileUrl?: string;
   author?: string;

@@ -28,6 +28,7 @@ type HtmlMetadata = {
   author?: string;
   canonicalUrl?: string;
   coverImageUrl?: string;
+  imageUrls?: string[];
   keywords: string[];
   content: string;
 };
@@ -90,6 +91,10 @@ export async function ingestArticleByUrl(rawUrl: string): Promise<ManualIngestRe
     sourceName: source.name,
     sourceUrl,
     coverImageUrl: sourceCandidate?.coverImageUrl || htmlMetadata.coverImageUrl,
+    imageUrls: uniqueImageUrls([
+      ...(sourceCandidate?.imageUrls ?? []),
+      ...(htmlMetadata.imageUrls ?? []),
+    ]),
     author: htmlMetadata.author,
     tags,
     createdAt: publishedAt || collectedAt,
@@ -149,6 +154,7 @@ async function findSourceItemByUrl(source: AiSource, rawUrl: string) {
           asText(item.date) ||
           undefined,
         coverImageUrl: extractFeedImageUrl(item),
+        imageUrls: extractFeedImageUrls(item),
         tags: [
           ...source.tags,
           ...toArray(item.category).map((entry) => stripHtmlToText(asText(entry))).filter(Boolean),
@@ -210,6 +216,7 @@ async function fetchArticleMetadata(rawUrl: string): Promise<HtmlMetadata> {
     coverImageUrl:
       extractHtmlImageUrl(html, rawUrl) ||
       undefined,
+    imageUrls: extractHtmlImageUrls(html, rawUrl),
     keywords: extractHtmlKeywords(html),
     content: extractArticleTextFromHtml(
       html,
@@ -355,12 +362,16 @@ function extractHtmlKeywords(html: string) {
 }
 
 function extractFeedImageUrl(item: RawFeedItem) {
+  return extractFeedImageUrls(item)[0];
+}
+
+function extractFeedImageUrls(item: RawFeedItem) {
   const articleUrl = extractLink(item);
   const candidates = [
     readMediaUrl(item["media:content"]),
     readMediaUrl(item["media:thumbnail"]),
     readMediaUrl(item.enclosure),
-    extractFirstImageFromHtml(
+    ...extractImageUrlsFromHtml(
       [
         asText(item.description),
         asText(item.summary),
@@ -370,18 +381,22 @@ function extractFeedImageUrl(item: RawFeedItem) {
     ),
   ].map((url) => absolutizeUrl(url, articleUrl));
 
-  return candidates.find(isUsableArticleImage);
+  return uniqueImageUrls(candidates);
 }
 
 function extractHtmlImageUrl(html: string, pageUrl?: string) {
+  return extractHtmlImageUrls(html, pageUrl)[0];
+}
+
+function extractHtmlImageUrls(html: string, pageUrl?: string) {
   const candidates = [
+    ...extractImageUrlsFromHtml(html),
     readMetaContent(html, "property", "og:image"),
     readMetaContent(html, "name", "twitter:image"),
     readMetaContent(html, "property", "twitter:image"),
-    extractFirstImageFromHtml(html),
   ].map((url) => absolutizeUrl(url, pageUrl));
 
-  return candidates.find(isUsableArticleImage);
+  return uniqueImageUrls(candidates);
 }
 
 function readMediaUrl(value: unknown): string | undefined {
@@ -405,15 +420,18 @@ function readMediaUrl(value: unknown): string | undefined {
   return undefined;
 }
 
-function extractFirstImageFromHtml(html: string) {
-  const matches = Array.from(html.matchAll(/<img[^>]+(?:src|data-src)=["']([^"']+)["'][^>]*>/gi));
+function extractImageUrlsFromHtml(html: string) {
+  const matches = Array.from(
+    html.matchAll(/<img[^>]+(?:src|data-src|data-original)=["']([^"']+)["'][^>]*>/gi),
+  );
+  const urls: string[] = [];
 
   for (const match of matches) {
     const imageUrl = stripHtmlToText(match[1]);
-    if (isUsableArticleImage(imageUrl)) return imageUrl;
+    if (isUsableArticleImage(imageUrl)) urls.push(imageUrl);
   }
 
-  return undefined;
+  return urls;
 }
 
 function absolutizeUrl(value: string | undefined, pageUrl?: string) {
@@ -429,10 +447,36 @@ function absolutizeUrl(value: string | undefined, pageUrl?: string) {
 
 function isUsableArticleImage(value: string | undefined): value is string {
   if (!value) return false;
+  const normalized = value.toLowerCase();
   if (/^(data:|blob:)/i.test(value)) return false;
   if (/\.(svg|gif)(\?|#|$)/i.test(value)) return false;
-  if (/(avatar|logo|icon|sprite|wechat|qrcode|qr-code|barcode)/i.test(value)) return false;
+  if (
+    /(avatar|logo|icon|sprite|wechat|qrcode|qr-code|barcode|placeholder|default|head\.jpg)/i.test(
+      normalized,
+    )
+  ) {
+    return false;
+  }
+  if (/(^|\/)\d{2,4}-\d{2,4}x\d{2,4}\.(jpe?g|png|webp)(\?|#|$)/i.test(normalized)) {
+    return false;
+  }
+  if (/(^|\/)\d{2,4}x\d{2,4}\.(jpe?g|png|webp)(\?|#|$)/i.test(normalized)) {
+    return false;
+  }
+  if (/(qbitai[-_]?logo|qbitai_icon|qrcode_qbitai)/i.test(normalized)) return false;
   return /^https?:\/\//i.test(value) || value.startsWith("//") || value.startsWith("/");
+}
+
+function uniqueImageUrls(urls: Array<string | undefined>) {
+  const seen = new Set<string>();
+
+  return urls.filter((url): url is string => {
+    if (!isUsableArticleImage(url)) return false;
+    const normalized = url.replace(/^http:\/\//i, "https://");
+    if (seen.has(normalized)) return false;
+    seen.add(normalized);
+    return true;
+  });
 }
 
 function pickPreferredContent(feedContent: string, htmlContent: string) {

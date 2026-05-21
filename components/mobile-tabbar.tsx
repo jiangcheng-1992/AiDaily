@@ -28,8 +28,8 @@ export function MobileTabbar() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed inset-x-3 bottom-3 z-50 rounded-3xl border border-white/80 bg-white/90 px-2 py-2 shadow-lift backdrop-blur-xl md:hidden">
-      <div className="grid grid-cols-7">
+    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200/80 bg-white/96 px-2 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.55rem)] shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur-xl md:hidden">
+      <div className="mx-auto grid max-w-screen-sm grid-cols-7 gap-1">
         {items.map((item) => {
           const active =
             item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
@@ -40,7 +40,7 @@ export function MobileTabbar() {
               href={item.href}
               key={item.href}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 rounded-2xl py-2 text-xs font-semibold text-slate-500 transition-colors",
+                "flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl py-2 text-[11px] font-semibold text-slate-500 transition-colors",
                 active && "bg-blue-50 text-blue-700",
               )}
             >

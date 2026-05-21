@@ -412,7 +412,14 @@ export const fetchableSources = authoritativeSources.filter(
   (source) => source.status === "ready" && Boolean(source.feedUrl),
 );
 
-export const autoIngestSources = fetchableSources.filter((source) => source.autoIngest);
+function canAutoIngestSource(source: AiSource) {
+  if (!source.autoIngest) return false;
+
+  // 先聚焦中文和非纯英文来源，避免首页混入整站外文内容。
+  return source.language !== "en";
+}
+
+export const autoIngestSources = fetchableSources.filter(canAutoIngestSource);
 export const autoIngestSourceIds = new Set(autoIngestSources.map((source) => source.id));
 
 export function getSourcesByAuthority(authority: SourceAuthority) {
