@@ -78,7 +78,9 @@ async function runAutoIngest(reason) {
     console.log(
       `[auto-ingest] ${reason} complete in ${Date.now() - startedAt}ms; new=${
         payload?.newPostCount ?? "?"
-      }, total=${payload?.totalPostCount ?? "?"}`,
+      }, total=${payload?.totalPostCount ?? "?"}, video=${
+        payload?.video?.postCount ?? "?"
+      } posts/${payload?.video?.failureCount ?? "?"} failures`,
     );
   } catch (error) {
     console.error(
@@ -105,6 +107,14 @@ function buildLocalIngestUrl() {
 
   if (process.env.AUTO_INGEST_GITHUB_LIMIT) {
     url.searchParams.set("githubLimit", process.env.AUTO_INGEST_GITHUB_LIMIT);
+  }
+
+  if (process.env.AUTO_INGEST_DOUYIN_SOURCE_LIMIT) {
+    url.searchParams.set("douyinSourceLimit", process.env.AUTO_INGEST_DOUYIN_SOURCE_LIMIT);
+  }
+
+  if (process.env.AUTO_INGEST_DOUYIN_ITEM_LIMIT) {
+    url.searchParams.set("douyinItemLimit", process.env.AUTO_INGEST_DOUYIN_ITEM_LIMIT);
   }
 
   return url;

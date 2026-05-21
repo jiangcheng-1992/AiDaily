@@ -43,7 +43,7 @@ async function handleIngestRequest(request: Request) {
   );
   const douyinSourceLimit = readNonNegativeInt(
     url.searchParams.get("douyinSourceLimit") ?? process.env.DOUYIN_SOURCE_LIMIT,
-    6,
+    12,
   );
   const douyinItemLimit = readPositiveInt(
     url.searchParams.get("douyinItemLimit") ?? process.env.DOUYIN_ITEMS_PER_SOURCE,
@@ -80,8 +80,8 @@ async function handleIngestRequest(request: Request) {
     await writeGeneratedFeed(nextFeed);
   }
   const attemptedCount =
-    sourceLimit + douyinSourceLimit + (githubLimit > 0 ? 1 : 0);
-  const ingestOk = attemptedCount === 0 || run.successCount > 0 || run.posts.length > 0;
+    sourceLimit + (githubLimit > 0 ? 1 : 0);
+  const ingestOk = attemptedCount === 0 || run.primarySuccessCount > 0 || run.posts.length > 0;
 
   return Response.json(
     {
@@ -97,8 +97,18 @@ async function handleIngestRequest(request: Request) {
       totalPostCount: nextFeed.posts.length,
       successCount: run.successCount,
       failureCount: run.failureCount,
+      primarySuccessCount: run.primarySuccessCount,
+      primaryFailureCount: run.primaryFailureCount,
+      video: {
+        attempted: run.video.attempted,
+        sourceCount: run.video.sourceCount,
+        successCount: run.video.successCount,
+        failureCount: run.video.failureCount,
+        postCount: run.video.postCount,
+        sources: run.video.sources,
+      },
       message:
-        "已完成 AI 文章源、抖音 AI 作者视频和 GitHub 热门 Skill 抓取，并为每条动态生成 AI 角色评论。GitHub 与抖音动态使用真实公开互动指标；不提供互动指标的 RSS 源不会编造点赞数。",
+        "已完成 AI 文章源和 GitHub 热门 Skill 抓取，并独立尝试抖音 AI 作者视频抓取。视频失败不会影响文章落地；GitHub 与抖音动态使用真实公开互动指标，不提供互动指标的 RSS 源不会编造点赞数。",
       sources: run.sources,
       github: run.github,
     },

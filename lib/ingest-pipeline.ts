@@ -17,6 +17,8 @@ export type IngestRunResult = {
   githubRepoCount: number;
   successCount: number;
   failureCount: number;
+  primarySuccessCount: number;
+  primaryFailureCount: number;
   posts: Post[];
   comments: Record<string, Comment[]>;
   sources: Array<{
@@ -31,13 +33,28 @@ export type IngestRunResult = {
     count: number;
     error?: string;
   };
+  video: {
+    attempted: boolean;
+    sourceCount: number;
+    successCount: number;
+    failureCount: number;
+    postCount: number;
+    posts: Post[];
+    sources: Array<{
+      sourceId: string;
+      sourceName: string;
+      ok: boolean;
+      count: number;
+      error?: string;
+    }>;
+  };
 };
 
 export async function runIngestPipeline({
   sourceLimit = 12,
   itemLimit = 6,
   githubLimit = 8,
-  douyinSourceLimit = 6,
+  douyinSourceLimit = 12,
   douyinItemLimit = 2,
 }: {
   sourceLimit?: number;
@@ -49,20 +66,13 @@ export async function runIngestPipeline({
   const sources = autoIngestSources.slice(0, sourceLimit);
   const fetchedSources = await fetchSourcesWithLimit(sources, itemLimit, 4);
   const sourcePosts = fetchedSources.flatMap((result) => result.posts);
-  const douyinResults = await fetchDouyinVideoItems({
+  const videoResult = await runVideoIngestTask({
     sourceLimit: douyinSourceLimit,
     itemLimit: douyinItemLimit,
   });
-  const douyinPosts = (
-    await mapWithConcurrency(
-      douyinResults.flatMap((result) => result.items),
-      3,
-      async (item) => douyinItemToPost(item),
-    )
-  ).filter(Boolean);
   const githubResult = await fetchGithubPosts(githubLimit);
   const githubAttempted = githubLimit > 0;
-  const posts = [...githubResult.posts, ...sourcePosts, ...douyinPosts].sort(
+  const posts = [...githubResult.posts, ...sourcePosts, ...videoResult.posts].sort(
     (a, b) =>
       new Date(b.collectedAt ?? b.createdAt).getTime() -
       new Date(a.collectedAt ?? a.createdAt).getTime(),
@@ -83,6 +93,12 @@ export async function runIngestPipeline({
       return [post.id, result.comments] as const;
     },
   );
+  const primarySuccessCount =
+    fetchedSources.filter((result) => result.ok).length +
+    (githubAttempted && githubResult.ok ? 1 : 0);
+  const primaryFailureCount =
+    fetchedSources.filter((result) => !result.ok).length +
+    (githubAttempted && !githubResult.ok ? 1 : 0);
 
   aiCommentResults.forEach(([postId, aiComments]) => {
     comments[postId] = [...(githubResult.comments[postId] ?? []), ...aiComments];
@@ -92,40 +108,116 @@ export async function runIngestPipeline({
     fetchedAt: new Date().toISOString(),
     sourceCount: sources.length,
     githubRepoCount: githubResult.posts.length,
-    successCount:
-      fetchedSources.filter((result) => result.ok).length +
-      douyinResults.filter((result) => result.ok).length +
-      (githubAttempted && githubResult.ok ? 1 : 0),
-    failureCount:
-      fetchedSources.filter((result) => !result.ok).length +
-      douyinResults.filter((result) => !result.ok).length +
-      (githubAttempted && !githubResult.ok ? 1 : 0),
+    successCount: primarySuccessCount,
+    failureCount: primaryFailureCount,
+    primarySuccessCount,
+    primaryFailureCount,
     posts,
     comments,
-    sources: [
-      ...fetchedSources.map(({ source, posts, ...result }) => {
-        void posts;
-        return {
-          sourceId: source.id,
-          sourceName: source.name,
-          ...result,
-        };
-      }),
-      ...douyinResults.map(({ source, items, ...result }) => {
-        void items;
-        return {
-          sourceId: source.id,
-          sourceName: source.name,
-          ...result,
-        };
-      }),
-    ],
+    sources: fetchedSources.map(({ source, posts, ...result }) => {
+      void posts;
+      return {
+        sourceId: source.id,
+        sourceName: source.name,
+        ...result,
+      };
+    }),
     github: {
       ok: githubResult.ok,
       count: githubResult.posts.length,
       error: githubResult.error,
     },
+    video: videoResult,
   };
+}
+
+async function runVideoIngestTask({
+  sourceLimit,
+  itemLimit,
+}: {
+  sourceLimit: number;
+  itemLimit: number;
+}): Promise<IngestRunResult["video"]> {
+  const attempted = sourceLimit > 0;
+
+  if (!attempted) {
+    return {
+      attempted: false,
+      sourceCount: 0,
+      successCount: 0,
+      failureCount: 0,
+      postCount: 0,
+      posts: [],
+      sources: [],
+    };
+  }
+
+  try {
+    const douyinResults = await fetchDouyinVideoItems({
+      sourceLimit,
+      itemLimit,
+    });
+    const posts = (
+      await mapWithConcurrency(
+        douyinResults.flatMap((result) => result.items),
+        3,
+        async (item) => douyinItemToPost(item),
+      )
+    ).filter(Boolean);
+    const sources = douyinResults.map(({ source, items, ...result }) => {
+      void items;
+      return {
+        sourceId: source.id,
+        sourceName: source.name,
+        ...result,
+      };
+    });
+    const failureCount = sources.filter((result) => !result.ok).length;
+
+    if (failureCount > 0) {
+      console.warn("[ingest-video] douyin video task completed with failures", {
+        sourceLimit,
+        itemLimit,
+        successCount: sources.filter((result) => result.ok).length,
+        failureCount,
+        postCount: posts.length,
+      });
+    }
+
+    return {
+      attempted,
+      sourceCount: sources.length,
+      successCount: sources.filter((result) => result.ok).length,
+      failureCount,
+      postCount: posts.length,
+      posts,
+      sources,
+    };
+  } catch (error) {
+    console.warn("[ingest-video] douyin video task failed independently", {
+      sourceLimit,
+      itemLimit,
+      error: error instanceof Error ? error.message : "Unknown video ingest error",
+    });
+
+    return {
+      attempted,
+      sourceCount: sourceLimit,
+      successCount: 0,
+      failureCount: sourceLimit,
+      postCount: 0,
+      posts: [],
+      sources: [
+        {
+          sourceId: "douyin",
+          sourceName: "抖音视频独立任务",
+          ok: false,
+          count: 0,
+          error: error instanceof Error ? error.message : "Unknown video ingest error",
+        },
+      ],
+    };
+  }
 }
 
 async function fetchSourcesWithLimit(

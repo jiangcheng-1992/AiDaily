@@ -32,6 +32,17 @@ export async function GET() {
         readPositiveNumber(process.env.AUTO_INGEST_INITIAL_DELAY_MS, 10000),
         10000,
       ),
+      video: {
+        independent: true,
+        douyinSourceLimit: readNonNegativeNumber(
+          process.env.AUTO_INGEST_DOUYIN_SOURCE_LIMIT ?? process.env.DOUYIN_SOURCE_LIMIT,
+          12,
+        ),
+        douyinItemLimit: readPositiveNumber(
+          process.env.AUTO_INGEST_DOUYIN_ITEM_LIMIT ?? process.env.DOUYIN_ITEMS_PER_SOURCE,
+          2,
+        ),
+      },
     },
     aiComments: {
       backend: textAi.backend,
@@ -47,4 +58,11 @@ function readPositiveNumber(value: string | undefined, fallback: number) {
 
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function readNonNegativeNumber(value: string | undefined, fallback: number) {
+  if (!value) return fallback;
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
