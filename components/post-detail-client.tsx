@@ -345,22 +345,26 @@ export function PostDetailClient({
 
       const data = (await response.json()) as {
         ok: boolean;
-        provider: "minimax" | "local";
+        provider: "minimax" | "unavailable";
         comments: Comment[];
+        error?: string;
+        skipped?: boolean;
       };
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "AI comment request failed");
+      }
+
       const added = addGeneratedComments(post.id, data.comments ?? []);
 
       setAiCommentNotice(
         added.length
-          ? `已通过${data.provider === "minimax" ? "MiniMax" : "本地角色"}生成 ${added.length} 条 AI 评论`
+          ? `已通过${data.provider === "minimax" ? "MiniMax" : "AI 服务"}生成 ${added.length} 条 AI 评论`
           : "这篇帖子已经生成过 AI 角色评论",
       );
-    } catch {
-      const generated = addAiComments(post);
+    } catch (error) {
       setAiCommentNotice(
-        generated.length
-          ? `网络暂不可用，已用本地角色生成 ${generated.length} 条 AI 评论`
-          : "这篇帖子已经生成过 AI 角色评论",
+        error instanceof Error ? error.message : "AI 评论生成失败，请稍后重试",
       );
     } finally {
       setIsGeneratingAiComments(false);

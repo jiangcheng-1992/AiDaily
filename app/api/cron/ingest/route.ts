@@ -107,20 +107,31 @@ async function rebuildFeedAiComments(
   options: { force?: boolean } = {},
 ): Promise<GeneratedFeed> {
   const comments: Record<string, Comment[]> = {};
-
-  for (const post of feed.posts) {
+  const entries = await mapWithConcurrency(feed.posts, 2, async (post) => {
     const currentComments = feed.comments[post.id] ?? [];
     const preservedComments = currentComments.filter((comment) => !comment.isAi);
     const currentAiComments = currentComments.filter((comment) => comment.isAi);
 
     if (!options.force && !shouldRefreshAiComments(currentAiComments)) {
-      comments[post.id] = [...preservedComments, ...currentAiComments];
-      continue;
+      return [post.id, [...preservedComments, ...currentAiComments]] as [string, Comment[]];
     }
 
     const generated = await generateProductionAiComments({ post });
-    comments[post.id] = [...preservedComments, ...generated.comments];
-  }
+    if (generated.error) {
+      console.warn("[cron/ingest] ai comment rebuild skipped", {
+        postId: post.id,
+        sourceName: post.sourceName,
+        error: generated.error,
+      });
+      return [post.id, [...preservedComments, ...currentAiComments]] as [string, Comment[]];
+    }
+
+    return [post.id, [...preservedComments, ...generated.comments]] as [string, Comment[]];
+  });
+
+  entries.forEach(([postId, postComments]) => {
+    comments[postId] = postComments;
+  });
 
   return {
     ...feed,
@@ -153,4 +164,29 @@ function readNonNegativeInt(value: string | undefined, fallback: number) {
 
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+async function mapWithConcurrency<TItem, TResult>(
+  items: TItem[],
+  concurrency: number,
+  worker: (item: TItem, index: number) => Promise<TResult>,
+) {
+  if (!items.length) return [] as TResult[];
+
+  const results = new Array<TResult>(items.length);
+  let cursor = 0;
+
+  async function runWorker() {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      results[index] = await worker(items[index], index);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(Math.max(concurrency, 1), items.length) }, () => runWorker()),
+  );
+
+  return results;
 }

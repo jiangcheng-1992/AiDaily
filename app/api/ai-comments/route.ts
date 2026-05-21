@@ -23,11 +23,24 @@ export async function POST(request: Request) {
       existingRoleIds: body.existingRoleIds ?? [],
     });
 
+    if (result.error) {
+      return Response.json(
+        {
+          ok: false,
+          provider: result.provider,
+          comments: result.comments,
+          error: result.error,
+        },
+        { status: 503 },
+      );
+    }
+
     return Response.json(
       {
         ok: true,
         provider: result.provider,
         comments: result.comments,
+        skipped: result.skipped ?? false,
       },
       {
         headers: {

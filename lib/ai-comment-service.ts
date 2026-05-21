@@ -1,7 +1,6 @@
 import {
   aiCommentRoles,
   createAiComment,
-  generateAiCommentsForPost,
   selectRolesForPost,
 } from "@/lib/ai-comment-roles";
 import { generateMiniMaxText, hasMiniMaxTextAccess } from "@/lib/minimax-text";
@@ -14,26 +13,30 @@ type RoleCommentPayload = {
   }>;
 };
 
+export type ProductionAiCommentResult = {
+  provider: "minimax" | "unavailable";
+  comments: Comment[];
+  error?: string;
+  skipped?: boolean;
+};
+
 export async function generateProductionAiComments({
   post,
   existingRoleIds = [],
 }: {
   post: Post;
   existingRoleIds?: string[];
-}): Promise<{ provider: "minimax" | "local"; comments: Comment[] }> {
+}): Promise<ProductionAiCommentResult> {
   const roles = selectRolesForPost(post).filter(
     (role) => !existingRoleIds.includes(role.id),
   );
 
   if (!roles.length) {
-    return { provider: "local", comments: [] };
+    return { provider: "unavailable", comments: [], skipped: true };
   }
 
   if (!hasMiniMaxTextAccess()) {
-    return {
-      provider: "local",
-      comments: generateAiCommentsForPost(post, existingRoleIds),
-    };
+    return { provider: "unavailable", comments: [], error: "MINIMAX_API_KEY is not configured" };
   }
 
   try {
@@ -52,34 +55,74 @@ export async function generateProductionAiComments({
       })
       .filter((comment): comment is Comment => Boolean(comment));
 
-    if (comments.length) return { provider: "minimax", comments };
-  } catch (error) {
-    console.warn("MiniMax comment generation fell back to local templates", error);
-  }
+    if (comments.length) {
+      return { provider: "minimax", comments };
+    }
 
-  return {
-    provider: "local",
-    comments: generateAiCommentsForPost(post, existingRoleIds),
-  };
+    return {
+      provider: "unavailable",
+      comments: [],
+      error: "MiniMax returned no usable grounded comments",
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "MiniMax comment generation failed";
+    console.warn("MiniMax comment generation failed", {
+      postId: post.id,
+      sourceName: post.sourceName,
+      error: message,
+    });
+    return {
+      provider: "unavailable",
+      comments: [],
+      error: message,
+    };
+  }
 }
 
 async function generateWithMiniMax(
   post: Post,
   roles: typeof aiCommentRoles,
 ): Promise<RoleCommentPayload> {
-  const text = await generateMiniMaxText({
-    systemPrompt:
-      "你是「AI圈」社区的 AI 评论生成器。请用中文生成像真实社区用户写出的短评论，必须直接表达观点和判断，具体、克制、有信息量。不要营销腔，不要编造外部事实，不要空话套话。每条评论都必须紧扣这篇内容里已经出现的具体事实、动作、数字或限制，不能写成放在哪篇文章都成立的万能评论。只输出 JSON，不要额外解释。",
-    userPrompt: buildPrompt(post, roles),
-    temperature: 0.35,
-  });
-  const parsed = parseRoleCommentPayload(text);
+  let lastError: Error | null = null;
 
-  if (!Array.isArray(parsed.comments)) {
-    throw new Error("MiniMax response did not include comments array");
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      const text = await generateMiniMaxText({
+        systemPrompt:
+          "你是「AI圈」社区的 AI 评论生成器。请用中文生成像真实社区用户写出的短评论，必须直接表达观点和判断，具体、克制、有信息量。不要营销腔，不要编造外部事实，不要空话套话。每条评论都必须紧扣这篇内容里已经出现的具体事实、动作、数字或限制，不能写成放在哪篇文章都成立的万能评论。只输出 JSON，不要额外解释。",
+        userPrompt: buildPrompt(post, roles),
+        temperature: attempt === 1 ? 0.35 : 0.2,
+      });
+      const parsed = parseRoleCommentPayload(text);
+
+      if (!Array.isArray(parsed.comments)) {
+        throw new Error("MiniMax response did not include comments array");
+      }
+
+      const groundedComments = parsed.comments.filter((item) =>
+        isGroundedRoleComment(post, item.content),
+      );
+
+      if (!groundedComments.length) {
+        throw new Error("MiniMax comments were too generic and failed grounding checks");
+      }
+
+      return {
+        comments: groundedComments,
+      };
+    } catch (error) {
+      lastError =
+        error instanceof Error ? error : new Error("MiniMax comment generation failed");
+      console.warn("MiniMax comment attempt failed", {
+        postId: post.id,
+        attempt,
+        error: lastError.message,
+      });
+    }
   }
 
-  return parsed;
+  throw lastError ?? new Error("MiniMax comment generation failed");
 }
 
 function buildPrompt(post: Post, roles: typeof aiCommentRoles) {
@@ -91,6 +134,7 @@ function buildPrompt(post: Post, roles: typeof aiCommentRoles) {
       "每条评论 80 到 160 个中文字符左右。",
       "每条评论必须锚定至少 1 个文中已经出现的具体动作、限制、数字、结果或业务变化来分析。",
       "每条评论开头就要切进事实本身，不能先说空泛态度，例如不要先写“这很值得关注”“我更关心的是”。",
+      "如果评论没有点出文中的具体对象、动作、数字、限制、场景或结果，就视为不合格。",
       "评论里要体现这个角色最在意的判断角度，例如产品价值、可复现性、增长、风险等，但必须围绕文中事实展开。",
       "不同角色的评论必须明显不是一个模版改词，句式、抓取事实和判断重点都要拉开。",
       "不要重复标题，不要只说‘值得关注’‘很重要’这类空泛判断。",
@@ -156,4 +200,38 @@ function parseRoleCommentPayload(value: string): RoleCommentPayload {
     .trim();
 
   return JSON.parse(cleanValue) as RoleCommentPayload;
+}
+
+function isGroundedRoleComment(post: Post, content: string) {
+  const normalized = content.trim();
+  if (normalized.length < 40) return false;
+
+  const genericPatterns = [
+    /^这很值得关注/,
+    /^我更关心的是/,
+    /^值得关注的是/,
+    /^这说明/,
+    /^可以看出/,
+    /值得关注|引发关注|非常重要|未来可期|拭目以待/,
+  ];
+  if (genericPatterns.some((pattern) => pattern.test(normalized))) {
+    return false;
+  }
+
+  const groundingTerms = extractGroundingTerms(post);
+  return groundingTerms.some((term) => normalized.includes(term));
+}
+
+function extractGroundingTerms(post: Post) {
+  const candidates = [
+    post.sourceName,
+    ...post.tags,
+    ...post.title.split(/[\s,，。:：/|｜()（）【】\-]/),
+    ...post.summary.split(/[\s,，。:：/|｜()（）【】\-]/),
+  ]
+    .map((part) => part.trim())
+    .filter((part) => part.length >= 2)
+    .filter((part) => !/^(AI|视频|文章|内容|评论|来源)$/.test(part));
+
+  return Array.from(new Set(candidates)).slice(0, 24);
 }

@@ -54,8 +54,10 @@ export async function runIngestPipeline({
     itemLimit: douyinItemLimit,
   });
   const douyinPosts = (
-    await Promise.all(
-      douyinResults.flatMap((result) => result.items.map((item) => douyinItemToPost(item))),
+    await mapWithConcurrency(
+      douyinResults.flatMap((result) => result.items),
+      3,
+      async (item) => douyinItemToPost(item),
     )
   ).filter(Boolean);
   const githubResult = await fetchGithubPosts(githubLimit);
@@ -66,11 +68,20 @@ export async function runIngestPipeline({
       new Date(a.collectedAt ?? a.createdAt).getTime(),
   );
   const comments: Record<string, Comment[]> = {};
-  const aiCommentResults = await Promise.all(
-    posts.map(async (post) => {
+  const aiCommentResults = await mapWithConcurrency(
+    posts,
+    2,
+    async (post) => {
       const result = await generateProductionAiComments({ post });
+      if (result.error) {
+        console.warn("[ingest] ai comment generation skipped", {
+          postId: post.id,
+          sourceName: post.sourceName,
+          error: result.error,
+        });
+      }
       return [post.id, result.comments] as const;
-    }),
+    },
   );
 
   aiCommentResults.forEach(([postId, aiComments]) => {
@@ -138,11 +149,16 @@ async function fetchSourcesWithLimit(
 
       try {
         const items = await fetchSourceItems(source, itemLimit);
+        const posts = await mapWithConcurrency(
+          items,
+          2,
+          async (item) => sourceItemToPost(item, source),
+        );
         results.push({
           source,
           ok: true,
           count: items.length,
-          posts: await Promise.all(items.map((item) => sourceItemToPost(item, source))),
+          posts,
         });
       } catch (error) {
         results.push({
@@ -172,7 +188,7 @@ async function fetchGithubPosts(limit: number): Promise<{
   try {
     const repos = await fetchHotGithubSkillRepos(limit);
     const comments: Record<string, Comment[]> = {};
-    const posts = await Promise.all(repos.map((repo) => githubRepoToPost(repo)));
+    const posts = await mapWithConcurrency(repos, 3, async (repo) => githubRepoToPost(repo));
     const commentResults = await Promise.allSettled(
       repos.map((repo) => fetchGithubRepoIssueComments(repo, 2)),
     );
@@ -439,4 +455,29 @@ function uniqueTags(tags: string[]) {
     .map((tag) => tag.trim())
     .filter(Boolean)
     .filter((tag, index, arr) => arr.indexOf(tag) === index);
+}
+
+async function mapWithConcurrency<TItem, TResult>(
+  items: TItem[],
+  concurrency: number,
+  worker: (item: TItem, index: number) => Promise<TResult>,
+) {
+  if (!items.length) return [] as TResult[];
+
+  const results = new Array<TResult>(items.length);
+  let cursor = 0;
+
+  async function runWorker() {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      results[index] = await worker(items[index], index);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(Math.max(concurrency, 1), items.length) }, () => runWorker()),
+  );
+
+  return results;
 }
