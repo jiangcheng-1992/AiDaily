@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -67,6 +67,10 @@ export function PostDetailClient({
   const [aiCommentNotice, setAiCommentNotice] = useState("");
   const [isGeneratingAiComments, setIsGeneratingAiComments] = useState(false);
   const [videoStarted, setVideoStarted] = useState(false);
+  const [videoLoading, setVideoLoading] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
+  const [videoLoadProgress, setVideoLoadProgress] = useState(0);
+  const loadProgressTimerRef = useRef<number | null>(null);
 
   const post = useMemo(
     () => getPostById(allPosts, postId) ?? initialPost,
@@ -137,10 +141,55 @@ export function PostDetailClient({
       return true;
     });
   }, [post.coverImageUrl, post.imageUrls, post.type]);
+  const articleBlocks = useMemo(() => {
+    if (post.type === "video") return [];
+
+    if (post.contentBlocks?.length) {
+      const seenImages = new Set<string>();
+
+      return post.contentBlocks.filter((block) => {
+        if (block.type !== "image") return Boolean(block.text?.trim());
+        const normalized = block.url.replace(/^http:\/\//i, "https://");
+        if (seenImages.has(normalized)) return false;
+        seenImages.add(normalized);
+        return true;
+      });
+    }
+
+    return [];
+  }, [post.contentBlocks, post.type]);
+  const hasInlineArticleBlocks = articleBlocks.length > 0;
 
   useEffect(() => {
     setVideoStarted(false);
+    setVideoLoading(false);
+    setVideoReady(false);
+    setVideoLoadProgress(0);
   }, [post.id]);
+
+  useEffect(() => {
+    if (!videoLoading) {
+      if (loadProgressTimerRef.current !== null) {
+        window.clearInterval(loadProgressTimerRef.current);
+        loadProgressTimerRef.current = null;
+      }
+      return;
+    }
+
+    loadProgressTimerRef.current = window.setInterval(() => {
+      setVideoLoadProgress((current) => {
+        if (current >= 86) return current;
+        return Math.min(current + (current < 36 ? 12 : 6), 86);
+      });
+    }, 180);
+
+    return () => {
+      if (loadProgressTimerRef.current !== null) {
+        window.clearInterval(loadProgressTimerRef.current);
+        loadProgressTimerRef.current = null;
+      }
+    };
+  }, [videoLoading]);
 
   const handleShare = async () => {
     const url = `${window.location.origin}/post/${post.id}`;
@@ -200,6 +249,25 @@ export function PostDetailClient({
       setIsGeneratingAiComments(false);
       window.setTimeout(() => setAiCommentNotice(""), 2600);
     }
+  };
+
+  const startVideoPlayback = () => {
+    setVideoStarted(true);
+    setVideoReady(false);
+    setVideoLoading(true);
+    setVideoLoadProgress(10);
+  };
+
+  const markVideoReady = () => {
+    setVideoReady(true);
+    setVideoLoading(false);
+    setVideoLoadProgress(100);
+  };
+
+  const handleVideoBuffering = () => {
+    if (!videoReady) return;
+    setVideoLoading(true);
+    setVideoLoadProgress(72);
   };
 
   return (
@@ -294,7 +362,7 @@ export function PostDetailClient({
             </div>
           ) : null}
 
-          {post.type !== "video" && articleImageUrls.length ? (
+          {post.type !== "video" && articleImageUrls.length && !hasInlineArticleBlocks ? (
             <div className="mt-6 space-y-4">
               {articleImageUrls.map((imageUrl, index) => (
                 <ExternalImage
@@ -315,7 +383,7 @@ export function PostDetailClient({
               {hasPlayableVideo && !videoStarted ? (
                 <button
                   type="button"
-                  onClick={() => setVideoStarted(true)}
+                  onClick={startVideoPlayback}
                   className="group relative block w-full bg-black text-left"
                   aria-label={`播放视频：${post.title}`}
                 >
@@ -341,25 +409,115 @@ export function PostDetailClient({
                   </div>
                 </button>
               ) : post.videoUrl ? (
-                <video
-                  controls
-                  autoPlay
-                  playsInline
-                  preload="metadata"
-                  poster={post.coverImageUrl}
-                  className="aspect-[9/16] w-full bg-black object-contain"
-                  src={post.videoUrl}
-                />
+                <div className="relative aspect-[9/16] w-full bg-black">
+                  {post.coverImageUrl ? (
+                    <>
+                      <div
+                        className={cn(
+                          "absolute inset-0 bg-cover bg-center blur-xl transition-opacity duration-300",
+                          videoReady ? "opacity-0" : "opacity-25",
+                        )}
+                        style={{ backgroundImage: `url(${post.coverImageUrl})` }}
+                      />
+                      <img
+                        src={post.coverImageUrl}
+                        alt={post.title}
+                        className={cn(
+                          "absolute inset-0 h-full w-full object-contain transition-opacity duration-300",
+                          videoReady ? "opacity-0" : "opacity-100",
+                        )}
+                      />
+                    </>
+                  ) : null}
+                  <video
+                    controls
+                    autoPlay
+                    playsInline
+                    preload="auto"
+                    poster={post.coverImageUrl}
+                    className={cn(
+                      "relative aspect-[9/16] w-full bg-black object-contain transition-opacity duration-300",
+                      videoReady ? "opacity-100" : "opacity-0",
+                    )}
+                    src={post.videoUrl}
+                    onLoadedData={markVideoReady}
+                    onCanPlay={markVideoReady}
+                    onPlaying={markVideoReady}
+                    onWaiting={handleVideoBuffering}
+                    onProgress={() => {
+                      if (!videoReady) {
+                        setVideoLoadProgress((current) => Math.max(current, 45));
+                      }
+                    }}
+                  />
+                  {videoLoading ? (
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 top-0 flex items-end bg-gradient-to-t from-black/60 via-black/10 to-transparent p-4">
+                      <div className="w-full rounded-2xl bg-black/70 px-4 py-3 text-white shadow-2xl backdrop-blur-sm">
+                        <div className="flex items-center justify-between gap-3 text-xs font-bold">
+                          <span>{videoReady ? "缓冲中..." : "视频加载中..."}</span>
+                          <span>{videoLoadProgress}%</span>
+                        </div>
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/15">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-blue-400 via-cyan-300 to-violet-400 transition-[width] duration-200"
+                            style={{ width: `${videoLoadProgress}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
               ) : videoEmbedUrl ? (
-                <iframe
-                  title={post.title}
-                  src={videoEmbedUrl}
-                  loading="lazy"
-                  allow="fullscreen; autoplay; encrypted-media; picture-in-picture"
-                  allowFullScreen
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  className="aspect-[9/16] w-full border-0 bg-black"
-                />
+                <div className="relative aspect-[9/16] w-full bg-black">
+                  {post.coverImageUrl ? (
+                    <>
+                      <div
+                        className={cn(
+                          "absolute inset-0 bg-cover bg-center blur-xl transition-opacity duration-300",
+                          videoReady ? "opacity-0" : "opacity-25",
+                        )}
+                        style={{ backgroundImage: `url(${post.coverImageUrl})` }}
+                      />
+                      <img
+                        src={post.coverImageUrl}
+                        alt={post.title}
+                        className={cn(
+                          "absolute inset-0 h-full w-full object-contain transition-opacity duration-300",
+                          videoReady ? "opacity-0" : "opacity-100",
+                        )}
+                      />
+                    </>
+                  ) : null}
+                  <iframe
+                    title={post.title}
+                    src={videoEmbedUrl}
+                    loading="eager"
+                    allow="fullscreen; autoplay; encrypted-media; picture-in-picture"
+                    allowFullScreen
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    className={cn(
+                      "relative aspect-[9/16] w-full border-0 bg-black transition-opacity duration-300",
+                      videoReady ? "opacity-100" : "opacity-0",
+                    )}
+                    onLoad={markVideoReady}
+                  />
+                  {videoLoading ? (
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 top-0 flex items-end bg-gradient-to-t from-black/60 via-black/10 to-transparent p-4">
+                      <div className="w-full rounded-2xl bg-black/70 px-4 py-3 text-white shadow-2xl backdrop-blur-sm">
+                        <div className="flex items-center justify-between gap-3 text-xs font-bold">
+                          <span>视频加载中...</span>
+                          <span>{videoLoadProgress}%</span>
+                        </div>
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/15">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-blue-400 via-cyan-300 to-violet-400 transition-[width] duration-200"
+                            style={{ width: `${videoLoadProgress}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
               ) : post.coverImageUrl ? (
                 <div className="relative bg-black">
                   <div
@@ -385,11 +543,15 @@ export function PostDetailClient({
                   <span>
                     {post.videoUrl
                       ? videoStarted
-                        ? "站内播放"
+                        ? videoLoading
+                          ? "站内加载中"
+                          : "站内播放"
                         : "点击封面播放"
                       : videoEmbedUrl
                         ? videoStarted
-                          ? "站内嵌入播放"
+                          ? videoLoading
+                            ? "站内加载中"
+                            : "站内嵌入播放"
                           : "点击封面播放"
                         : "视频预览"}
                   </span>
@@ -415,11 +577,31 @@ export function PostDetailClient({
             {post.summary}
           </p>
 
-          <div className="mt-8 space-y-5 text-[16px] leading-8 text-slate-700">
-            {displayParagraphs.map((paragraph, index) => (
-              <p key={`${post.id}-p-${index}`}>{paragraph}</p>
-            ))}
-          </div>
+          {hasInlineArticleBlocks ? (
+            <div className="mt-8 space-y-5 text-[16px] leading-8 text-slate-700">
+              {articleBlocks.map((block, index) =>
+                block.type === "paragraph" ? (
+                  <p key={`${post.id}-p-${index}`}>{block.text}</p>
+                ) : (
+                  <ExternalImage
+                    key={`${post.id}-image-${index}`}
+                    src={block.url}
+                    alt={block.alt || `${post.title} 配图 ${index + 1}`}
+                    wrapperAs="figure"
+                    wrapperClassName="overflow-hidden rounded-[1.4rem] border border-slate-100 bg-slate-100 shadow-soft"
+                    className="max-h-[520px] w-full object-contain"
+                    loading={index <= 1 ? "eager" : "lazy"}
+                  />
+                ),
+              )}
+            </div>
+          ) : (
+            <div className="mt-8 space-y-5 text-[16px] leading-8 text-slate-700">
+              {displayParagraphs.map((paragraph, index) => (
+                <p key={`${post.id}-p-${index}`}>{paragraph}</p>
+              ))}
+            </div>
+          )}
 
           <div className="mt-8 grid gap-4 md:grid-cols-2">
             <section className="rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-50 to-violet-50/70 p-5">

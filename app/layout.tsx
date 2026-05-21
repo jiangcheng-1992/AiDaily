@@ -17,6 +17,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: "#f8fafc",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -40,7 +41,7 @@ export default function RootLayout({
           `}
         </Script>
         <SiteHeader />
-        <main className="pb-[calc(6.6rem+env(safe-area-inset-bottom))] md:pb-12">{children}</main>
+        <main className="pb-[calc(8.5rem+env(safe-area-inset-bottom))] md:pb-12">{children}</main>
         <MobileTabbar />
       </body>
     </html>

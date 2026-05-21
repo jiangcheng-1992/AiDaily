@@ -15,7 +15,7 @@ type AuthMode = "login" | "register";
 
 export function AuthClient() {
   const router = useRouter();
-  const { login, register } = useAuth();
+  const { login, register, persistence } = useAuth();
   const [mode, setMode] = useState<AuthMode>("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -57,7 +57,7 @@ export function AuthClient() {
             保存灵感、管理投稿，把你的 AI 信息流同步起来
           </h1>
           <p className="mt-5 max-w-xl text-base leading-8 text-blue-50">
-            注册后可以进入个人主页，查看收藏、投稿和评论数据。账号会保存在服务端数据目录中，正式环境刷新和重新访问后也能保持登录。
+            注册后可以进入个人主页，查看收藏、投稿和评论数据。生产环境建议把账号写入共享数据库，并保留服务端持久化目录存放抓取数据，这样刷新、重启和多实例切换后也能稳定保持登录。
           </p>
         </div>
 
@@ -92,6 +92,26 @@ export function AuthClient() {
           </div>
 
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+            {persistence && !persistence.stable ? (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold leading-6 text-amber-700">
+                当前鉴权后端还是
+                <code className="mx-1 rounded bg-white/80 px-1.5 py-0.5 text-[12px]">
+                  {persistence.backend ?? "file"}
+                </code>
+                ，服务端账号数据目录是
+                <code className="mx-1 rounded bg-white/80 px-1.5 py-0.5 text-[12px]">
+                  {persistence.dataDir}
+                </code>
+                ，还没有进入稳定模式。Railway 线上请优先配置
+                <code className="mx-1 rounded bg-white/80 px-1.5 py-0.5 text-[12px]">
+                  DATABASE_URL
+                </code>
+                使用共享数据库，并挂载 Volume 到
+                <code className="mx-1 rounded bg-white/80 px-1.5 py-0.5 text-[12px]">/data</code>
+                ，否则重启、重部署或多实例切换后可能出现注册账号丢失、登录不成功或登录状态不记住。
+              </div>
+            ) : null}
+
             {isRegister ? (
               <div className="space-y-2">
                 <Label htmlFor="name">昵称</Label>

@@ -7,6 +7,17 @@ export type PostType =
   | "case"
   | "video";
 
+export type ArticleContentBlock =
+  | {
+      type: "paragraph";
+      text: string;
+    }
+  | {
+      type: "image";
+      url: string;
+      alt?: string;
+    };
+
 export type Post = {
   id: string;
   sourceId?: string;
@@ -22,6 +33,7 @@ export type Post = {
   videoEmbedUrl?: string;
   coverImageUrl?: string;
   imageUrls?: string[];
+  contentBlocks?: ArticleContentBlock[];
   durationMs?: number;
   profileUrl?: string;
   author?: string;

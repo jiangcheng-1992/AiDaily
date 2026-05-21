@@ -44,6 +44,7 @@ export function PostCard({
   shared?: boolean;
 }) {
   const router = useRouter();
+  const articlePreviewImage = post.coverImageUrl ?? post.imageUrls?.[0];
 
   return (
     <Card
@@ -55,10 +56,10 @@ export function PostCard({
       }}
       className="group cursor-pointer overflow-hidden rounded-3xl border-white/80 bg-white/95 transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-100 hover:shadow-lift"
     >
-      <article className="p-5 sm:p-6">
+      <article className="p-4 sm:p-6">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 text-sm font-black text-white shadow-soft">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 text-sm font-black text-white shadow-soft sm:h-11 sm:w-11">
               {post.sourceName.slice(0, 1)}
             </div>
             <div className="min-w-0">
@@ -87,13 +88,13 @@ export function PostCard({
           </span>
         </div>
 
-        <h2 className="mt-5 text-xl font-black leading-snug tracking-normal text-slate-950 sm:text-2xl">
+        <h2 className="mt-4 text-[1.65rem] font-black leading-[1.2] tracking-normal text-slate-950 sm:mt-5 sm:text-2xl">
           {post.title}
         </h2>
 
-        {post.type !== "video" && post.coverImageUrl ? (
+        {post.type !== "video" && articlePreviewImage ? (
           <ExternalImage
-            src={post.coverImageUrl}
+            src={articlePreviewImage}
             alt={post.title}
             loading="lazy"
             wrapperClassName="mt-4 overflow-hidden rounded-[1.35rem] border border-slate-100 bg-slate-100"
@@ -126,7 +127,7 @@ export function PostCard({
           </div>
         ) : null}
 
-        <p className="mt-3 line-clamp-3 text-[15px] leading-7 text-slate-600">
+        <p className="mt-3 line-clamp-3 text-[15px] leading-7 text-slate-600 sm:text-[15px]">
           {post.summary}
         </p>
 
@@ -181,7 +182,7 @@ export function PostCard({
           ))}
         </div>
 
-        <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-3">
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
           <div className="flex min-w-0 items-center gap-1">
             <InteractionButton
               icon={Heart}

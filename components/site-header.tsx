@@ -10,10 +10,9 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/", label: "首页" },
-  { href: "/skills", label: "热门 Skill" },
+  { href: "/skills", label: "Skill" },
   { href: "/ranking", label: "榜单" },
-  { href: "/saved", label: "收藏" },
-  { href: "/portfolio", label: "姜承的作品集" },
+  { href: "/portfolio", label: "姜承作品集" },
   { href: "/me", label: "我的" },
 ];
 
@@ -30,10 +29,10 @@ export function SiteHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/70 bg-white/82 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-40 border-b border-white/70 bg-white/88 backdrop-blur-xl">
+      <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-3 sm:h-16 sm:px-6 lg:px-8">
         <Link href="/" className="flex min-w-0 items-center gap-3">
-          <span className="text-3xl font-black leading-none tracking-normal brand-gradient">
+          <span className="text-[2rem] font-black leading-none tracking-normal brand-gradient sm:text-3xl">
             AI圈
           </span>
           <span className="hidden max-w-[240px] truncate text-sm text-slate-500 lg:block">
@@ -94,7 +93,10 @@ export function SiteHeader() {
           )}
           <Link
             href="/submit"
-            className={cn(buttonVariants({ variant: "gradient", size: "sm" }))}
+            className={cn(
+              buttonVariants({ variant: "gradient", size: "sm" }),
+              "h-10 px-4 text-sm sm:h-auto sm:px-5",
+            )}
           >
             <PenLine className="h-4 w-4" />
             投稿

@@ -26,6 +26,9 @@ export async function POST(request: Request) {
     response.cookies.set(authSessionCookie, sessionId, getAuthCookieOptions(request));
     return response;
   } catch (error) {
+    // #region debug-point D:register-route-error
+    (()=>{const fs=require("node:fs");let u="http://127.0.0.1:7777/event",s="auth-login-failure";try{const e=fs.readFileSync(".dbg/auth-login-failure.env","utf8");u=e.match(/DEBUG_SERVER_URL=(.+)/)?.[1]||u;s=e.match(/DEBUG_SESSION_ID=(.+)/)?.[1]||s}catch{}fetch(u,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({sessionId:s,runId:"pre-fix",hypothesisId:"D",location:"app/api/auth/register/route.ts:catch",msg:"[DEBUG] register route failed",data:{error:error instanceof Error ? error.message : "unknown",host:request.headers.get("host"),origin:request.headers.get("origin")},ts:Date.now()})}).catch(()=>{})})();
+    // #endregion
     return NextResponse.json(
       {
         ok: false,

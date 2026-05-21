@@ -21,6 +21,19 @@ type PostInsight = {
   editorComment: string;
 };
 
+type RoleCommentId =
+  | "product-strategist"
+  | "indie-hacker"
+  | "research-reader"
+  | "growth-operator"
+  | "creator-coach"
+  | "risk-observer";
+
+type RoleEvidenceSelection = {
+  primary: string;
+  secondary: string;
+};
+
 const SENTENCE_SPLIT_REGEX = /(?<=[。！？!?；;])\s*/;
 const METADATA_PREFIXES = ["原始来源：", "原文时间：", "抓取时间：", "说明："];
 const NOISE_PARAGRAPH_REGEXES = [
@@ -89,10 +102,15 @@ export function analyzePost(post: Pick<Post, "title" | "summary" | "content">): 
   });
 }
 
-export function buildRoleComment(post: Pick<Post, "title" | "summary" | "content">, roleId: string) {
+export function buildRoleComment(
+  post: Pick<Post, "title" | "summary" | "content">,
+  roleId: string,
+  options?: { variant?: number },
+) {
   const insight = analyzePost(post);
-  const evidence = clip(insight.evidence[0] ?? insight.summary, 82);
-  const secondEvidence = clip(insight.evidence[1] ?? evidence, 82);
+  const selectedEvidence = pickRoleEvidence(insight, roleId as RoleCommentId, options?.variant ?? 0);
+  const evidence = clip(selectedEvidence.primary, 82);
+  const secondEvidence = clip(selectedEvidence.secondary, 82);
 
   switch (roleId) {
     case "product-strategist":
@@ -140,6 +158,110 @@ function analyzePostText({
     whyItMatters: buildWhyItMatters(theme, subject, evidence),
     editorComment: buildEditorComment(theme, subject, evidence),
   };
+}
+
+function pickRoleEvidence(
+  insight: PostInsight,
+  roleId: RoleCommentId,
+  variant = 0,
+): RoleEvidenceSelection {
+  const candidates = collectRoleEvidenceCandidates(insight, roleId);
+  const primary =
+    candidates[variant] ??
+    candidates[0] ??
+    insight.evidence[variant] ??
+    insight.evidence[0] ??
+    insight.summary;
+  const secondary =
+    candidates.find((sentence) => sentence !== primary) ??
+    insight.evidence.find((sentence) => sentence !== primary) ??
+    insight.summary;
+
+  return { primary, secondary };
+}
+
+function collectRoleEvidenceCandidates(insight: PostInsight, roleId: RoleCommentId) {
+  const title = insight.subject;
+  const sentences = [
+    ...insight.evidence,
+    ...insight.paragraphs.flatMap((paragraph) => paragraph.split(SENTENCE_SPLIT_REGEX)),
+  ]
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length >= 18);
+
+  const seen = new Set<string>();
+  const uniqueSentences = sentences.filter((sentence) => {
+    if (seen.has(sentence)) return false;
+    seen.add(sentence);
+    return true;
+  });
+
+  return uniqueSentences
+    .map((sentence, index) => ({
+      sentence,
+      score: scoreRoleEvidence(sentence, title, roleId),
+      index,
+    }))
+    .sort((left, right) => right.score - left.score || left.index - right.index)
+    .map((entry) => entry.sentence);
+}
+
+function scoreRoleEvidence(sentence: string, title: string, roleId: RoleCommentId) {
+  const baseScore =
+    (/\d/.test(sentence) ? 3 : 0) +
+    (title.includes(sentence.slice(0, 10)) ? 1 : 0) +
+    (/(发布|上线|支持|实现|覆盖|部署|接入|服务|适配|决策|客户|场景)/.test(sentence) ? 2 : 0);
+
+  switch (roleId) {
+    case "product-strategist":
+      return (
+        baseScore +
+        scoreByKeywords(sentence, [
+          /客户|用户|场景|服务|部署|接入|工作流|平台|付费|交付|适配|覆盖/,
+        ])
+      );
+    case "indie-hacker":
+      return (
+        baseScore +
+        scoreByKeywords(sentence, [
+          /离线|本地|低功耗|部署|接入|成本|验证|自动化|流程|工作流|硬件/,
+        ])
+      );
+    case "research-reader":
+      return (
+        baseScore +
+        scoreByKeywords(sentence, [
+          /评测|benchmark|准确|稳定|推理|实验|指标|基准|复现|能力|模型|延迟/,
+        ])
+      );
+    case "growth-operator":
+      return (
+        baseScore +
+        scoreByKeywords(sentence, [
+          /客户|用户|场景|覆盖|获客|转化|传播|分发|服务|部署|留存|拉新/,
+        ])
+      );
+    case "creator-coach":
+      return (
+        baseScore +
+        scoreByKeywords(sentence, [
+          /场景|流程|内容|创作|方法|模板|工作流|案例|展示|交付|分镜/,
+        ])
+      );
+    case "risk-observer":
+      return (
+        baseScore +
+        scoreByKeywords(sentence, [
+          /不确定|风险|限制|成本|依赖|边界|监管|合规|返工|失败|权限|隐私/,
+        ])
+      );
+    default:
+      return baseScore;
+  }
+}
+
+function scoreByKeywords(sentence: string, patterns: RegExp[]) {
+  return patterns.reduce((score, pattern) => score + (pattern.test(sentence) ? 4 : 0), 0);
 }
 
 function splitParagraphs(content: string) {

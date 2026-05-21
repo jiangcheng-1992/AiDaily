@@ -3,7 +3,10 @@ import {
   readGeneratedFeed,
   writeGeneratedFeed,
 } from "@/lib/generated-feed-store";
+import { generateAiCommentsForPost } from "@/lib/ai-comment-roles";
 import { validateIngestRequest } from "@/lib/ingest-request-auth";
+import type { GeneratedFeed } from "@/lib/generated-feed-store";
+import type { Comment } from "@/lib/mock-data";
 import { runIngestPipeline } from "@/lib/ingest-pipeline";
 
 export const runtime = "nodejs";
@@ -24,6 +27,7 @@ async function handleIngestRequest(request: Request) {
 
   const url = new URL(request.url);
   const dryRun = url.searchParams.get("dryRun") === "1";
+  const refreshAiComments = url.searchParams.get("refreshAiComments") === "1";
   const sourceLimit = readNonNegativeInt(
     url.searchParams.get("sourceLimit") ?? process.env.SOURCE_FETCH_LIMIT,
     12,
@@ -52,12 +56,13 @@ async function handleIngestRequest(request: Request) {
     douyinItemLimit,
   });
   const current = await readGeneratedFeed({ includeSkills: true });
-  const nextFeed = mergeGeneratedFeed({
+  const mergedFeed = mergeGeneratedFeed({
     current,
     incomingPosts: run.posts,
     incomingComments: run.comments,
     limit: readPositiveInt(process.env.GENERATED_FEED_LIMIT, 120),
   });
+  const nextFeed = refreshAiComments ? rebuildFeedAiComments(mergedFeed) : mergedFeed;
 
   if (!dryRun) {
     await writeGeneratedFeed(nextFeed);
@@ -71,6 +76,7 @@ async function handleIngestRequest(request: Request) {
       ok: ingestOk,
       dryRun,
       persisted: !dryRun,
+      refreshAiComments,
       fetchedAt: run.fetchedAt,
       sourceCount: run.sourceCount,
       githubRepoCount: run.githubRepoCount,
@@ -90,6 +96,20 @@ async function handleIngestRequest(request: Request) {
       },
     },
   );
+}
+
+function rebuildFeedAiComments(feed: GeneratedFeed): GeneratedFeed {
+  const comments: Record<string, Comment[]> = {};
+
+  for (const post of feed.posts) {
+    const preservedComments = (feed.comments[post.id] ?? []).filter((comment) => !comment.isAi);
+    comments[post.id] = [...preservedComments, ...generateAiCommentsForPost(post)];
+  }
+
+  return {
+    ...feed,
+    comments,
+  };
 }
 
 function readPositiveInt(value: string | undefined, fallback: number) {

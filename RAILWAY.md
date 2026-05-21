@@ -19,6 +19,8 @@ Railway 会读取 `railway.toml`：
 ```bash
 APP_BASE_URL=https://你的服务域名
 CRON_SECRET=换成一段足够长的随机字符串
+AUTH_SESSION_SECRET=换成一段独立的高强度随机字符串
+DATABASE_URL=Railway PostgreSQL 提供的连接串
 OPENAI_API_KEY=可选，填写后启用正式 AI 评论
 AI_COMMENT_MODEL=gpt-4.1-mini
 SOURCE_FETCH_LIMIT=12
@@ -34,8 +36,10 @@ AUTO_INGEST_INITIAL_DELAY_MS=10000
 AIQ_USER_AGENT=AIQ/1.0 (+https://github.com/jiangcheng-1992/AiDaily)
 ```
 
-`CRON_SECRET` 在生产环境必填，用于保护 `/api/cron/ingest`。
-`AIQ_DATA_DIR` 建议指向 Railway Volume 挂载目录，例如 `/data`，这样离线抓取的 `generated-feed.json`、注册账号和登录会话不会因为服务重启丢失。
+`CRON_SECRET` 在生产环境必填，用于保护 `/api/cron/ingest`。  
+`AUTH_SESSION_SECRET` 建议和 `CRON_SECRET` 分开，专门用于签名登录 Cookie。  
+`DATABASE_URL` 建议接入 Railway PostgreSQL，线上登录注册会优先走共享数据库，避免多实例下“注册成功但登录读不到同一份用户库”的问题。  
+`AIQ_DATA_DIR` 仍建议指向 Railway Volume 挂载目录，例如 `/data`，这样离线抓取的 `generated-feed.json` 等文件数据不会因为服务重启丢失。
 `AUTO_INGEST_ENABLED=true` 后，Web 服务启动 10 秒后会自动抓取一次，之后默认每 15 分钟抓取一次；这条链路不依赖额外的 Railway Cron 服务。`/api/health` 会返回 `feedUpdatedAt` 和当前自动抓取配置，方便确认线上是否持续运行。
 
 ## 登录注册
@@ -49,7 +53,7 @@ POST /api/auth/login
 POST /api/auth/logout
 ```
 
-账号数据和会话写入 `AIQ_DATA_DIR/auth-store.json`，登录态通过 `httpOnly` Cookie `aiq_session` 维持。生产环境务必给 Railway Web 服务挂载 Volume，并设置 `AIQ_DATA_DIR=/data`。
+如果配置了 `DATABASE_URL`，账号数据会优先写入共享 Postgres；未配置时才回退到 `AIQ_DATA_DIR/auth-store.json`。登录态通过 `httpOnly` Cookie `aiq_session` 维持。生产环境建议同时配置 `DATABASE_URL` 和 `AIQ_DATA_DIR=/data`。
 
 ## 每小时定时抓取
 

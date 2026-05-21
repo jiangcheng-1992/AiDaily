@@ -1,3 +1,5 @@
+import type { ArticleContentBlock } from "@/lib/mock-data";
+
 const LEADING_NOISE_EXACT = new Set([
   "首页",
   "资讯",
@@ -93,11 +95,7 @@ export function extractArticleTextFromHtml(
   preferredTitle = "",
   pageUrl?: string,
 ) {
-  const articleMatch =
-    html.match(/<article[\s\S]*?<\/article>/i) ??
-    html.match(/<main[\s\S]*?<\/main>/i) ??
-    html.match(/<body[\s\S]*?<\/body>/i);
-  const block = trimHtmlTailBySite(articleMatch?.[0] ?? html, pageUrl);
+  const block = extractArticleHtmlBlock(html, pageUrl);
 
   const normalized = normalizeArticleText(
     block
@@ -110,6 +108,47 @@ export function extractArticleTextFromHtml(
   );
 
   return focusArticleText(normalized, preferredTitle);
+}
+
+export function extractArticleBlocksFromHtml(
+  html: string,
+  preferredTitle = "",
+  pageUrl?: string,
+): ArticleContentBlock[] {
+  const block = extractArticleHtmlBlock(html, pageUrl);
+  const segments = Array.from(
+    block.matchAll(
+      /<(figure|p|h2|h3|h4|blockquote|li)\b[\s\S]*?<\/\1>|<img\b[^>]*\/?>/gi,
+    ),
+  );
+  const contentBlocks: ArticleContentBlock[] = [];
+  const seenImages = new Set<string>();
+  const seenParagraphs = new Set<string>();
+  const cleanTitle = cleanTitleText(preferredTitle).replace(/[-|｜]\s*\S+.*$/i, "").trim();
+
+  for (const segment of segments) {
+    const fragment = segment[0];
+
+    for (const image of extractImageBlocksFromHtml(fragment, pageUrl)) {
+      const normalizedUrl = image.url.replace(/^http:\/\//i, "https://");
+      if (seenImages.has(normalizedUrl)) continue;
+      seenImages.add(normalizedUrl);
+      contentBlocks.push(image);
+    }
+
+    const text = extractReadableTextFromHtmlBlock(fragment);
+    if (!text) continue;
+    if (cleanTitle && (text === cleanTitle || text.startsWith(cleanTitle))) continue;
+    if (isLikelyInlineNoise(text, cleanTitle)) continue;
+    if (seenParagraphs.has(text)) continue;
+    seenParagraphs.add(text);
+    contentBlocks.push({
+      type: "paragraph",
+      text,
+    });
+  }
+
+  return trimLeadingNoiseBlocks(contentBlocks, cleanTitle);
 }
 
 export function decodeHtmlEntities(value: string) {
@@ -185,6 +224,64 @@ function safeCodePoint(value: number) {
   }
 }
 
+function extractImageBlocksFromHtml(
+  fragment: string,
+  pageUrl?: string,
+): Array<Extract<ArticleContentBlock, { type: "image" }>> {
+  const matches = Array.from(fragment.matchAll(/<img\b[^>]*>/gi));
+  const images: Array<Extract<ArticleContentBlock, { type: "image" }>> = [];
+
+  for (const match of matches) {
+    const tag = match[0];
+    const src =
+      readTagAttribute(tag, "data-src") ||
+      readTagAttribute(tag, "data-original") ||
+      readTagAttribute(tag, "src");
+    const url = absolutizeUrl(decodeHtmlEntities(src), pageUrl);
+    if (!isUsableArticleImage(url)) continue;
+
+    const alt = cleanTitleText(readTagAttribute(tag, "alt"));
+    images.push({
+      type: "image",
+      url,
+      alt: alt || undefined,
+    });
+  }
+
+  return images;
+}
+
+function extractReadableTextFromHtmlBlock(fragment: string) {
+  return normalizeArticleText(
+    fragment
+      .replace(/<img\b[^>]*>/gi, " ")
+      .replace(/<figcaption[^>]*>/gi, "\n")
+      .replace(/<\/figcaption>/gi, "\n")
+      .replace(/<\/p>/gi, "\n\n")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/div>/gi, "\n")
+      .replace(/<\/li>/gi, "\n"),
+  );
+}
+
+function trimLeadingNoiseBlocks(blocks: ArticleContentBlock[], cleanTitle: string) {
+  const result = [...blocks];
+
+  while (result[0]?.type === "paragraph" && isLeadingNoise(result[0].text, cleanTitle)) {
+    result.shift();
+  }
+
+  return result;
+}
+
+function isLikelyInlineNoise(text: string, cleanTitle: string) {
+  if (!text) return true;
+  if (LEADING_NOISE_EXACT.has(text)) return true;
+  if (LEADING_NOISE_REGEXES.some((regex) => regex.test(text))) return true;
+  if (cleanTitle && text.includes(cleanTitle) && text.length <= cleanTitle.length + 12) return true;
+  return false;
+}
+
 function trimHtmlTailBySite(html: string, pageUrl?: string) {
   if (!pageUrl) return html;
 
@@ -205,6 +302,15 @@ function trimHtmlTailBySite(html: string, pageUrl?: string) {
   return html;
 }
 
+function extractArticleHtmlBlock(html: string, pageUrl?: string) {
+  const articleMatch =
+    html.match(/<article[\s\S]*?<\/article>/i) ??
+    html.match(/<main[\s\S]*?<\/main>/i) ??
+    html.match(/<body[\s\S]*?<\/body>/i);
+
+  return trimHtmlTailBySite(articleMatch?.[0] ?? html, pageUrl);
+}
+
 function cutAtFirstMarker(content: string, markers: string[]) {
   const cutIndex = markers
     .map((marker) => content.indexOf(marker))
@@ -221,4 +327,51 @@ function getHostname(value: string) {
   } catch {
     return "";
   }
+}
+
+function readTagAttribute(tag: string, attribute: string) {
+  const match = tag.match(new RegExp(`${attribute}=["']([^"']+)["']`, "i"));
+  return match?.[1] ?? "";
+}
+
+function absolutizeUrl(value: string | undefined, pageUrl?: string) {
+  if (!value) return "";
+  if (!pageUrl) return value;
+
+  try {
+    return new URL(value, pageUrl).toString();
+  } catch {
+    return value;
+  }
+}
+
+function isUsableArticleImage(value: string | undefined): value is string {
+  if (!value) return false;
+  const normalized = value.toLowerCase();
+  if (/^(data:|blob:)/i.test(value)) return false;
+  if (/\.(svg|gif)(\?|#|$)/i.test(value)) return false;
+  if (/staticx\.36krcdn\.com\/36kr-web\/static\//i.test(normalized)) return false;
+  if (/\/36kr-web\/static\//i.test(normalized)) return false;
+  if (
+    /(avatar|logo|icon|sprite|wechat|qrcode|qr-code|barcode|placeholder|default|head\.jpg)/i.test(
+      normalized,
+    )
+  ) {
+    return false;
+  }
+  if (/(^|\/)\d{2,4}-\d{2,4}x\d{2,4}\.(jpe?g|png|webp)(\?|#|$)/i.test(normalized)) {
+    return false;
+  }
+  if (/(^|\/)\d{2,4}x\d{2,4}\.(jpe?g|png|webp)(\?|#|$)/i.test(normalized)) {
+    return false;
+  }
+  if (/(qbitai[-_]?logo|qbitai_icon|qrcode_qbitai)/i.test(normalized)) return false;
+  if (
+    /(logo_|logowhite|code_production|dailyplanet|jingzhun|krspace|aly\.|bytey\.|gaodi\.|getui\.|ftnn\.|renren@2x|lingke\.)/i.test(
+      normalized,
+    )
+  ) {
+    return false;
+  }
+  return /^https?:\/\//i.test(value) || value.startsWith("//") || value.startsWith("/");
 }

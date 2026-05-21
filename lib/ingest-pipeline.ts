@@ -215,6 +215,7 @@ function sourceItemToPost(item: SourceItem, source: AiSource): Post {
     sourceUrl: item.url,
     coverImageUrl: item.coverImageUrl,
     imageUrls: item.imageUrls,
+    contentBlocks: item.contentBlocks,
     tags: uniqueTags([...item.tags, authorityLabel(source.authority)]).slice(0, 6),
     createdAt,
     collectedAt,

@@ -2,12 +2,14 @@ import {
   GENERATED_FEED_POLICY_VERSION,
   readGeneratedFeed,
 } from "@/lib/generated-feed-store";
+import { getAuthPersistenceInfo } from "@/lib/auth-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const feed = await readGeneratedFeed();
+  const authPersistence = getAuthPersistenceInfo();
 
   return Response.json({
     ok: true,
@@ -29,6 +31,7 @@ export async function GET() {
         10000,
       ),
     },
+    authPersistence,
   });
 }
 

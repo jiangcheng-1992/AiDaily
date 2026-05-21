@@ -8,7 +8,7 @@ export type AiCommentRole = {
   avatarText: string;
   focus: string;
   preferredTypes?: PostType[];
-  writeComment: (post: Post) => string;
+  writeComment: (post: Post, options?: { variant?: number }) => string;
 };
 
 export const aiCommentRoles: AiCommentRole[] = [
@@ -83,16 +83,25 @@ export function generateAiCommentsForPost(
   post: Post,
   existingRoleIds: string[] = [],
 ) {
-  return selectRolesForPost(post)
+  const nextComments: Comment[] = [];
+  const generatedContents: string[] = [];
+
+  selectRolesForPost(post)
     .filter((role) => !existingRoleIds.includes(role.id))
-    .map((role, index) =>
-      createAiComment({
-        post,
-        role,
-        content: role.writeComment(post),
-        index,
-      }),
-    );
+    .forEach((role, index) => {
+      const content = buildDistinctRoleComment(post, role, generatedContents);
+      generatedContents.push(content);
+      nextComments.push(
+        createAiComment({
+          post,
+          role,
+          content,
+          index,
+        }),
+      );
+    });
+
+  return nextComments;
 }
 
 export function createAiComment({
@@ -122,4 +131,50 @@ export function createAiComment({
 
 function stableScore(value: string) {
   return value.split("").reduce((total, char) => total + char.charCodeAt(0), 0) % 36;
+}
+
+function buildDistinctRoleComment(post: Post, role: AiCommentRole, existingContents: string[]) {
+  let fallback = role.writeComment(post);
+
+  for (let variant = 0; variant < 4; variant += 1) {
+    const candidate = role.writeComment(post, { variant });
+    if (!existingContents.some((content) => areCommentsTooSimilar(content, candidate))) {
+      return candidate;
+    }
+    fallback = candidate;
+  }
+
+  return fallback;
+}
+
+function areCommentsTooSimilar(left: string, right: string) {
+  const normalizedLeft = normalizeCommentText(left);
+  const normalizedRight = normalizeCommentText(right);
+
+  if (!normalizedLeft || !normalizedRight) return false;
+  if (normalizedLeft === normalizedRight) return true;
+  if (normalizedLeft.includes(normalizedRight) || normalizedRight.includes(normalizedLeft)) {
+    return true;
+  }
+
+  const leftBigrams = toBigrams(normalizedLeft);
+  const rightBigrams = toBigrams(normalizedRight);
+  const intersection = leftBigrams.filter((token) => rightBigrams.includes(token)).length;
+  const union = new Set([...leftBigrams, ...rightBigrams]).size;
+
+  return union > 0 && intersection / union >= 0.72;
+}
+
+function normalizeCommentText(value: string) {
+  return value.replace(/[^\p{L}\p{N}]+/gu, "").toLowerCase();
+}
+
+function toBigrams(value: string) {
+  if (value.length < 2) return [value];
+
+  const result: string[] = [];
+  for (let index = 0; index < value.length - 1; index += 1) {
+    result.push(value.slice(index, index + 2));
+  }
+  return result;
 }

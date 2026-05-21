@@ -5,6 +5,7 @@ import {
   cleanTitleText,
   countTailNoiseIndicators,
   decodeHtmlEntities,
+  extractArticleBlocksFromHtml,
   extractArticleTextFromHtml,
   normalizeArticleText,
   stripHtmlToText,
@@ -13,7 +14,7 @@ import { generateAiCommentsForPost } from "@/lib/ai-comment-roles";
 import { buildGeneratedPostCopy } from "@/lib/post-insights";
 import { buildGeneratedPostId } from "@/lib/post-identity";
 import { isRelevantAiContent } from "@/lib/source-relevance";
-import type { Comment, Post } from "@/lib/mock-data";
+import type { ArticleContentBlock, Comment, Post } from "@/lib/mock-data";
 
 type ManualIngestResult = {
   source: AiSource;
@@ -28,6 +29,7 @@ type HtmlMetadata = {
   canonicalUrl?: string;
   coverImageUrl?: string;
   imageUrls?: string[];
+  contentBlocks?: ArticleContentBlock[];
   keywords: string[];
   content: string;
 };
@@ -99,6 +101,10 @@ export async function ingestArticleByUrl(rawUrl: string): Promise<ManualIngestRe
       ...(sourceCandidate?.imageUrls ?? []),
       ...(htmlMetadata.imageUrls ?? []),
     ]),
+    contentBlocks:
+      htmlMetadata.contentBlocks?.length || sourceCandidate?.contentBlocks?.length
+        ? [...(htmlMetadata.contentBlocks ?? sourceCandidate?.contentBlocks ?? [])]
+        : undefined,
     author: htmlMetadata.author,
     tags,
     createdAt: publishedAt || collectedAt,
@@ -159,6 +165,7 @@ async function findSourceItemByUrl(source: AiSource, rawUrl: string) {
           undefined,
         coverImageUrl: extractFeedImageUrl(item),
         imageUrls: extractFeedImageUrls(item),
+        contentBlocks: extractFeedContentBlocks(item, cleanTitleText(asText(item.title)), candidateUrl),
         tags: [
           ...source.tags,
           ...toArray(item.category).map((entry) => stripHtmlToText(asText(entry))).filter(Boolean),
@@ -222,6 +229,7 @@ async function fetchArticleMetadata(rawUrl: string): Promise<HtmlMetadata> {
       (!skipHtmlBody ? extractHtmlImageUrl(html, rawUrl) : undefined) ||
       undefined,
     imageUrls: skipHtmlBody ? [] : extractHtmlImageUrls(html, rawUrl),
+    contentBlocks: skipHtmlBody ? [] : extractArticleBlocksFromHtml(html, readFirstHeading(html) || readTitleTag(html), rawUrl),
     keywords: extractHtmlKeywords(html),
     content: skipHtmlBody
       ? ""
@@ -389,6 +397,20 @@ function extractFeedImageUrls(item: RawFeedItem) {
   ].map((url) => absolutizeUrl(url, articleUrl));
 
   return uniqueImageUrls(candidates);
+}
+
+function extractFeedContentBlocks(item: RawFeedItem, title: string, articleUrl?: string) {
+  const html = [
+    asText(item.description),
+    asText(item.summary),
+    asText(item.content),
+    asText(item["content:encoded"]),
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  if (!html) return [];
+  return extractArticleBlocksFromHtml(html, title, articleUrl);
 }
 
 function extractHtmlImageUrl(html: string, pageUrl?: string) {

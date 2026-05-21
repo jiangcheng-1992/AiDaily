@@ -4,10 +4,12 @@ import type { AiSource } from "@/lib/ai-sources";
 import {
   cleanTitleText,
   countTailNoiseIndicators,
+  extractArticleBlocksFromHtml,
   extractArticleTextFromHtml,
   normalizeArticleText,
   stripHtmlToText,
 } from "@/lib/article-cleaner";
+import type { ArticleContentBlock } from "@/lib/mock-data";
 import { buildGeneratedPostCopy } from "@/lib/post-insights";
 import { isRelevantAiContent } from "@/lib/source-relevance";
 
@@ -18,6 +20,7 @@ export type SourceItem = {
   url?: string;
   coverImageUrl?: string;
   imageUrls?: string[];
+  contentBlocks?: ArticleContentBlock[];
   summary: string;
   content: string;
   publishedAt?: string;
@@ -134,6 +137,7 @@ function normalizeFeedItem(source: AiSource, item: RawFeedItem): SourceItem {
     url,
     coverImageUrl: extractFeedImageUrl(item, url),
     imageUrls: extractFeedImageUrls(item, url),
+    contentBlocks: extractFeedContentBlocks(item, title, url),
     summary: clipText(content, 260),
     content,
     publishedAt,
@@ -241,6 +245,20 @@ function extractFeedImageUrls(item: RawFeedItem, articleUrl?: string) {
   return uniqueImageUrls(candidates);
 }
 
+function extractFeedContentBlocks(item: RawFeedItem, title: string, articleUrl?: string) {
+  const html = [
+    asText(item.description),
+    asText(item.summary),
+    asText(item.content),
+    asText(item["content:encoded"]),
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  if (!html) return [];
+  return extractArticleBlocksFromHtml(html, title, articleUrl);
+}
+
 async function hydrateSourceItemContent(source: AiSource, item: SourceItem) {
   if (!item.url) return item;
   if (shouldSkipHtmlHydration(source, item)) return finalizeSourceItem(item);
@@ -259,6 +277,7 @@ async function hydrateSourceItemContent(source: AiSource, item: SourceItem) {
 
     const html = await response.text();
     const fullText = extractArticleTextFromHtml(html, item.title, item.url);
+    const contentBlocks = extractArticleBlocksFromHtml(html, item.title, item.url);
     const content = selectRicherText(item.content, fullText);
     const htmlImageUrls = extractHtmlImageUrls(html, item.url);
     const imageUrls = uniqueImageUrls([...(item.imageUrls ?? []), ...htmlImageUrls]);
@@ -268,6 +287,7 @@ async function hydrateSourceItemContent(source: AiSource, item: SourceItem) {
       ...item,
       coverImageUrl,
       imageUrls,
+      contentBlocks: contentBlocks.length ? contentBlocks : item.contentBlocks,
       content,
       summary: clipText(content || item.summary, 260),
       tags: Array.from(new Set([...item.tags, ...extractHtmlKeywords(html)])).slice(0, 8),
