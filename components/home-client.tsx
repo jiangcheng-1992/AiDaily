@@ -8,25 +8,37 @@ import { PostCard } from "@/components/post-card";
 import { useAiCircleStore } from "@/hooks/use-ai-circle-store";
 import type { Post } from "@/lib/mock-data";
 
-export function HomeClient() {
-  const { allPosts, getPostStats, toggleLike, toggleSave } = useAiCircleStore();
+function sortPosts(posts: Post[]) {
+  return [...posts].sort(
+    (a, b) =>
+      new Date(b.collectedAt ?? b.createdAt).getTime() -
+        new Date(a.collectedAt ?? a.createdAt).getTime() ||
+      Number(b.featured) - Number(a.featured),
+  );
+}
+
+export function HomeClient({ initialPosts = [] }: { initialPosts?: Post[] }) {
+  const { allPosts, hydrated, getPostStats, toggleLike, toggleSave } = useAiCircleStore();
   const [sharedPostId, setSharedPostId] = useState<string | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
+  const sourcePosts = useMemo(() => {
+    if (!hydrated && initialPosts.length > 0) {
+      return initialPosts;
+    }
+
+    return allPosts;
+  }, [allPosts, hydrated, initialPosts]);
+
   const filteredPosts = useMemo(() => {
     const visiblePosts = selectedTag
-      ? allPosts.filter(
+      ? sourcePosts.filter(
           (post) => post.type !== "skill" && post.tags.includes(selectedTag),
         )
-      : allPosts.filter((post) => post.type !== "skill");
+      : sourcePosts.filter((post) => post.type !== "skill");
 
-    return [...visiblePosts].sort(
-      (a, b) =>
-        new Date(b.collectedAt ?? b.createdAt).getTime() -
-          new Date(a.collectedAt ?? a.createdAt).getTime() ||
-        Number(b.featured) - Number(a.featured),
-    );
-  }, [allPosts, selectedTag]);
+    return sortPosts(visiblePosts);
+  }, [selectedTag, sourcePosts]);
 
   const handleShare = async (post: Post) => {
     const url = `${window.location.origin}/post/${post.id}`;
@@ -96,12 +108,12 @@ export function HomeClient() {
 
         <aside className="hidden lg:block">
           <div className="sticky top-24">
-            <HomeSidebar posts={allPosts} onTagClick={setSelectedTag} />
+            <HomeSidebar posts={sourcePosts} onTagClick={setSelectedTag} />
           </div>
         </aside>
 
         <div className="lg:hidden">
-          <HomeSidebar posts={allPosts} onTagClick={setSelectedTag} />
+          <HomeSidebar posts={sourcePosts} onTagClick={setSelectedTag} />
         </div>
       </section>
     </div>
