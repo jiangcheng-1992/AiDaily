@@ -155,7 +155,9 @@ function buildPrompt(post: Post, roles: typeof aiCommentRoles) {
       "评论应像真实中文社区用户，而不是公告、广告或新闻稿。",
       "每条评论 80 到 160 个中文字符左右。",
       "每条评论必须锚定至少 1 个文中已经出现的具体动作、限制、数字、结果或业务变化来分析。",
+      "每条评论开头就要切进事实本身，不能先说空泛态度，例如不要先写“这很值得关注”“我更关心的是”。",
       "评论里要体现这个角色最在意的判断角度，例如产品价值、可复现性、增长、风险等，但必须围绕文中事实展开。",
+      "不同角色的评论必须明显不是一个模版改词，句式、抓取事实和判断重点都要拉开。",
       "不要重复标题，不要只说‘值得关注’‘很重要’这类空泛判断。",
       "不要复述摘要和正文，不要把原文换个说法重写一遍，直接输出你的判断和立场。",
       "如果文中事实不足以支撑某个强判断，就明确指出信息还不够，不要硬写结论。",
@@ -172,13 +174,14 @@ function buildPrompt(post: Post, roles: typeof aiCommentRoles) {
     },
     grounding: {
       requiredStyle:
-        "先点出你抓住的那条具体事实，再给出判断。评论必须让人一眼看出你是在评论这篇文章，而不是任意一篇 AI 新闻。",
+        "先抓住文里的具体事实，再给出判断。评论必须让人一眼看出你是在评论这篇文章，而不是任意一篇 AI 新闻；最好直接点出文里那个动作、数字、限制或结果。",
     },
     roles: roles.map((role) => ({
       roleId: role.id,
       name: role.name,
       title: role.title,
       focus: role.focus,
+      angleInstruction: buildRoleAngleInstruction(role.id),
     })),
     outputShape: {
       comments: [
@@ -189,6 +192,25 @@ function buildPrompt(post: Post, roles: typeof aiCommentRoles) {
       ],
     },
   });
+}
+
+function buildRoleAngleInstruction(roleId: string) {
+  switch (roleId) {
+    case "product-strategist":
+      return "抓产品是否真的改了一段用户流程，是否能转成付费、交付或更高留存。";
+    case "indie-hacker":
+      return "抓最适合先做成 MVP 的窄环节，评估是否能省时间、降成本、少返工。";
+    case "research-reader":
+      return "抓证据强度、评测口径、失败边界和可复现性，不要轻信结论。";
+    case "growth-operator":
+      return "抓用户是否能快速感知收益，是否有传播、转化、留存上的放大点。";
+    case "creator-coach":
+      return "抓这条内容能不能被拆成创作方法、案例框架或可执行建议。";
+    case "risk-observer":
+      return "抓合规、质量控制、权限、成本失控和预期过热的风险。";
+    default:
+      return "必须从角色视角做判断。";
+  }
 }
 
 function extractResponseText(response: OpenAIResponse) {

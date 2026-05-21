@@ -1,9 +1,10 @@
+import { generateProductionAiComments } from "@/lib/ai-comment-service";
+import { AI_COMMENT_GENERATION_VERSION } from "@/lib/ai-comment-roles";
 import {
   mergeGeneratedFeed,
   readGeneratedFeed,
   writeGeneratedFeed,
 } from "@/lib/generated-feed-store";
-import { generateAiCommentsForPost } from "@/lib/ai-comment-roles";
 import { validateIngestRequest } from "@/lib/ingest-request-auth";
 import type { GeneratedFeed } from "@/lib/generated-feed-store";
 import type { Comment } from "@/lib/mock-data";
@@ -62,7 +63,10 @@ async function handleIngestRequest(request: Request) {
     incomingComments: run.comments,
     limit: readPositiveInt(process.env.GENERATED_FEED_LIMIT, 120),
   });
-  const nextFeed = refreshAiComments ? rebuildFeedAiComments(mergedFeed) : mergedFeed;
+  const nextFeed =
+    refreshAiComments || hasOutdatedAiComments(mergedFeed)
+      ? await rebuildFeedAiComments(mergedFeed, { force: refreshAiComments })
+      : mergedFeed;
 
   if (!dryRun) {
     await writeGeneratedFeed(nextFeed);
@@ -98,18 +102,43 @@ async function handleIngestRequest(request: Request) {
   );
 }
 
-function rebuildFeedAiComments(feed: GeneratedFeed): GeneratedFeed {
+async function rebuildFeedAiComments(
+  feed: GeneratedFeed,
+  options: { force?: boolean } = {},
+): Promise<GeneratedFeed> {
   const comments: Record<string, Comment[]> = {};
 
   for (const post of feed.posts) {
-    const preservedComments = (feed.comments[post.id] ?? []).filter((comment) => !comment.isAi);
-    comments[post.id] = [...preservedComments, ...generateAiCommentsForPost(post)];
+    const currentComments = feed.comments[post.id] ?? [];
+    const preservedComments = currentComments.filter((comment) => !comment.isAi);
+    const currentAiComments = currentComments.filter((comment) => comment.isAi);
+
+    if (!options.force && !shouldRefreshAiComments(currentAiComments)) {
+      comments[post.id] = [...preservedComments, ...currentAiComments];
+      continue;
+    }
+
+    const generated = await generateProductionAiComments({ post });
+    comments[post.id] = [...preservedComments, ...generated.comments];
   }
 
   return {
     ...feed,
     comments,
   };
+}
+
+function hasOutdatedAiComments(feed: GeneratedFeed) {
+  return feed.posts.some((post) => shouldRefreshAiComments(feed.comments[post.id] ?? []));
+}
+
+function shouldRefreshAiComments(comments: Comment[]) {
+  const aiComments = comments.filter((comment) => comment.isAi);
+  if (!aiComments.length) return true;
+
+  return aiComments.some(
+    (comment) => comment.generationVersion !== AI_COMMENT_GENERATION_VERSION,
+  );
 }
 
 function readPositiveInt(value: string | undefined, fallback: number) {

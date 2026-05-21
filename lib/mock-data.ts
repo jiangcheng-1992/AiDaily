@@ -60,6 +60,7 @@ export type Comment = {
   isAi?: boolean;
   roleId?: string;
   roleName?: string;
+  generationVersion?: string;
 };
 
 export type CategoryKey =

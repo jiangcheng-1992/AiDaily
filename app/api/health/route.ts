@@ -31,6 +31,11 @@ export async function GET() {
         10000,
       ),
     },
+    aiComments: {
+      backend: process.env.OPENAI_API_KEY?.trim() ? "openai" : "local",
+      model: process.env.AI_COMMENT_MODEL ?? "gpt-4.1-mini",
+      configured: Boolean(process.env.OPENAI_API_KEY?.trim()),
+    },
     authPersistence,
   });
 }

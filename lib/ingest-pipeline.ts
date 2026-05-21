@@ -1,5 +1,5 @@
 import { autoIngestSources, type AiSource } from "@/lib/ai-sources";
-import { generateAiCommentsForPost } from "@/lib/ai-comment-roles";
+import { generateProductionAiComments } from "@/lib/ai-comment-service";
 import { fetchDouyinVideoItems, type DouyinVideoItem } from "@/lib/douyin-video-fetcher";
 import {
   fetchGithubRepoIssueComments,
@@ -62,13 +62,16 @@ export async function runIngestPipeline({
       new Date(a.collectedAt ?? a.createdAt).getTime(),
   );
   const comments: Record<string, Comment[]> = {};
+  const aiCommentResults = await Promise.all(
+    posts.map(async (post) => {
+      const result = await generateProductionAiComments({ post });
+      return [post.id, result.comments] as const;
+    }),
+  );
 
-  for (const post of posts) {
-    comments[post.id] = [
-      ...(githubResult.comments[post.id] ?? []),
-      ...generateAiCommentsForPost(post),
-    ];
-  }
+  aiCommentResults.forEach(([postId, aiComments]) => {
+    comments[postId] = [...(githubResult.comments[postId] ?? []), ...aiComments];
+  });
 
   return {
     fetchedAt: new Date().toISOString(),

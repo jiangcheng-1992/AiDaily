@@ -10,7 +10,7 @@ import {
   normalizeArticleText,
   stripHtmlToText,
 } from "@/lib/article-cleaner";
-import { generateAiCommentsForPost } from "@/lib/ai-comment-roles";
+import { generateProductionAiComments } from "@/lib/ai-comment-service";
 import { buildGeneratedPostCopy } from "@/lib/post-insights";
 import { buildGeneratedPostId } from "@/lib/post-identity";
 import { isRelevantAiContent } from "@/lib/source-relevance";
@@ -113,7 +113,8 @@ export async function ingestArticleByUrl(rawUrl: string): Promise<ManualIngestRe
     commentsCount: 0,
     savesCount: 0,
   };
-  const comments = generateAiCommentsForPost(post);
+  const commentResult = await generateProductionAiComments({ post });
+  const comments = commentResult.comments;
 
   return {
     source,

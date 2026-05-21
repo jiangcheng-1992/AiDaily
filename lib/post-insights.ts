@@ -394,10 +394,10 @@ function buildProductComment(
   secondEvidence: string,
 ) {
   if (theme === "media") {
-    return `${subject} 这条我最看“${evidence}”能不能变成稳定供给，再由“${secondEvidence}”接到发行或订阅。对产品来说，真正的价值不是又多一个案例，而是生产能力开始进入可回款链路。`;
+    return `文里提到“${evidence}”，这说明 ${subject} 已经不只是出效果图，而是在摸生产链路。产品视角真正要盯的是“${secondEvidence}”能不能把供给接到发行、订阅或回款上，否则仍然只是演示级能力。`;
   }
 
-  return `${subject} 这条我会直接看“${evidence}”有没有替代掉一段高频旧流程。如果接入后还需要大量人工补洞，产品价值就会被高估；只有当这个动作能稳定复现，转化和付费才会跟上。`;
+  return `文里最有产品含量的是“${evidence}”，因为它指向一段正在被改写的具体流程。我接下来只会继续追“${secondEvidence}”有没有带来更短交付、更少人工介入或更高付费意愿；没有这些结果，功能再新也很难算真价值。`;
 }
 
 function buildIndieComment(
@@ -407,10 +407,10 @@ function buildIndieComment(
   secondEvidence: string,
 ) {
   if (theme === "media") {
-    return `${subject} 如果让我做，我不会碰大而全平台，而会盯“${evidence}”里最费时间、最难标准化的那一段先做窄工具。先把单点效率拉起来，再看“${secondEvidence}”能不能接成工作流，命中率会高得多。`;
+    return `如果按这篇内容找切口，我会先围绕“${evidence}”做窄工具，而不是做完整内容平台。等“${secondEvidence}”这一步也能接起来，再谈工作流扩展；否则一开始就做大全套，很容易被素材、品控和实施成本拖死。`;
   }
 
-  return `${subject} 这类机会更适合拆成一个很窄的验证题。先围绕“${evidence}”补位某个具体环节，证明能省时间、降成本或减少返工，再去谈平台化；一上来做大全套，基本都会被实施成本拖死。`;
+  return `这篇里最适合拿来做 MVP 的不是标题，而是“${evidence}”这个具体环节。我会先验证它能不能把“${secondEvidence}”里的人工动作缩短掉一截，先拿到省时或降本证据，再决定要不要往平台化走。`;
 }
 
 function buildResearchComment(
@@ -420,10 +420,10 @@ function buildResearchComment(
   secondEvidence: string,
 ) {
   if (theme === "media") {
-    return `${subject} 我更关心的是约束条件有没有被正面解决。像“${evidence}”这种结果能出一次不难，难的是连续场景下还能否保持一致性、可控性和返工成本；这些问题不解掉，任何演示都还谈不上真正可交付。`;
+    return `“${evidence}”看起来很强，但研究视角会先追问它是不是连续场景下也成立。要是“${secondEvidence}”没有补上稳定性、可控性或返工成本，这种结果更像样片，不足以说明 ${subject} 已经具备可交付性。`;
   }
 
-  return `${subject} 我不会先看结论，而是先看方法边界和失败条件。文中如果重点落在“${evidence}”和“${secondEvidence}”，后面最好有评测口径、复现条件或成本描述，否则落到真实场景里几乎都会被打折。`;
+  return `这篇最该被核验的是“${evidence}”到底在什么条件下成立，以及“${secondEvidence}”有没有公开评测口径。没有失败样本、复现条件或成本边界时，我不会把它当成已成立能力，只会当成值得继续验证的方向。`;
 }
 
 function buildGrowthComment(
@@ -433,10 +433,10 @@ function buildGrowthComment(
   secondEvidence: string,
 ) {
   if (theme === "media") {
-    return `${subject} 从增长侧看，重点不是热点本身，而是“${evidence}”能不能让实验频率被放大。只要内容供给速度和题材测试速度一起提上来，再由“${secondEvidence}”接住分发，获客和转化验证周期就会明显缩短。`;
+    return `增长侧会盯“${evidence}”能不能把实验频率拉高，而不是只看热度。只要“${secondEvidence}”这一步还能把分发或转化接住，${subject} 才不是单次爆款，而是能持续放大的增长能力。`;
   }
 
-  return `${subject} 这类能力只有在用户能快速感知结果时，增长价值才成立。像“${evidence}”这种动作如果只是技术叙事，传播很快就会衰减；只有用户更快看到收益、更低理解成本和更顺转化，增长才成立。`;
+  return `我会把“${evidence}”当成用户第一眼能不能感知收益的地方，再看“${secondEvidence}”会不会拖高理解成本。只有这两个点同时成立，${subject} 才可能从技术叙事变成真正能跑转化和留存的增长抓手。`;
 }
 
 function buildCreatorComment(
@@ -446,10 +446,10 @@ function buildCreatorComment(
   secondEvidence: string,
 ) {
   if (theme === "media") {
-    return `${subject} 对创作者来说，最有价值的不是转述新闻，而是把“${evidence}”和“${secondEvidence}”拆成方法论。只要能解释清楚为什么这个场景先跑通、卡点在哪、普通人能怎么借势，这类内容就会比泛资讯更有传播力。`;
+    return `对创作者最能出内容增量的不是标题本身，而是“${evidence}”和“${secondEvidence}”这两个事实。把它们拆成“为什么先跑通、卡点在哪、普通人怎么借势”的方法论，才会比泛资讯更有传播和收藏价值。`;
   }
 
-  return `${subject} 我会把这类内容直接翻译成可执行建议，而不是重复原文。围绕“${evidence}”去解释适合谁用、怎么落地、有哪些坑，才是真正能带来传播和信任的信息增量。`;
+  return `这篇最适合被翻成内容的点是“${evidence}”，因为它能直接拆成操作建议。我不会重复新闻，而会围绕“${secondEvidence}”去讲适合谁用、怎么落地、哪里会踩坑，这才是创作者视角真正有价值的信息增量。`;
 }
 
 function buildRiskComment(
@@ -459,10 +459,10 @@ function buildRiskComment(
   secondEvidence: string,
 ) {
   if (theme === "media") {
-    return `${subject} 这条线的风险不在热度，而在“${evidence}”和“${secondEvidence}”背后那套质量控制能不能收住。只要版权、品控和一致性还高度依赖人工补救，规模一上来，问题就会比效率收益先暴露。`;
+    return `风险点不在热度，而在“${evidence}”和“${secondEvidence}”背后那套质量控制是否真的收得住。只要版权、品控或一致性还靠人工补救，${subject} 一旦放大规模，问题通常会比效率收益更早暴露。`;
   }
 
-  return `${subject} 我最担心的不是技术失误，而是预期先跑到交付前面。文中如果只有“${evidence}”这类正向描述，而缺少对限制条件和失败边界的交代，就要默认能力会被高估、成本会被低估。`;
+  return `这篇里我最警惕的是“${evidence}”被当成确定性能力去讲，但“${secondEvidence}”没有把限制条件说透。只要失败边界、权限要求或额外成本没被交代清楚，就该默认 ${subject} 的真实可用性被高估了。`;
 }
 
 function clip(value: string, maxLength: number) {

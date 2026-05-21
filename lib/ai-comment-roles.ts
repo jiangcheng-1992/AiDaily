@@ -1,6 +1,8 @@
 import type { Comment, Post, PostType } from "@/lib/mock-data";
 import { buildRoleComment } from "@/lib/post-insights";
 
+export const AI_COMMENT_GENERATION_VERSION = "2026-05-grounded-v2";
+
 export type AiCommentRole = {
   id: string;
   name: string;
@@ -126,6 +128,7 @@ export function createAiComment({
     isAi: true,
     roleId: role.id,
     roleName: role.name,
+    generationVersion: AI_COMMENT_GENERATION_VERSION,
   };
 }
 
