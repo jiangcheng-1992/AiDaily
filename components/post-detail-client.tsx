@@ -72,13 +72,191 @@ export function PostDetailClient({
   const [videoLoadProgress, setVideoLoadProgress] = useState(0);
   const [videoSlow, setVideoSlow] = useState(false);
   const [videoFailed, setVideoFailed] = useState(false);
+  const [videoNeedsManualPlay, setVideoNeedsManualPlay] = useState(false);
+  const [videoPlaybackMode, setVideoPlaybackMode] = useState<"direct" | "embed">("direct");
+  const [resolvedVideoUrl, setResolvedVideoUrl] = useState<string | undefined>();
+  const [resolvedVideoEmbedUrl, setResolvedVideoEmbedUrl] = useState<string | undefined>();
+  const [videoSourceLimited, setVideoSourceLimited] = useState(false);
   const loadProgressTimerRef = useRef<number | null>(null);
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
+  const playbackRequestStartedAtRef = useRef<number | null>(null);
+  const lastLoggedProgressBucketRef = useRef<number>(-1);
 
   const post = useMemo(
     () => getPostById(allPosts, postId) ?? initialPost,
     [allPosts, initialPost, postId],
   );
+  const isDouyinVideoPost =
+    post?.type === "video" &&
+    isLikelyDouyinVideoPost(post.sourceId, post.sourceUrl, post.profileUrl);
+  const videoEmbedUrl =
+    post?.type === "video" ? post.videoEmbedUrl ?? buildDouyinEmbedUrl(post.sourceUrl) : undefined;
+  const activeVideoUrl = isDouyinVideoPost ? resolvedVideoUrl : resolvedVideoUrl ?? post?.videoUrl;
+  const activeVideoEmbedUrl = isDouyinVideoPost ? undefined : resolvedVideoEmbedUrl ?? videoEmbedUrl;
+  const hasPlayableVideo =
+    post?.type === "video" &&
+    (isDouyinVideoPost
+      ? Boolean(post.sourceUrl || post.videoUrl || videoEmbedUrl)
+      : Boolean(activeVideoUrl || activeVideoEmbedUrl));
+  const preferEmbedPlayback =
+    post?.type === "video" &&
+    !isDouyinVideoPost &&
+    !post.videoUrl &&
+    Boolean(videoEmbedUrl) &&
+    Boolean(videoEmbedUrl);
+  const articleImageUrls = useMemo(() => {
+    if (!post || post.type === "video") return [];
+
+    const seen = new Set<string>();
+    return [post.coverImageUrl, ...(post.imageUrls ?? [])].filter((url): url is string => {
+      if (!url) return false;
+      const normalized = url.replace(/^http:\/\//i, "https://");
+      if (seen.has(normalized)) return false;
+      seen.add(normalized);
+      return true;
+    });
+  }, [post]);
+  const articleBlocks = useMemo(() => {
+    if (!post || post.type === "video") return [];
+
+    if (post.contentBlocks?.length) {
+      const seenImages = new Set<string>();
+
+      return post.contentBlocks.filter((block) => {
+        if (block.type !== "image") return Boolean(block.text?.trim());
+        const normalized = block.url.replace(/^http:\/\//i, "https://");
+        if (seenImages.has(normalized)) return false;
+        seenImages.add(normalized);
+        return true;
+      });
+    }
+
+    return [];
+  }, [post]);
+  const hasInlineArticleBlocks = articleBlocks.length > 0;
+  const logVideoEvent = (
+    level: "info" | "warn" | "error",
+    event: string,
+    data?: Record<string, unknown>,
+  ) => {
+    const video = videoElementRef.current;
+    const payload = {
+      postId: post?.id ?? null,
+      sourceId: post?.sourceId ?? null,
+      sourceUrl: post?.sourceUrl ?? null,
+      playbackMode: videoPlaybackMode,
+      isDouyinVideoPost,
+      videoStarted,
+      videoLoading,
+      videoReady,
+      videoSlow,
+      videoFailed,
+      videoNeedsManualPlay,
+      videoSourceLimited,
+      videoLoadProgress,
+      activeVideoUrl: activeVideoUrl ?? null,
+      activeVideoEmbedUrl: activeVideoEmbedUrl ?? null,
+      readyState: video?.readyState ?? null,
+      networkState: video?.networkState ?? null,
+      currentTime: video?.currentTime ?? null,
+      duration: Number.isFinite(video?.duration) ? video?.duration : null,
+      currentSrc: video?.currentSrc ?? null,
+      elapsedMs:
+        playbackRequestStartedAtRef.current !== null
+          ? Date.now() - playbackRequestStartedAtRef.current
+          : null,
+      ...data,
+    };
+
+    if (level === "warn") {
+      console.warn(`[video] ${event}`, payload);
+      return;
+    }
+
+    if (level === "error") {
+      console.error(`[video] ${event}`, payload);
+      return;
+    }
+
+    console.info(`[video] ${event}`, payload);
+  };
+
+  useEffect(() => {
+    if (!post) return;
+
+    setVideoStarted(false);
+    setVideoLoading(false);
+    setVideoReady(false);
+    setVideoLoadProgress(0);
+    setVideoSlow(false);
+    setVideoFailed(false);
+    setVideoNeedsManualPlay(false);
+    setResolvedVideoUrl(undefined);
+    setResolvedVideoEmbedUrl(undefined);
+    setVideoSourceLimited(false);
+    setVideoPlaybackMode(preferEmbedPlayback ? "embed" : "direct");
+    playbackRequestStartedAtRef.current = null;
+    lastLoggedProgressBucketRef.current = -1;
+    console.info("[video] reset state for post", {
+      postId: post.id,
+      sourceId: post.sourceId ?? null,
+      sourceUrl: post.sourceUrl ?? null,
+      type: post.type,
+      isDouyinVideoPost,
+      preferEmbedPlayback,
+      hasStoredVideoUrl: Boolean(post.videoUrl),
+      hasVideoEmbedUrl: Boolean(videoEmbedUrl),
+    });
+  }, [post, preferEmbedPlayback]);
+
+  useEffect(() => {
+    if (!videoLoading) {
+      if (loadProgressTimerRef.current !== null) {
+        window.clearInterval(loadProgressTimerRef.current);
+        loadProgressTimerRef.current = null;
+      }
+      return;
+    }
+
+    loadProgressTimerRef.current = window.setInterval(() => {
+      setVideoLoadProgress((current) => {
+        if (current >= 92) return current;
+        return Math.min(current + (current < 36 ? 14 : 7), 92);
+      });
+    }, 180);
+
+    return () => {
+      if (loadProgressTimerRef.current !== null) {
+        window.clearInterval(loadProgressTimerRef.current);
+        loadProgressTimerRef.current = null;
+      }
+    };
+  }, [videoLoading]);
+
+  useEffect(() => {
+    if (!videoLoading || videoReady) return;
+
+    const slowThresholdMs = videoPlaybackMode === "embed" ? 7000 : 3200;
+    const slowTimer = window.setTimeout(() => {
+      setVideoSlow(true);
+      setVideoLoadProgress((current) => Math.max(current, 92));
+      logVideoEvent("warn", "playback became slow", {
+        slowThresholdMs,
+      });
+    }, slowThresholdMs);
+
+    return () => window.clearTimeout(slowTimer);
+  }, [videoLoading, videoPlaybackMode, videoReady]);
+
+  useEffect(() => {
+    if (!videoStarted || videoPlaybackMode !== "direct" || !activeVideoUrl) return;
+
+    const timer = window.setTimeout(() => {
+      videoElementRef.current?.load();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [activeVideoUrl, videoPlaybackMode, videoStarted]);
 
   if (!post && !hydrated) {
     return (
@@ -129,83 +307,6 @@ export function PostDetailClient({
       !normalizedParagraph.startsWith(normalizedSummary.slice(0, 24))
     );
   });
-  const videoEmbedUrl =
-    post.type === "video" ? post.videoEmbedUrl ?? buildDouyinEmbedUrl(post.sourceUrl) : undefined;
-  const hasPlayableVideo = post.type === "video" && Boolean(post.videoUrl || videoEmbedUrl);
-  const articleImageUrls = useMemo(() => {
-    if (post.type === "video") return [];
-
-    const seen = new Set<string>();
-    return [post.coverImageUrl, ...(post.imageUrls ?? [])].filter((url): url is string => {
-      if (!url) return false;
-      const normalized = url.replace(/^http:\/\//i, "https://");
-      if (seen.has(normalized)) return false;
-      seen.add(normalized);
-      return true;
-    });
-  }, [post.coverImageUrl, post.imageUrls, post.type]);
-  const articleBlocks = useMemo(() => {
-    if (post.type === "video") return [];
-
-    if (post.contentBlocks?.length) {
-      const seenImages = new Set<string>();
-
-      return post.contentBlocks.filter((block) => {
-        if (block.type !== "image") return Boolean(block.text?.trim());
-        const normalized = block.url.replace(/^http:\/\//i, "https://");
-        if (seenImages.has(normalized)) return false;
-        seenImages.add(normalized);
-        return true;
-      });
-    }
-
-    return [];
-  }, [post.contentBlocks, post.type]);
-  const hasInlineArticleBlocks = articleBlocks.length > 0;
-
-  useEffect(() => {
-    setVideoStarted(false);
-    setVideoLoading(false);
-    setVideoReady(false);
-    setVideoLoadProgress(0);
-    setVideoSlow(false);
-    setVideoFailed(false);
-  }, [post.id]);
-
-  useEffect(() => {
-    if (!videoLoading) {
-      if (loadProgressTimerRef.current !== null) {
-        window.clearInterval(loadProgressTimerRef.current);
-        loadProgressTimerRef.current = null;
-      }
-      return;
-    }
-
-    loadProgressTimerRef.current = window.setInterval(() => {
-      setVideoLoadProgress((current) => {
-        if (current >= 92) return current;
-        return Math.min(current + (current < 36 ? 14 : 7), 92);
-      });
-    }, 180);
-
-    return () => {
-      if (loadProgressTimerRef.current !== null) {
-        window.clearInterval(loadProgressTimerRef.current);
-        loadProgressTimerRef.current = null;
-      }
-    };
-  }, [videoLoading]);
-
-  useEffect(() => {
-    if (!videoLoading || videoReady) return;
-
-    const slowTimer = window.setTimeout(() => {
-      setVideoSlow(true);
-      setVideoLoadProgress((current) => Math.max(current, 92));
-    }, 3200);
-
-    return () => window.clearTimeout(slowTimer);
-  }, [videoLoading, videoReady]);
 
   const handleShare = async () => {
     const url = `${window.location.origin}/post/${post.id}`;
@@ -267,29 +368,132 @@ export function PostDetailClient({
     }
   };
 
-  const startVideoPlayback = () => {
+  const startVideoPlayback = async () => {
+    playbackRequestStartedAtRef.current = Date.now();
+    lastLoggedProgressBucketRef.current = -1;
     setVideoStarted(true);
     setVideoReady(false);
     setVideoLoading(true);
-    setVideoLoadProgress(16);
+    setVideoLoadProgress(videoPlaybackMode === "embed" ? 16 : 8);
     setVideoSlow(false);
     setVideoFailed(false);
+    setVideoNeedsManualPlay(false);
+    setVideoSourceLimited(false);
+    console.info("[video] user requested playback", {
+      postId: post.id,
+      sourceId: post.sourceId ?? null,
+      sourceUrl: post.sourceUrl ?? null,
+      isDouyinVideoPost,
+      hasStoredVideoUrl: Boolean(post.videoUrl),
+      hasVideoEmbedUrl: Boolean(videoEmbedUrl),
+    });
 
-    window.setTimeout(() => {
-      void videoElementRef.current?.play().catch(() => {
-        setVideoSlow(true);
-      });
-    }, 0);
+    if (isDouyinVideoPost && post.sourceUrl) {
+      try {
+        console.info("[video] requesting fresh direct url from server", {
+          postId: post.id,
+          sourceId: post.sourceId ?? null,
+          sourceUrl: post.sourceUrl,
+        });
+        const response = await fetch("/api/video-source", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            sourceId: post.sourceId,
+            sourceUrl: post.sourceUrl,
+          }),
+        });
+        const data = (await response.json()) as {
+          ok?: boolean;
+          videoUrl?: string | null;
+          videoEmbedUrl?: string | null;
+          coverImageUrl?: string | null;
+        };
+
+        if (response.ok && data.videoUrl) {
+          logVideoEvent("info", "resolved fresh douyin direct url", {
+            hasEmbedUrl: Boolean(data.videoEmbedUrl),
+            directVideoAvailable: true,
+          });
+          setResolvedVideoUrl(data.videoUrl);
+          setResolvedVideoEmbedUrl(undefined);
+          setVideoPlaybackMode("direct");
+          setVideoLoadProgress(28);
+          return;
+        }
+
+        logVideoEvent("warn", "no fresh douyin direct url, fallback to source page", {
+          responseOk: response.ok,
+          videoEmbedUrl: data.videoEmbedUrl ?? null,
+          error: !response.ok ? "refresh-api-non-200" : null,
+        });
+        setResolvedVideoUrl(undefined);
+        setResolvedVideoEmbedUrl(undefined);
+        setVideoSourceLimited(true);
+        setVideoLoading(false);
+        setVideoReady(false);
+        setVideoLoadProgress(100);
+        return;
+      } catch (error) {
+        logVideoEvent("error", "refresh douyin direct url failed", {
+          error,
+        });
+        setResolvedVideoUrl(undefined);
+        setResolvedVideoEmbedUrl(undefined);
+        setVideoSourceLimited(true);
+        setVideoLoading(false);
+        setVideoReady(false);
+        setVideoLoadProgress(100);
+        return;
+      }
+    }
+
+    if (videoPlaybackMode !== "direct") {
+      return;
+    }
   };
 
   const markVideoReady = () => {
+    logVideoEvent("info", "video marked ready");
     setVideoReady(true);
     setVideoLoading(false);
     setVideoLoadProgress(100);
     setVideoSlow(false);
+    setVideoNeedsManualPlay(false);
   };
 
   const markVideoFailed = () => {
+    if (videoPlaybackMode === "direct" && videoEmbedUrl) {
+      logVideoEvent("warn", "direct playback failed", {
+        videoEmbedUrl,
+        mediaErrorCode: videoElementRef.current?.error?.code ?? null,
+        mediaErrorMessage: videoElementRef.current?.error?.message ?? null,
+      });
+      if (isDouyinVideoPost) {
+        setResolvedVideoUrl(undefined);
+        setResolvedVideoEmbedUrl(undefined);
+        setVideoSourceLimited(true);
+        setVideoLoading(false);
+        setVideoReady(false);
+        setVideoLoadProgress(100);
+        return;
+      }
+
+      setVideoPlaybackMode("embed");
+      setVideoFailed(false);
+      setVideoSlow(false);
+      setVideoLoading(true);
+      setVideoLoadProgress(24);
+      return;
+    }
+
+    logVideoEvent("error", "playback failed", {
+      readyState: videoElementRef.current?.readyState ?? null,
+      networkState: videoElementRef.current?.networkState ?? null,
+      mediaErrorCode: videoElementRef.current?.error?.code ?? null,
+      mediaErrorMessage: videoElementRef.current?.error?.message ?? null,
+      currentSrc: videoElementRef.current?.currentSrc ?? null,
+    });
     setVideoFailed(true);
     setVideoSlow(true);
     setVideoLoading(false);
@@ -298,8 +502,66 @@ export function PostDetailClient({
 
   const handleVideoBuffering = () => {
     if (!videoReady) return;
+    logVideoEvent("warn", "video entered buffering");
     setVideoLoading(true);
     setVideoLoadProgress(72);
+  };
+
+  const updateVideoBufferedProgress = () => {
+    const video = videoElementRef.current;
+    if (!video) return;
+
+    const duration = video.duration;
+    if (!Number.isFinite(duration) || duration <= 0 || video.buffered.length === 0) {
+      setVideoLoadProgress((current) => Math.max(current, 46));
+      return;
+    }
+
+    let bufferedEnd = 0;
+    for (let index = 0; index < video.buffered.length; index += 1) {
+      bufferedEnd = Math.max(bufferedEnd, video.buffered.end(index));
+    }
+
+    const bufferedPercent = Math.min(98, Math.round((bufferedEnd / duration) * 100));
+    const progressBucket = Math.floor(bufferedPercent / 10);
+    if (progressBucket > lastLoggedProgressBucketRef.current) {
+      lastLoggedProgressBucketRef.current = progressBucket;
+      logVideoEvent("info", "buffered progress updated", {
+        bufferedPercent,
+        bufferedEnd,
+      });
+    }
+    setVideoLoadProgress((current) => Math.max(current, bufferedPercent));
+  };
+
+  const startBufferedVideo = async () => {
+    const video = videoElementRef.current;
+    if (!video || videoFailed) return;
+
+    updateVideoBufferedProgress();
+
+    if (video.readyState < HTMLMediaElement.HAVE_FUTURE_DATA) {
+      logVideoEvent("info", "video not ready for autoplay yet", {
+        requiredReadyState: HTMLMediaElement.HAVE_FUTURE_DATA,
+      });
+      return;
+    }
+
+    try {
+      setVideoNeedsManualPlay(false);
+      await video.play();
+      logVideoEvent("info", "video play() resolved");
+      markVideoReady();
+    } catch (error) {
+      logVideoEvent("warn", "autoplay after buffering failed", {
+        readyState: video.readyState,
+        networkState: video.networkState,
+        error,
+      });
+      setVideoLoading(false);
+      setVideoNeedsManualPlay(true);
+      setVideoLoadProgress((current) => Math.max(current, 96));
+    }
   };
 
   return (
@@ -412,226 +674,34 @@ export function PostDetailClient({
 
           {post.type === "video" ? (
             <div className="mx-auto mt-6 max-w-[300px] overflow-hidden rounded-[1.75rem] border border-slate-100 bg-slate-950 shadow-lift sm:max-w-[320px]">
-              {hasPlayableVideo && !videoStarted ? (
-                <button
-                  type="button"
-                  onClick={startVideoPlayback}
-                  className="group relative block w-full bg-black text-left"
-                  aria-label={`播放视频：${post.title}`}
-                >
-                  {post.coverImageUrl ? (
-                    <>
-                      <div
-                        className="absolute inset-0 bg-cover bg-center opacity-25 blur-xl"
-                        style={{ backgroundImage: `url(${post.coverImageUrl})` }}
-                      />
-                      <img
-                        src={post.coverImageUrl}
-                        alt={post.title}
-                        className="relative aspect-[9/16] w-full object-contain"
-                      />
-                    </>
-                  ) : (
-                    <div className="aspect-[9/16] w-full bg-black" />
-                  )}
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/22 transition-colors group-hover:bg-black/30">
-                    <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/92 text-slate-950 shadow-2xl transition-transform group-hover:scale-105">
-                      <Play className="ml-1 h-9 w-9 fill-current" />
-                    </div>
-                  </div>
-                </button>
-              ) : post.videoUrl ? (
-                <div className="relative aspect-[9/16] w-full bg-black">
-                  {post.coverImageUrl ? (
-                    <>
-                      <div
-                        className={cn(
-                          "absolute inset-0 bg-cover bg-center blur-xl transition-opacity duration-300",
-                          videoReady ? "opacity-0" : "opacity-25",
-                        )}
-                        style={{ backgroundImage: `url(${post.coverImageUrl})` }}
-                      />
-                      <img
-                        src={post.coverImageUrl}
-                        alt={post.title}
-                        className={cn(
-                          "absolute inset-0 h-full w-full object-contain transition-opacity duration-300",
-                          videoReady ? "opacity-0" : "opacity-100",
-                        )}
-                      />
-                    </>
-                  ) : null}
-                  <video
-                    ref={videoElementRef}
-                    controls
-                    autoPlay
-                    playsInline
-                    preload="auto"
-                    poster={post.coverImageUrl}
-                    className={cn(
-                      "relative aspect-[9/16] w-full bg-black object-contain transition-opacity duration-300",
-                      videoReady ? "opacity-100" : "opacity-0",
-                    )}
-                    src={post.videoUrl}
-                    onLoadedData={markVideoReady}
-                    onCanPlay={markVideoReady}
-                    onPlaying={markVideoReady}
-                    onWaiting={handleVideoBuffering}
-                    onError={markVideoFailed}
-                    onProgress={() => {
-                      if (!videoReady) {
-                        setVideoLoadProgress((current) => Math.max(current, 58));
-                      }
-                    }}
-                  />
-                  {videoLoading || videoSlow || videoFailed ? (
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 top-0 flex items-end bg-gradient-to-t from-black/60 via-black/10 to-transparent p-4">
-                      <div className="pointer-events-auto w-full rounded-2xl bg-black/70 px-4 py-3 text-white shadow-2xl backdrop-blur-sm">
-                        <div className="flex items-center justify-between gap-3 text-xs font-bold">
-                          <span>
-                            {videoFailed
-                              ? "站内播放失败"
-                              : videoSlow
-                                ? "源站加载较慢，可先去原视频"
-                                : videoReady
-                                  ? "缓冲中..."
-                                  : "视频加载中..."}
-                          </span>
-                          <span>{videoLoadProgress}%</span>
-                        </div>
-                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/15">
-                          <div
-                            className="h-full rounded-full bg-gradient-to-r from-blue-400 via-cyan-300 to-violet-400 transition-[width] duration-200"
-                            style={{ width: `${videoLoadProgress}%` }}
-                          />
-                        </div>
-                        {(videoSlow || videoFailed) && post.sourceUrl ? (
-                          <a
-                            href={post.sourceUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="mt-3 inline-flex rounded-full bg-white px-3 py-1.5 text-xs font-black text-slate-950"
-                          >
-                            去抖音原视频
-                          </a>
-                        ) : null}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              ) : videoEmbedUrl ? (
-                <div className="relative aspect-[9/16] w-full bg-black">
-                  {post.coverImageUrl ? (
-                    <>
-                      <div
-                        className={cn(
-                          "absolute inset-0 bg-cover bg-center blur-xl transition-opacity duration-300",
-                          videoReady ? "opacity-0" : "opacity-25",
-                        )}
-                        style={{ backgroundImage: `url(${post.coverImageUrl})` }}
-                      />
-                      <img
-                        src={post.coverImageUrl}
-                        alt={post.title}
-                        className={cn(
-                          "absolute inset-0 h-full w-full object-contain transition-opacity duration-300",
-                          videoReady ? "opacity-0" : "opacity-100",
-                        )}
-                      />
-                    </>
-                  ) : null}
-                  <iframe
-                    title={post.title}
-                    src={videoEmbedUrl}
-                    loading="eager"
-                    allow="fullscreen; autoplay; encrypted-media; picture-in-picture"
-                    allowFullScreen
-                    referrerPolicy="strict-origin-when-cross-origin"
-                    className={cn(
-                      "relative aspect-[9/16] w-full border-0 bg-black transition-opacity duration-300",
-                      videoReady ? "opacity-100" : "opacity-0",
-                    )}
-                    onLoad={() => {
-                      window.setTimeout(markVideoReady, 900);
-                    }}
-                  />
-                  {videoLoading || videoSlow ? (
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 top-0 flex items-end bg-gradient-to-t from-black/60 via-black/10 to-transparent p-4">
-                      <div className="pointer-events-auto w-full rounded-2xl bg-black/70 px-4 py-3 text-white shadow-2xl backdrop-blur-sm">
-                        <div className="flex items-center justify-between gap-3 text-xs font-bold">
-                          <span>{videoSlow ? "源站加载较慢，可先去原视频" : "视频加载中..."}</span>
-                          <span>{videoLoadProgress}%</span>
-                        </div>
-                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/15">
-                          <div
-                            className="h-full rounded-full bg-gradient-to-r from-blue-400 via-cyan-300 to-violet-400 transition-[width] duration-200"
-                            style={{ width: `${videoLoadProgress}%` }}
-                          />
-                        </div>
-                        {videoSlow && post.sourceUrl ? (
-                          <a
-                            href={post.sourceUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="mt-3 inline-flex rounded-full bg-white px-3 py-1.5 text-xs font-black text-slate-950"
-                          >
-                            去抖音原视频
-                          </a>
-                        ) : null}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              ) : post.coverImageUrl ? (
-                <div className="relative bg-black">
-                  <div
-                    className="absolute inset-0 bg-cover bg-center opacity-25 blur-xl"
-                    style={{ backgroundImage: `url(${post.coverImageUrl})` }}
-                  />
-                  <img
-                    src={post.coverImageUrl}
-                    alt={post.title}
-                    className="relative aspect-[9/16] w-full object-contain"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/35">
-                    <div className="inline-flex items-center gap-2 rounded-full bg-black/70 px-4 py-2 text-sm font-bold text-white">
-                      <Play className="h-4 w-4 fill-current" />
-                      视频暂不可站内播放
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-              <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 text-sm text-slate-200">
-                <div className="inline-flex items-center gap-2">
-                  <Play className="h-4 w-4" />
-                  <span>
-                    {post.videoUrl
-                      ? videoStarted
-                        ? videoLoading
-                          ? "站内加载中"
-                          : "站内播放"
-                        : "点击封面播放"
-                      : videoEmbedUrl
-                        ? videoStarted
-                          ? videoLoading
-                            ? "站内加载中"
-                            : "站内嵌入播放"
-                          : "点击封面播放"
-                        : "视频预览"}
-                  </span>
-                  <span className="h-1 w-1 rounded-full bg-slate-500" />
-                  <span>{formatVideoDuration(post.durationMs)}</span>
-                </div>
+              <div className="relative bg-black">
+                {post.coverImageUrl ? (
+                  <>
+                    <div
+                      className="absolute inset-0 bg-cover bg-center opacity-25 blur-xl"
+                      style={{ backgroundImage: `url(${post.coverImageUrl})` }}
+                    />
+                    <img
+                      src={post.coverImageUrl}
+                      alt={post.title}
+                      className="relative aspect-[9/16] w-full object-contain"
+                    />
+                  </>
+                ) : (
+                  <div className="aspect-[9/16] w-full bg-black" />
+                )}
                 {post.sourceUrl ? (
-                  <a
-                    href={post.sourceUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 font-bold text-slate-900 transition-colors hover:bg-fuchsia-100"
-                  >
-                    去抖音原视频
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/55 to-transparent px-5 pb-6 pt-20">
+                    <a
+                      href={post.sourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mx-auto inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-4 py-3 text-sm font-black text-slate-950 transition-colors hover:bg-fuchsia-100"
+                    >
+                      去抖音看原视频
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </div>
                 ) : null}
               </div>
             </div>
@@ -853,5 +923,14 @@ function buildDouyinEmbedUrl(sourceUrl?: string) {
   if (!sourceUrl) return undefined;
 
   const videoId = sourceUrl.match(/\/video\/(\d+)/)?.[1] ?? sourceUrl.match(/\/share\/video\/(\d+)/)?.[1];
-  return videoId ? `https://www.iesdouyin.com/share/video/${videoId}` : undefined;
+  return videoId ? `https://m.douyin.com/share/video/${videoId}` : undefined;
+}
+
+function isLikelyDouyinVideoPost(sourceId?: string, sourceUrl?: string, profileUrl?: string) {
+  return Boolean(
+    sourceId?.startsWith("douyin-") ||
+      sourceUrl?.includes("douyin.com") ||
+      sourceUrl?.includes("iesdouyin.com") ||
+      profileUrl?.includes("douyin.com"),
+  );
 }

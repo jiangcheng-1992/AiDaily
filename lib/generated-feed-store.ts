@@ -41,11 +41,7 @@ export async function readGeneratedFeed(
   try {
     const raw = await readFile(filePath, "utf8");
     const parsed = JSON.parse(raw) as GeneratedFeed;
-    if (parsed.policyVersion !== GENERATED_FEED_POLICY_VERSION) {
-      return emptyFeed;
-    }
-
-    return sanitizeGeneratedFeed({
+    const normalizedFeed = {
       policyVersion: parsed.policyVersion,
       updatedAt: parsed.updatedAt,
       posts: Array.isArray(parsed.posts) ? parsed.posts : [],
@@ -53,7 +49,12 @@ export async function readGeneratedFeed(
         parsed.comments && typeof parsed.comments === "object"
           ? parsed.comments
           : {},
-    }, options);
+    };
+
+    // Keep serving the last persisted feed during deploys even if the policy
+    // version changed, otherwise the homepage can flash empty before the next
+    // ingest finishes rewriting the file.
+    return sanitizeGeneratedFeed(normalizedFeed, options);
   } catch {
     return emptyFeed;
   }

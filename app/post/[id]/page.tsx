@@ -4,10 +4,6 @@ import { getPostById, mockPosts } from "@/lib/mock-data";
 
 export const dynamic = "force-dynamic";
 
-export function generateStaticParams() {
-  return mockPosts.map((post) => ({ id: post.id }));
-}
-
 export default async function PostPage({
   params,
 }: {

@@ -1,4 +1,8 @@
-import { type DouyinVideoSource, autoIngestDouyinVideoSources } from "@/lib/douyin-video-sources";
+import {
+  type DouyinVideoSource,
+  autoIngestDouyinVideoSources,
+  douyinVideoSources,
+} from "@/lib/douyin-video-sources";
 import { normalizeTags } from "@/lib/utils";
 
 export type DouyinVideoItem = {
@@ -178,6 +182,118 @@ export async function fetchDouyinVideoItems({
   );
 
   return results.sort((a, b) => a.source.name.localeCompare(b.source.name));
+}
+
+export async function refreshDouyinVideoItemByUrl({
+  sourceId,
+  sourceUrl,
+}: {
+  sourceId?: string;
+  sourceUrl?: string;
+}) {
+  const normalizedUrl = sourceUrl?.trim();
+  const videoId = normalizedUrl ? extractDouyinVideoId(normalizedUrl) : undefined;
+  console.info("[douyin-refresh] start", {
+    sourceId: sourceId ?? null,
+    sourceUrl: normalizedUrl ?? null,
+    videoId: videoId ?? null,
+  });
+
+  if (!normalizedUrl || !videoId) {
+    console.warn("[douyin-refresh] missing normalizedUrl or videoId", {
+      sourceId: sourceId ?? null,
+      sourceUrl: normalizedUrl ?? null,
+      videoId: videoId ?? null,
+    });
+    return null;
+  }
+
+  const source =
+    douyinVideoSources.find((item) => item.id === sourceId) ??
+    douyinVideoSources.find((item) => normalizedUrl.includes(item.secUserId)) ??
+    null;
+
+  console.info("[douyin-refresh] source resolved", {
+    sourceId: source?.id ?? null,
+    sourceName: source?.name ?? null,
+    matchedBy: source?.id === sourceId ? "sourceId" : source ? "secUserId" : "none",
+    videoId,
+  });
+
+  if (source) {
+    try {
+      const awemes = await fetchSourceAwemes(source.secUserId, 18);
+      const matched = awemes.find((aweme) => aweme.aweme_id === videoId);
+      const freshItem = matched ? normalizeDouyinAweme(source, matched) : null;
+      console.info("[douyin-refresh] author feed lookup completed", {
+        sourceId: source.id,
+        sourceName: source.name,
+        awemeCount: awemes.length,
+        matchedAweme: Boolean(matched),
+        hasVideoUrl: Boolean(freshItem?.videoUrl),
+        hasVideoEmbedUrl: Boolean(freshItem?.videoEmbedUrl),
+      });
+      if (freshItem?.videoUrl || freshItem?.videoEmbedUrl) {
+        console.info("[douyin-refresh] author feed produced usable item", {
+          sourceId: source.id,
+          sourceName: source.name,
+          videoId,
+          hasVideoUrl: Boolean(freshItem.videoUrl),
+          hasVideoEmbedUrl: Boolean(freshItem.videoEmbedUrl),
+        });
+        return freshItem;
+      }
+    } catch (error) {
+      console.warn("[douyin-refresh] author feed lookup failed", {
+        sourceId: source.id,
+        sourceName: source.name,
+        videoId,
+        error: formatErrorMessage(error),
+      });
+      // Fall back to SEO parsing when the author feed API is temporarily unavailable.
+    }
+
+    try {
+      const seoItem = await fetchSeoVideoItem(source, normalizedUrl);
+      console.info("[douyin-refresh] seo fallback completed", {
+        sourceId: source.id,
+        sourceName: source.name,
+        videoId,
+        hasVideoUrl: Boolean(seoItem?.videoUrl),
+        hasVideoEmbedUrl: Boolean(seoItem?.videoEmbedUrl),
+      });
+      return seoItem;
+    } catch (error) {
+      console.warn("[douyin-refresh] seo fallback failed", {
+        sourceId: source.id,
+        sourceName: source.name,
+        videoId,
+        error: formatErrorMessage(error),
+      });
+      return null;
+    }
+  }
+
+  console.warn("[douyin-refresh] no source matched, returning share-page fallback", {
+    sourceId: sourceId ?? null,
+    sourceUrl: normalizedUrl,
+    videoId,
+  });
+  return {
+    sourceId: sourceId ?? "douyin-runtime-refresh",
+    sourceName: "抖音视频",
+    title: "",
+    summary: "",
+    content: "",
+    url: buildDouyinVideoUrl(videoId),
+    videoEmbedUrl: buildMobileDouyinShareUrl(videoId),
+    likesCount: 0,
+    commentsCount: 0,
+    savesCount: 0,
+    hotScore: 0,
+    tags: [],
+    profileUrl: "",
+  };
 }
 
 async function fetchSourceVideos(
@@ -738,7 +854,11 @@ function buildDouyinVideoUrl(videoId: string) {
 }
 
 function buildDouyinEmbedUrl(videoId: string) {
-  return `https://www.iesdouyin.com/share/video/${videoId}`;
+  return buildMobileDouyinShareUrl(videoId);
+}
+
+function buildMobileDouyinShareUrl(videoId: string) {
+  return `https://m.douyin.com/share/video/${videoId}`;
 }
 
 function extractDouyinVideoId(value: string) {
