@@ -42,6 +42,20 @@ export async function GET() {
           process.env.AUTO_INGEST_DOUYIN_ITEM_LIMIT ?? process.env.DOUYIN_ITEMS_PER_SOURCE,
           2,
         ),
+        backupSourceLimit: readNonNegativeNumber(
+          process.env.AUTO_INGEST_BACKUP_VIDEO_SOURCE_LIMIT ??
+            process.env.BACKUP_VIDEO_SOURCE_LIMIT,
+          6,
+        ),
+        backupItemLimit: readPositiveNumber(
+          process.env.AUTO_INGEST_BACKUP_VIDEO_ITEM_LIMIT ??
+            process.env.BACKUP_VIDEO_ITEMS_PER_SOURCE,
+          2,
+        ),
+        backupPlatforms: {
+          youtube: true,
+          bilibili: Boolean(process.env.RSSHUB_BASE_URL),
+        },
       },
     },
     aiComments: {

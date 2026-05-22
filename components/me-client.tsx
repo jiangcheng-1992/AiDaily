@@ -1,14 +1,18 @@
 "use client";
 
+import { type FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Bell,
   Bookmark,
   ChevronRight,
+  DatabaseZap,
+  Globe2,
   LogOut,
   MessageCircle,
   Pencil,
   PenLine,
+  RefreshCw,
   Settings,
   Sparkles,
   Trash2,
@@ -21,6 +25,17 @@ import { Card } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 import { useAiCircleStore } from "@/hooks/use-ai-circle-store";
 import { cn, formatRelativeTime } from "@/lib/utils";
+
+type SubmittedSource = {
+  id: string;
+  kind: string;
+  name: string;
+  url: string;
+  status: "active" | "error";
+  lastFetchedAt?: string;
+  lastError?: string;
+  lastPostCount?: number;
+};
 
 export function MeClient() {
   const { savedPostIds, submissions, commentsByPost, canManageSubmission, deleteSubmission } =
@@ -174,6 +189,8 @@ export function MeClient() {
         </Card>
 
         <aside className="space-y-4">
+          {user.isAdmin ? <AdminSourcePanel /> : null}
+
           <Card className="rounded-[2rem] p-5">
             <h2 className="text-xl font-black text-slate-950">设置</h2>
             <div className="mt-4 space-y-2">
@@ -192,6 +209,170 @@ export function MeClient() {
         </aside>
       </div>
     </div>
+  );
+}
+
+function AdminSourcePanel() {
+  const [sources, setSources] = useState<SubmittedSource[]>([]);
+  const [form, setForm] = useState({
+    kind: "auto",
+    name: "",
+    url: "",
+  });
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    void loadSources();
+  }, []);
+
+  async function loadSources() {
+    try {
+      const response = await fetch("/api/admin/sources", {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+      const data = (await response.json()) as {
+        ok?: boolean;
+        sources?: SubmittedSource[];
+      };
+      if (response.ok && data.ok) {
+        setSources(data.sources ?? []);
+      }
+    } catch {
+      // The panel can still submit even if history failed to load.
+    }
+  }
+
+  async function submitSource(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!form.url.trim()) return;
+
+    setLoading(true);
+    setError("");
+    setMessage("正在保存信息源并触发抓取...");
+
+    try {
+      const response = await fetch("/api/admin/sources", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          ...form,
+          itemLimit: 3,
+        }),
+      });
+      const data = (await response.json()) as {
+        ok?: boolean;
+        error?: string;
+        postCount?: number;
+        totalPostCount?: number;
+        source?: SubmittedSource;
+      };
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "信息源提交失败");
+      }
+
+      setMessage(
+        `已抓取 ${data.postCount ?? 0} 条内容，当前 feed 共 ${data.totalPostCount ?? 0} 条。`,
+      );
+      setForm({ kind: "auto", name: "", url: "" });
+      await loadSources();
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : "信息源提交失败");
+      setMessage("");
+      await loadSources();
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Card className="rounded-[2rem] border-blue-100 bg-blue-50/45 p-5">
+      <div className="flex items-center gap-2">
+        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-blue-700 shadow-soft">
+          <DatabaseZap className="h-5 w-5" />
+        </span>
+        <div>
+          <h2 className="text-xl font-black text-slate-950">提交信息源</h2>
+          <p className="text-xs font-semibold text-blue-700">管理员入口</p>
+        </div>
+      </div>
+
+      <form className="mt-4 space-y-3" onSubmit={submitSource}>
+        <select
+          value={form.kind}
+          onChange={(event) => setForm({ ...form, kind: event.target.value })}
+          className="h-11 w-full rounded-2xl border border-white bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-200"
+        >
+          <option value="auto">自动识别</option>
+          <option value="website">网站主页</option>
+          <option value="rss">RSS / Atom</option>
+          <option value="douyin">抖音作者</option>
+          <option value="bilibili">B站作者</option>
+          <option value="youtube">YouTube 作者</option>
+        </select>
+        <input
+          value={form.name}
+          onChange={(event) => setForm({ ...form, name: event.target.value })}
+          placeholder="信息源名称，可选"
+          className="h-11 w-full rounded-2xl border border-white bg-white px-3 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-blue-200"
+        />
+        <input
+          value={form.url}
+          onChange={(event) => setForm({ ...form, url: event.target.value })}
+          placeholder="粘贴网站、RSS、抖音/B站/YouTube 作者链接"
+          className="h-11 w-full rounded-2xl border border-white bg-white px-3 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-blue-200"
+        />
+        <button
+          type="submit"
+          disabled={loading || !form.url.trim()}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-700 px-4 py-3 text-sm font-black text-white shadow-soft transition-colors hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+        >
+          {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Globe2 className="h-4 w-4" />}
+          {loading ? "正在抓取" : "提交并抓取"}
+        </button>
+      </form>
+
+      {message ? (
+        <div className="mt-3 rounded-2xl bg-emerald-50 px-3 py-2 text-xs font-bold leading-5 text-emerald-700">
+          {message}
+        </div>
+      ) : null}
+      {error ? (
+        <div className="mt-3 rounded-2xl bg-rose-50 px-3 py-2 text-xs font-bold leading-5 text-rose-700">
+          {error}
+        </div>
+      ) : null}
+
+      <div className="mt-4 space-y-2">
+        {sources.slice(0, 4).map((source) => (
+          <div key={source.id} className="rounded-2xl bg-white/90 p-3 text-xs">
+            <div className="flex items-center justify-between gap-2">
+              <span className="line-clamp-1 font-black text-slate-800">{source.name}</span>
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 font-black",
+                  source.status === "active"
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "bg-rose-50 text-rose-700",
+                )}
+              >
+                {source.status === "active" ? "可用" : "异常"}
+              </span>
+            </div>
+            <p className="mt-1 line-clamp-1 text-slate-400">{source.url}</p>
+            {source.lastPostCount !== undefined ? (
+              <p className="mt-1 font-bold text-slate-500">最近抓取 {source.lastPostCount} 条</p>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 

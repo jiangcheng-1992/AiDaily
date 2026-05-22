@@ -49,12 +49,27 @@ async function handleIngestRequest(request: Request) {
     url.searchParams.get("douyinItemLimit") ?? process.env.DOUYIN_ITEMS_PER_SOURCE,
     2,
   );
+  const backupVideoSourceLimit = readNonNegativeInt(
+    url.searchParams.get("backupVideoSourceLimit") ?? process.env.BACKUP_VIDEO_SOURCE_LIMIT,
+    6,
+  );
+  const backupVideoItemLimit = readPositiveInt(
+    url.searchParams.get("backupVideoItemLimit") ?? process.env.BACKUP_VIDEO_ITEMS_PER_SOURCE,
+    2,
+  );
+  const submittedSourceLimit = readNonNegativeInt(
+    url.searchParams.get("submittedSourceLimit") ?? process.env.SUBMITTED_SOURCE_LIMIT,
+    8,
+  );
   const run = await runIngestPipeline({
     sourceLimit,
     itemLimit,
     githubLimit,
     douyinSourceLimit,
     douyinItemLimit,
+    backupVideoSourceLimit,
+    backupVideoItemLimit,
+    submittedSourceLimit,
   });
   const current = await readGeneratedFeed({ includeSkills: true });
   const hasIncomingFeed = run.posts.length > 0 || Object.keys(run.comments).length > 0;
@@ -108,7 +123,7 @@ async function handleIngestRequest(request: Request) {
         sources: run.video.sources,
       },
       message:
-        "已完成 AI 文章源和 GitHub 热门 Skill 抓取，并独立尝试抖音 AI 作者视频抓取。视频失败不会影响文章落地；GitHub 与抖音动态使用真实公开互动指标，不提供互动指标的 RSS 源不会编造点赞数。",
+        "已完成 AI 文章源和 GitHub 热门 Skill 抓取，并独立尝试抖音、YouTube、B站等视频源抓取。视频失败不会影响文章落地；GitHub、抖音和公开视频源使用真实公开互动指标，不提供互动指标的来源不会编造点赞数。",
       sources: run.sources,
       github: run.github,
     },

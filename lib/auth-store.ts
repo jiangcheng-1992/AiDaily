@@ -18,6 +18,7 @@ export type AuthUser = {
   email: string;
   avatarText: string;
   createdAt: string;
+  isAdmin?: boolean;
 };
 
 type StoredUser = AuthUser & {
@@ -92,7 +93,25 @@ export function publicUser(user: StoredUser): AuthUser {
     email: user.email,
     avatarText: user.avatarText,
     createdAt: user.createdAt,
+    isAdmin: isAdminEmail(user.email),
   };
+}
+
+export function isAdminEmail(email?: string | null) {
+  const cleanEmail = normalizeEmail(email ?? "");
+  if (!cleanEmail) return false;
+
+  const configuredEmails = (process.env.ADMIN_EMAILS ?? process.env.ADMIN_EMAIL ?? "")
+    .split(",")
+    .map((value) => normalizeEmail(value))
+    .filter(Boolean);
+
+  if (configuredEmails.length > 0) {
+    return configuredEmails.includes(cleanEmail);
+  }
+
+  // Local-only convenience: production must explicitly set ADMIN_EMAILS.
+  return process.env.NODE_ENV !== "production";
 }
 
 export function normalizeEmail(email: string) {
@@ -502,6 +521,7 @@ function verifySignedSessionToken(token: string): AuthUser | null {
       email: payload.email,
       avatarText: payload.avatarText,
       createdAt: payload.createdAt,
+      isAdmin: isAdminEmail(payload.email),
     };
   } catch {
     return null;

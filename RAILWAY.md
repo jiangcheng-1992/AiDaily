@@ -21,12 +21,19 @@ APP_BASE_URL=https://你的服务域名
 CRON_SECRET=换成一段足够长的随机字符串
 AUTH_SESSION_SECRET=换成一段独立的高强度随机字符串
 DATABASE_URL=Railway PostgreSQL 提供的连接串
+ADMIN_EMAILS=你的登录邮箱，多个用英文逗号分隔
 MINIMAX_API_KEY=可选，填写后启用 MiniMax 文本生成
 MINIMAX_TEXT_MODEL=MiniMax-M2.5
 MINIMAX_BASE_URL=https://api.minimaxi.com/v1
 SOURCE_FETCH_LIMIT=12
 SOURCE_ITEMS_PER_SOURCE=6
 GITHUB_SKILL_LIMIT=8
+SUBMITTED_SOURCE_LIMIT=8
+DOUYIN_SOURCE_LIMIT=12
+DOUYIN_ITEMS_PER_SOURCE=2
+BACKUP_VIDEO_SOURCE_LIMIT=6
+BACKUP_VIDEO_ITEMS_PER_SOURCE=2
+RSSHUB_BASE_URL=可选，B站 RSS 兜底服务地址，例如 https://rsshub.app
 GENERATED_FEED_LIMIT=120
 GITHUB_TOKEN=可选，建议填写 GitHub fine-grained token 提高 API 限额
 AIQ_DATA_DIR=/data
@@ -39,10 +46,12 @@ AIQ_USER_AGENT=AIQ/1.0 (+https://github.com/jiangcheng-1992/AiDaily)
 
 `CRON_SECRET` 在生产环境必填，用于保护 `/api/cron/ingest`。  
 `AUTH_SESSION_SECRET` 建议和 `CRON_SECRET` 分开，专门用于签名登录 Cookie。  
+`ADMIN_EMAILS` 用于把指定登录账号识别为管理员；管理员会在“我的”页看到提交信息源入口，可提交网站/RSS、抖音作者、B站作者和 YouTube 作者。  
 `DATABASE_URL` 建议接入 Railway PostgreSQL，线上登录注册会优先走共享数据库，避免多实例下“注册成功但登录读不到同一份用户库”的问题。  
 `MINIMAX_API_KEY` 配好后，AI 评论、`为什么重要` 和 `站长总结` 会统一走 MiniMax 文本模型生成；未配置时才回退本地规则版。
 `AIQ_DATA_DIR` 仍建议指向 Railway Volume 挂载目录，例如 `/data`，这样离线抓取的 `generated-feed.json` 等文件数据不会因为服务重启丢失。
 `AUTO_INGEST_ENABLED=true` 后，Web 服务启动 10 秒后会自动抓取一次，之后默认每 15 分钟抓取一次；这条链路不依赖额外的 Railway Cron 服务。`/api/health` 会返回 `feedUpdatedAt` 和当前自动抓取配置，方便确认线上是否持续运行。
+视频抓取已拆成独立任务：抖音失败不会影响文章和 GitHub 落地；备用视频源会先尝试 B站关键词/UP 主公开视频 API，再尝试 YouTube 官方 RSS。B站如果遇到公开 API 风控，可配置 `RSSHUB_BASE_URL` 作为空间视频 RSS 兜底。
 
 ## 登录注册
 
@@ -89,6 +98,11 @@ CRON_SECRET=和 Web 服务保持一致
 SOURCE_FETCH_LIMIT=12
 SOURCE_ITEMS_PER_SOURCE=6
 GITHUB_SKILL_LIMIT=8
+SUBMITTED_SOURCE_LIMIT=8
+DOUYIN_SOURCE_LIMIT=12
+DOUYIN_ITEMS_PER_SOURCE=2
+BACKUP_VIDEO_SOURCE_LIMIT=6
+BACKUP_VIDEO_ITEMS_PER_SOURCE=2
 AIQ_DATA_DIR=/data
 ```
 

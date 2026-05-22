@@ -1,5 +1,6 @@
 import { autoIngestSources, type AiSource } from "@/lib/ai-sources";
 import { generateProductionAiComments } from "@/lib/ai-comment-service";
+import { fetchBackupVideoItems } from "@/lib/backup-video-fetcher";
 import { fetchDouyinVideoItems, type DouyinVideoItem } from "@/lib/douyin-video-fetcher";
 import {
   fetchGithubRepoIssueComments,
@@ -10,6 +11,8 @@ import type { Comment, Post } from "@/lib/mock-data";
 import { buildGeneratedPostId } from "@/lib/post-identity";
 import { buildProductionPostCopy } from "@/lib/post-insights";
 import { fetchSourceItems, type SourceItem } from "@/lib/source-fetcher";
+import { ingestSubmittedSource } from "@/lib/submitted-source-ingest";
+import { readSubmittedSources } from "@/lib/submitted-sources-store";
 
 export type IngestRunResult = {
   fetchedAt: string;
@@ -56,30 +59,48 @@ export async function runIngestPipeline({
   githubLimit = 8,
   douyinSourceLimit = 12,
   douyinItemLimit = 2,
+  backupVideoSourceLimit = 6,
+  backupVideoItemLimit = 2,
+  submittedSourceLimit = 8,
 }: {
   sourceLimit?: number;
   itemLimit?: number;
   githubLimit?: number;
   douyinSourceLimit?: number;
   douyinItemLimit?: number;
+  backupVideoSourceLimit?: number;
+  backupVideoItemLimit?: number;
+  submittedSourceLimit?: number;
 }): Promise<IngestRunResult> {
   const sources = autoIngestSources.slice(0, sourceLimit);
   const fetchedSources = await fetchSourcesWithLimit(sources, itemLimit, 4);
   const sourcePosts = fetchedSources.flatMap((result) => result.posts);
+  const submittedResult = await runSubmittedSourcesTask({
+    sourceLimit: submittedSourceLimit,
+    itemLimit: Math.min(itemLimit, 3),
+  });
   const videoResult = await runVideoIngestTask({
-    sourceLimit: douyinSourceLimit,
-    itemLimit: douyinItemLimit,
+    douyinSourceLimit,
+    douyinItemLimit,
+    backupVideoSourceLimit,
+    backupVideoItemLimit,
   });
   const githubResult = await fetchGithubPosts(githubLimit);
   const githubAttempted = githubLimit > 0;
-  const posts = [...githubResult.posts, ...sourcePosts, ...videoResult.posts].sort(
+  const posts = [
+    ...githubResult.posts,
+    ...sourcePosts,
+    ...submittedResult.posts,
+    ...videoResult.posts,
+  ].sort(
     (a, b) =>
       new Date(b.collectedAt ?? b.createdAt).getTime() -
       new Date(a.collectedAt ?? a.createdAt).getTime(),
   );
+  const submittedPostIds = new Set(submittedResult.posts.map((post) => post.id));
   const comments: Record<string, Comment[]> = {};
   const aiCommentResults = await mapWithConcurrency(
-    posts,
+      posts.filter((post) => !submittedPostIds.has(post.id)),
     2,
     async (post) => {
       const result = await generateProductionAiComments({ post });
@@ -101,7 +122,11 @@ export async function runIngestPipeline({
     (githubAttempted && !githubResult.ok ? 1 : 0);
 
   aiCommentResults.forEach(([postId, aiComments]) => {
-    comments[postId] = [...(githubResult.comments[postId] ?? []), ...aiComments];
+    comments[postId] = [
+      ...(githubResult.comments[postId] ?? []),
+      ...(submittedResult.comments[postId] ?? []),
+      ...aiComments,
+    ];
   });
 
   return {
@@ -114,14 +139,17 @@ export async function runIngestPipeline({
     primaryFailureCount,
     posts,
     comments,
-    sources: fetchedSources.map(({ source, posts, ...result }) => {
-      void posts;
-      return {
-        sourceId: source.id,
-        sourceName: source.name,
-        ...result,
-      };
-    }),
+    sources: [
+      ...fetchedSources.map(({ source, posts, ...result }) => {
+        void posts;
+        return {
+          sourceId: source.id,
+          sourceName: source.name,
+          ...result,
+        };
+      }),
+      ...submittedResult.sources,
+    ],
     github: {
       ok: githubResult.ok,
       count: githubResult.posts.length,
@@ -132,13 +160,17 @@ export async function runIngestPipeline({
 }
 
 async function runVideoIngestTask({
-  sourceLimit,
-  itemLimit,
+  douyinSourceLimit,
+  douyinItemLimit,
+  backupVideoSourceLimit,
+  backupVideoItemLimit,
 }: {
-  sourceLimit: number;
-  itemLimit: number;
+  douyinSourceLimit: number;
+  douyinItemLimit: number;
+  backupVideoSourceLimit: number;
+  backupVideoItemLimit: number;
 }): Promise<IngestRunResult["video"]> {
-  const attempted = sourceLimit > 0;
+  const attempted = douyinSourceLimit > 0 || backupVideoSourceLimit > 0;
 
   if (!attempted) {
     return {
@@ -153,18 +185,40 @@ async function runVideoIngestTask({
   }
 
   try {
-    const douyinResults = await fetchDouyinVideoItems({
-      sourceLimit,
-      itemLimit,
-    });
+    const [douyinResults, backupResults] = await Promise.all([
+      douyinSourceLimit > 0
+        ? fetchDouyinVideoItems({
+            sourceLimit: douyinSourceLimit,
+            itemLimit: douyinItemLimit,
+          }).catch((error) => [
+            {
+              source: {
+                id: "douyin",
+                name: "抖音视频独立任务",
+              },
+              ok: false,
+              count: 0,
+              items: [],
+              error: error instanceof Error ? error.message : "Unknown Douyin ingest error",
+            },
+          ])
+        : Promise.resolve([]),
+      backupVideoSourceLimit > 0
+        ? fetchBackupVideoItems({
+            sourceLimit: backupVideoSourceLimit,
+            itemLimit: backupVideoItemLimit,
+          })
+        : Promise.resolve([]),
+    ]);
+    const videoSourceResults = [...douyinResults, ...backupResults];
     const posts = (
       await mapWithConcurrency(
-        douyinResults.flatMap((result) => result.items),
+        videoSourceResults.flatMap((result) => result.items),
         3,
         async (item) => douyinItemToPost(item),
       )
     ).filter(Boolean);
-    const sources = douyinResults.map(({ source, items, ...result }) => {
+    const sources = videoSourceResults.map(({ source, items, ...result }) => {
       void items;
       return {
         sourceId: source.id,
@@ -175,9 +229,11 @@ async function runVideoIngestTask({
     const failureCount = sources.filter((result) => !result.ok).length;
 
     if (failureCount > 0) {
-      console.warn("[ingest-video] douyin video task completed with failures", {
-        sourceLimit,
-        itemLimit,
+      console.warn("[ingest-video] video task completed with partial failures", {
+        douyinSourceLimit,
+        douyinItemLimit,
+        backupVideoSourceLimit,
+        backupVideoItemLimit,
         successCount: sources.filter((result) => result.ok).length,
         failureCount,
         postCount: posts.length,
@@ -194,17 +250,19 @@ async function runVideoIngestTask({
       sources,
     };
   } catch (error) {
-    console.warn("[ingest-video] douyin video task failed independently", {
-      sourceLimit,
-      itemLimit,
+    console.warn("[ingest-video] video task failed independently", {
+      douyinSourceLimit,
+      douyinItemLimit,
+      backupVideoSourceLimit,
+      backupVideoItemLimit,
       error: error instanceof Error ? error.message : "Unknown video ingest error",
     });
 
     return {
       attempted,
-      sourceCount: sourceLimit,
+      sourceCount: douyinSourceLimit + backupVideoSourceLimit,
       successCount: 0,
-      failureCount: sourceLimit,
+      failureCount: douyinSourceLimit + backupVideoSourceLimit,
       postCount: 0,
       posts: [],
       sources: [
@@ -218,6 +276,60 @@ async function runVideoIngestTask({
       ],
     };
   }
+}
+
+async function runSubmittedSourcesTask({
+  sourceLimit,
+  itemLimit,
+}: {
+  sourceLimit: number;
+  itemLimit: number;
+}) {
+  const store = await readSubmittedSources();
+  const activeSources = store.sources
+    .filter((source) => source.status === "active")
+    .slice(0, sourceLimit);
+  const results = await mapWithConcurrency(activeSources, 2, async (source) => {
+    try {
+      const result = await ingestSubmittedSource(source, itemLimit);
+      return {
+        sourceId: source.id,
+        sourceName: source.name,
+        ok: true,
+        count: result.posts.length,
+        posts: result.posts,
+        comments: result.comments,
+      };
+    } catch (error) {
+      console.warn("[ingest-submitted-source] custom source failed", {
+        sourceId: source.id,
+        sourceName: source.name,
+        error: error instanceof Error ? error.message : "Unknown submitted source error",
+      });
+      return {
+        sourceId: source.id,
+        sourceName: source.name,
+        ok: false,
+        count: 0,
+        posts: [],
+        comments: {},
+        error: error instanceof Error ? error.message : "Unknown submitted source error",
+      };
+    }
+  });
+
+  return {
+    posts: results.flatMap((result) => result.posts),
+    comments: results.reduce<Record<string, Comment[]>>((acc, result) => {
+      Object.assign(acc, result.comments);
+      return acc;
+    }, {}),
+    sources: results.map(({ posts, comments, ...result }) => {
+      void posts;
+      void comments;
+      return result;
+    }),
+  };
 }
 
 async function fetchSourcesWithLimit(

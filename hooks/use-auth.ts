@@ -8,6 +8,7 @@ export type AuthUser = {
   email: string;
   avatarText: string;
   createdAt: string;
+  isAdmin?: boolean;
 };
 
 export type AuthPersistence = {

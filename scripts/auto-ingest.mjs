@@ -117,6 +117,24 @@ function buildLocalIngestUrl() {
     url.searchParams.set("douyinItemLimit", process.env.AUTO_INGEST_DOUYIN_ITEM_LIMIT);
   }
 
+  if (process.env.AUTO_INGEST_BACKUP_VIDEO_SOURCE_LIMIT) {
+    url.searchParams.set(
+      "backupVideoSourceLimit",
+      process.env.AUTO_INGEST_BACKUP_VIDEO_SOURCE_LIMIT,
+    );
+  }
+
+  if (process.env.AUTO_INGEST_BACKUP_VIDEO_ITEM_LIMIT) {
+    url.searchParams.set(
+      "backupVideoItemLimit",
+      process.env.AUTO_INGEST_BACKUP_VIDEO_ITEM_LIMIT,
+    );
+  }
+
+  if (process.env.AUTO_INGEST_SUBMITTED_SOURCE_LIMIT) {
+    url.searchParams.set("submittedSourceLimit", process.env.AUTO_INGEST_SUBMITTED_SOURCE_LIMIT);
+  }
+
   return url;
 }
 

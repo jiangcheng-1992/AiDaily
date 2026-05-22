@@ -184,6 +184,13 @@ export async function fetchDouyinVideoItems({
   return results.sort((a, b) => a.source.name.localeCompare(b.source.name));
 }
 
+export async function fetchDouyinVideoSourceItems(
+  source: DouyinVideoSource,
+  itemLimit = 2,
+): Promise<DouyinVideoItem[]> {
+  return fetchSourceVideos(source, itemLimit);
+}
+
 export async function refreshDouyinVideoItemByUrl({
   sourceId,
   sourceUrl,
