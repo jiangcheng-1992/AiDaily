@@ -2,7 +2,7 @@ import {
   GENERATED_FEED_POLICY_VERSION,
   readGeneratedFeed,
 } from "@/lib/generated-feed-store";
-import { getAuthPersistenceInfo } from "@/lib/auth-store";
+import { getAdminAuthStatus, getAuthPersistenceInfo } from "@/lib/auth-store";
 import { getMiniMaxTextStatus } from "@/lib/minimax-text";
 
 export const runtime = "nodejs";
@@ -64,6 +64,7 @@ export async function GET() {
       configured: textAi.configured,
     },
     authPersistence,
+    admin: getAdminAuthStatus(),
   });
 }
 

@@ -56,6 +56,7 @@ const emptyStore: AuthStore = {
 const sessionMaxAgeSeconds = 60 * 60 * 24 * 30;
 const railwayVolumeDir = "/data";
 const sessionTokenPrefix = "v1";
+const projectOwnerAdminEmails = ["1554374411@qq.com"];
 let authDb:
   | ReturnType<typeof postgres>
   | null = null;
@@ -101,17 +102,23 @@ export function isAdminEmail(email?: string | null) {
   const cleanEmail = normalizeEmail(email ?? "");
   if (!cleanEmail) return false;
 
-  const configuredEmails = (process.env.ADMIN_EMAILS ?? process.env.ADMIN_EMAIL ?? "")
-    .split(",")
-    .map((value) => normalizeEmail(value))
-    .filter(Boolean);
+  const configuredEmails = getConfiguredAdminEmails();
 
   if (configuredEmails.length > 0) {
     return configuredEmails.includes(cleanEmail);
   }
 
-  // Local-only convenience: production must explicitly set ADMIN_EMAILS.
+  if (projectOwnerAdminEmails.includes(cleanEmail)) return true;
+
+  // Local-only convenience for development accounts.
   return process.env.NODE_ENV !== "production";
+}
+
+export function getAdminAuthStatus() {
+  return {
+    configuredEmailCount: getConfiguredAdminEmails().length,
+    projectOwnerFallbackEnabled: projectOwnerAdminEmails.length > 0,
+  };
 }
 
 export function normalizeEmail(email: string) {
@@ -430,6 +437,13 @@ function resolveAuthDataDir() {
 
 function hasDatabaseAuth() {
   return Boolean(process.env.DATABASE_URL?.trim());
+}
+
+function getConfiguredAdminEmails() {
+  return (process.env.ADMIN_EMAILS ?? process.env.ADMIN_EMAIL ?? "")
+    .split(",")
+    .map((value) => normalizeEmail(value))
+    .filter(Boolean);
 }
 
 function getAuthDatabase() {
