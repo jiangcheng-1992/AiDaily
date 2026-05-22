@@ -268,6 +268,8 @@ function AdminSourcePanel() {
       const data = (await response.json()) as {
         ok?: boolean;
         error?: string;
+        warning?: string;
+        willRetry?: boolean;
         postCount?: number;
         totalPostCount?: number;
         source?: SubmittedSource;
@@ -278,7 +280,9 @@ function AdminSourcePanel() {
       }
 
       setMessage(
-        `已抓取 ${data.postCount ?? 0} 条内容，当前 feed 共 ${data.totalPostCount ?? 0} 条。`,
+        data.warning
+          ? `信息源已保存，本次暂未抓到内容，后续定时任务会继续重试。原因：${data.warning}`
+          : `已抓取 ${data.postCount ?? 0} 条内容，当前 feed 共 ${data.totalPostCount ?? 0} 条。`,
       );
       setForm({ kind: "auto", name: "", url: "" });
       await loadSources();
@@ -350,27 +354,36 @@ function AdminSourcePanel() {
       ) : null}
 
       <div className="mt-4 space-y-2">
-        {sources.slice(0, 4).map((source) => (
-          <div key={source.id} className="rounded-2xl bg-white/90 p-3 text-xs">
-            <div className="flex items-center justify-between gap-2">
-              <span className="line-clamp-1 font-black text-slate-800">{source.name}</span>
-              <span
-                className={cn(
-                  "rounded-full px-2 py-0.5 font-black",
-                  source.status === "active"
-                    ? "bg-emerald-50 text-emerald-700"
-                    : "bg-rose-50 text-rose-700",
-                )}
-              >
-                {source.status === "active" ? "可用" : "异常"}
-              </span>
+        {sources.slice(0, 4).map((source) => {
+          const hasRecentError = Boolean(source.lastError);
+
+          return (
+            <div key={source.id} className="rounded-2xl bg-white/90 p-3 text-xs">
+              <div className="flex items-center justify-between gap-2">
+                <span className="line-clamp-1 font-black text-slate-800">{source.name}</span>
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 font-black",
+                    hasRecentError
+                      ? "bg-amber-50 text-amber-700"
+                      : "bg-emerald-50 text-emerald-700",
+                  )}
+                >
+                  {hasRecentError ? "待重试" : "可用"}
+                </span>
+              </div>
+              <p className="mt-1 line-clamp-1 text-slate-400">{source.url}</p>
+              {source.lastPostCount !== undefined ? (
+                <p className="mt-1 font-bold text-slate-500">最近抓取 {source.lastPostCount} 条</p>
+              ) : null}
+              {source.lastError ? (
+                <p className="mt-1 line-clamp-2 font-bold text-amber-600">
+                  最近失败：{source.lastError}
+                </p>
+              ) : null}
             </div>
-            <p className="mt-1 line-clamp-1 text-slate-400">{source.url}</p>
-            {source.lastPostCount !== undefined ? (
-              <p className="mt-1 font-bold text-slate-500">最近抓取 {source.lastPostCount} 条</p>
-            ) : null}
-          </div>
-        ))}
+          );
+        })}
       </div>
     </Card>
   );

@@ -28,6 +28,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { useAiCircleStore } from "@/hooks/use-ai-circle-store";
+import { getDisplayImageUrl } from "@/lib/image-url";
 import { getPostById, type Comment, type Post } from "@/lib/mock-data";
 import {
   cn,
@@ -665,7 +666,7 @@ export function PostDetailClient({
               {articleImageUrls.map((imageUrl, index) => (
                 <ExternalImage
                   key={`${post.id}-image-${index}`}
-                  src={imageUrl}
+                  src={getDisplayImageUrl(imageUrl, post.sourceUrl)}
                   alt={`${post.title} 配图 ${index + 1}`}
                   wrapperAs="figure"
                   wrapperClassName="overflow-hidden rounded-[1.4rem] border border-slate-100 bg-slate-100 shadow-soft"
@@ -723,7 +724,7 @@ export function PostDetailClient({
                 ) : (
                   <ExternalImage
                     key={`${post.id}-image-${index}`}
-                    src={block.url}
+                    src={getDisplayImageUrl(block.url, post.sourceUrl)}
                     alt={block.alt || `${post.title} 配图 ${index + 1}`}
                     wrapperAs="figure"
                     wrapperClassName="overflow-hidden rounded-[1.4rem] border border-slate-100 bg-slate-100 shadow-soft"

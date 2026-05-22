@@ -15,6 +15,7 @@ import { ExternalImage } from "@/components/external-image";
 import { InteractionButton } from "@/components/interaction-button";
 import { PostTypeBadge } from "@/components/post-type-badge";
 import { Card } from "@/components/ui/card";
+import { getDisplayImageUrl } from "@/lib/image-url";
 import type { Post } from "@/lib/mock-data";
 import { cn, formatRelativeTime, formatVideoDuration } from "@/lib/utils";
 
@@ -45,6 +46,7 @@ export function PostCard({
 }) {
   const router = useRouter();
   const articlePreviewImage = post.coverImageUrl ?? post.imageUrls?.[0];
+  const displayArticlePreviewImage = getDisplayImageUrl(articlePreviewImage, post.sourceUrl);
 
   return (
     <Card
@@ -92,9 +94,9 @@ export function PostCard({
           {post.title}
         </h2>
 
-        {post.type !== "video" && articlePreviewImage ? (
+        {post.type !== "video" && displayArticlePreviewImage ? (
           <ExternalImage
-            src={articlePreviewImage}
+            src={displayArticlePreviewImage}
             alt={post.title}
             loading="lazy"
             wrapperClassName="mt-4 overflow-hidden rounded-[1.35rem] border border-slate-100 bg-slate-100"

@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       const updatedSource = await upsertSubmittedSource({
         ...source,
-        status: "error",
+        status: "active",
         lastFetchedAt: new Date().toISOString(),
         lastError: error instanceof Error ? error.message : "信息源抓取失败",
         lastPostCount: 0,
@@ -108,11 +108,20 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(
         {
-          ok: false,
+          ok: true,
+          saved: true,
+          willRetry: true,
           source: updatedSource,
-          error: updatedSource.lastError,
+          warning: updatedSource.lastError,
+          postCount: 0,
+          totalPostCount: (await readGeneratedFeed()).posts.length,
         },
-        { status: 422 },
+        {
+          status: 202,
+          headers: {
+            "cache-control": "no-store",
+          },
+        },
       );
     }
   } catch (error) {

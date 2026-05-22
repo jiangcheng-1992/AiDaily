@@ -1,0 +1,23 @@
+const referrerProtectedImageHosts = new Set(["i.qbitai.com", "www.qbitai.com"]);
+
+export function getDisplayImageUrl(src?: string | null, referrerUrl?: string | null) {
+  if (!src) return "";
+
+  try {
+    const imageUrl = new URL(src);
+    if (imageUrl.protocol === "http:") imageUrl.protocol = "https:";
+
+    if (!referrerProtectedImageHosts.has(imageUrl.hostname)) {
+      return imageUrl.toString();
+    }
+
+    const params = new URLSearchParams({
+      url: imageUrl.toString(),
+    });
+    if (referrerUrl) params.set("ref", referrerUrl);
+
+    return `/api/image-proxy?${params.toString()}`;
+  } catch {
+    return src;
+  }
+}

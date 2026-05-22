@@ -287,7 +287,7 @@ async function runSubmittedSourcesTask({
 }) {
   const store = await readSubmittedSources();
   const activeSources = store.sources
-    .filter((source) => source.status === "active")
+    .filter((source) => source.status === "active" || source.status === "error")
     .slice(0, sourceLimit);
   const results = await mapWithConcurrency(activeSources, 2, async (source) => {
     try {
