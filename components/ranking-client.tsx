@@ -11,6 +11,7 @@ import {
   Wrench,
 } from "lucide-react";
 
+import { PostScoreBadge } from "@/components/post-score-badge";
 import { PostTypeBadge } from "@/components/post-type-badge";
 import { Card } from "@/components/ui/card";
 import { useAiCircleStore } from "@/hooks/use-ai-circle-store";
@@ -137,22 +138,25 @@ function RankingSection({
           <Link
             href={`/post/${post.id}`}
             key={post.id}
-            className="group grid grid-cols-[42px_1fr] gap-3 rounded-3xl p-2 transition-colors hover:bg-slate-50"
+            className="group grid grid-cols-[40px_1fr] gap-3 rounded-2xl p-2 transition-colors hover:bg-slate-50"
           >
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-lg font-black text-slate-500 group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-violet-600 group-hover:text-white">
-              {index + 1}
+            <span className="relative">
+              <PostScoreBadge post={post} size="compact" />
+              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-white text-[10px] font-black text-blue-700 shadow-soft">
+                {index + 1}
+              </span>
             </span>
             <span className="min-w-0">
-              <span className="flex flex-wrap items-center gap-2">
+              <span className="flex flex-wrap items-center gap-1.5">
                 <PostTypeBadge type={post.type} className="px-2 py-0.5" />
-                <span className="text-xs font-medium text-slate-400">
+                <span className="text-[11px] font-medium text-slate-400">
                   {formatRelativeTime(post.createdAt)}
                 </span>
               </span>
-              <span className="mt-2 block line-clamp-2 text-sm font-black leading-6 text-slate-900 group-hover:text-blue-700">
+              <span className="mt-1.5 block line-clamp-2 text-[13px] font-black leading-5 text-slate-900 group-hover:text-blue-700">
                 {post.title}
               </span>
-              <span className="mt-1 block text-xs font-semibold text-slate-400">
+              <span className="mt-1 block text-[11px] font-semibold text-slate-400">
                 {metric(post)}
               </span>
             </span>

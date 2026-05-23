@@ -19,6 +19,7 @@ import {
   UserRound,
 } from "lucide-react";
 
+import { PostScoreBadge } from "@/components/post-score-badge";
 import { PostTypeBadge } from "@/components/post-type-badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -138,19 +139,24 @@ export function MeClient() {
               {ownedSubmissions.map((post) => (
                 <div
                   key={post.id}
-                  className="rounded-3xl border border-slate-100 bg-slate-50 p-4 transition-colors hover:bg-blue-50/60"
+                  className="rounded-[1.6rem] border border-slate-100 bg-slate-50 p-3.5 transition-colors hover:bg-blue-50/60"
                 >
                   <Link href={`/post/${post.id}`} className="group block">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <PostTypeBadge type={post.type} />
-                      <span className="text-xs font-semibold text-slate-400">
-                        {formatRelativeTime(post.createdAt)}
+                    <div className="flex items-start gap-2.5">
+                      <PostScoreBadge post={post} size="compact" />
+                      <span className="min-w-0 flex-1">
+                        <span className="flex flex-wrap items-center gap-1.5">
+                          <PostTypeBadge type={post.type} />
+                          <span className="text-[11px] font-semibold text-slate-400">
+                            {formatRelativeTime(post.createdAt)}
+                          </span>
+                        </span>
+                        <span className="mt-2 block line-clamp-2 text-[13px] font-black leading-5 text-slate-900 group-hover:text-blue-700">
+                          {post.title}
+                        </span>
                       </span>
                     </div>
-                    <h3 className="mt-3 line-clamp-2 font-black leading-6 text-slate-900 group-hover:text-blue-700">
-                      {post.title}
-                    </h3>
-                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">
+                    <p className="mt-2 line-clamp-2 text-[12.5px] leading-5 text-slate-500">
                       {post.summary}
                     </p>
                   </Link>

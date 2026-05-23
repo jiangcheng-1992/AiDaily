@@ -2,8 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
-import { autoIngestSourceIds, extractGeneratedSourceId } from "@/lib/ai-sources";
-import { autoIngestDouyinSourceIds } from "@/lib/douyin-video-sources";
+import { mockComments, mockPosts } from "@/lib/mock-data";
 import type { Comment, Post } from "@/lib/mock-data";
 import { buildIdentityKeyFromPost } from "@/lib/post-identity";
 
@@ -26,6 +25,13 @@ const emptyFeed: GeneratedFeed = {
   comments: {},
 };
 
+const baselineFeed: GeneratedFeed = {
+  policyVersion: GENERATED_FEED_POLICY_VERSION,
+  updatedAt: "2026-05-16T00:00:00.000Z",
+  posts: mockPosts,
+  comments: mockComments,
+};
+
 export function getGeneratedFeedPath() {
   const dataDir = process.env.AIQ_DATA_DIR || join(process.cwd(), "data");
   return join(dataDir, "generated-feed.json");
@@ -36,7 +42,9 @@ export async function readGeneratedFeed(
 ): Promise<GeneratedFeed> {
   const filePath = getGeneratedFeedPath();
 
-  if (!existsSync(filePath)) return emptyFeed;
+  if (!existsSync(filePath)) {
+    return buildFallbackFeed(options);
+  }
 
   try {
     const raw = await readFile(filePath, "utf8");
@@ -54,9 +62,10 @@ export async function readGeneratedFeed(
     // Keep serving the last persisted feed during deploys even if the policy
     // version changed, otherwise the homepage can flash empty before the next
     // ingest finishes rewriting the file.
-    return sanitizeGeneratedFeed(normalizedFeed, options);
+    const sanitizedFeed = sanitizeGeneratedFeed(normalizedFeed, options);
+    return sanitizedFeed.posts.length > 0 ? sanitizedFeed : buildFallbackFeed(options);
   } catch {
-    return emptyFeed;
+    return buildFallbackFeed(options);
   }
 }
 
@@ -188,7 +197,9 @@ function sanitizeGeneratedFeed(
   feed: GeneratedFeed,
   options: ReadGeneratedFeedOptions = {},
 ): GeneratedFeed {
-  const posts = feed.posts.filter((post) => shouldKeepGeneratedPost(post, options));
+  const posts = dedupePostsByIdentity(
+    feed.posts.filter((post) => shouldKeepGeneratedPost(post, options)),
+  );
   const postIds = new Set(posts.map((post) => post.id));
 
   return {
@@ -201,11 +212,26 @@ function sanitizeGeneratedFeed(
   };
 }
 
+function dedupePostsByIdentity(posts: Post[]) {
+  const deduped = new Map<string, Post>();
+
+  for (const post of posts) {
+    const identityKey = buildIdentityKeyFromPost(post);
+    deduped.set(identityKey, mergePosts(deduped.get(identityKey), post));
+  }
+
+  return Array.from(deduped.values()).sort(
+    (a, b) =>
+      new Date(b.collectedAt ?? b.createdAt).getTime() -
+      new Date(a.collectedAt ?? a.createdAt).getTime(),
+  );
+}
+
 function shouldKeepGeneratedPost(post: Post, options: ReadGeneratedFeedOptions) {
   if (post.type === "skill") return options.includeSkills === true;
+  return true;
+}
 
-  const sourceId = post.sourceId ?? extractGeneratedSourceId(post.id);
-  if (!sourceId) return true;
-
-  return autoIngestSourceIds.has(sourceId) || autoIngestDouyinSourceIds.has(sourceId);
+function buildFallbackFeed(options: ReadGeneratedFeedOptions = {}) {
+  return sanitizeGeneratedFeed(baselineFeed, options);
 }

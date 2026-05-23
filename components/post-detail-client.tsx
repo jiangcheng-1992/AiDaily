@@ -15,13 +15,13 @@ import {
   SendHorizontal,
   Share2,
   Sparkles,
-  Star,
   ThumbsUp,
   Trash2,
 } from "lucide-react";
 
 import { ExternalImage } from "@/components/external-image";
 import { InteractionButton } from "@/components/interaction-button";
+import { PostScoreBadge } from "@/components/post-score-badge";
 import { PostTypeBadge } from "@/components/post-type-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -135,6 +135,12 @@ export function PostDetailClient({
     return [];
   }, [post]);
   const hasInlineArticleBlocks = articleBlocks.length > 0;
+  const originalSourceLabel =
+    post?.type === "video"
+      ? "查看原视频"
+      : post?.type === "skill"
+        ? "查看 GitHub 原链接"
+        : "查看原网站";
   const logVideoEvent = (
     level: "info" | "warn" | "error",
     event: string,
@@ -583,6 +589,7 @@ export function PostDetailClient({
       <Card className="overflow-hidden rounded-[2rem] border-white/80 bg-white/95">
         <article className="p-5 sm:p-8">
           <div className="flex flex-wrap items-center gap-2">
+            <PostScoreBadge post={post} />
             <PostTypeBadge type={post.type} />
             {post.featured ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
@@ -592,7 +599,7 @@ export function PostDetailClient({
             ) : null}
           </div>
 
-          <h1 className="mt-5 text-3xl font-black leading-tight tracking-normal text-slate-950 sm:text-5xl">
+          <h1 className="mt-4 text-2xl font-black leading-snug tracking-normal text-slate-950 sm:text-3xl">
             {post.title}
           </h1>
 
@@ -610,17 +617,6 @@ export function PostDetailClient({
                 <span>{post.author}</span>
               </>
             ) : null}
-            {post.type === "skill" && post.sourceUrl ? (
-              <a
-                href={post.sourceUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-blue-700 hover:underline"
-              >
-                查看 GitHub
-                <ExternalLink className="h-3.5 w-3.5" />
-              </a>
-            ) : null}
             {post.type === "video" && post.profileUrl ? (
               <a
                 href={post.profileUrl}
@@ -633,6 +629,20 @@ export function PostDetailClient({
               </a>
             ) : null}
           </div>
+
+          {post.sourceUrl ? (
+            <div className="mt-5">
+              <a
+                href={post.sourceUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2.5 text-sm font-black text-white shadow-soft transition-colors hover:bg-blue-700"
+              >
+                {originalSourceLabel}
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </div>
+          ) : null}
 
           {canManageCurrentSubmission ? (
             <div className="mt-5 flex flex-wrap gap-2">
@@ -743,21 +753,21 @@ export function PostDetailClient({
           )}
 
           <div className="mt-8 grid gap-4 md:grid-cols-2">
-            <section className="rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-50 to-violet-50/70 p-5">
-              <div className="flex items-center gap-2 text-sm font-black text-blue-700">
-                <Star className="h-5 w-5" />
-                为什么重要
+            <section className="rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-50 to-violet-50/70 p-4">
+              <div className="flex items-center gap-2 text-xs font-black text-blue-700">
+                <Sparkles className="h-4 w-4" />
+                推荐理由
               </div>
-              <p className="mt-3 text-sm leading-7 text-slate-700">
+              <p className="mt-2 text-[13px] leading-6 text-slate-700">
                 {post.whyItMatters}
               </p>
             </section>
-            <section className="rounded-3xl border border-slate-100 bg-slate-50 p-5">
-              <div className="flex items-center gap-2 text-sm font-black text-slate-900">
+            <section className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
+              <div className="flex items-center gap-2 text-xs font-black text-slate-900">
                 <Sparkles className="h-5 w-5 text-violet-600" />
                 站长总结
               </div>
-              <p className="mt-3 text-sm leading-7 text-slate-700">
+              <p className="mt-2 text-[13px] leading-6 text-slate-700">
                 {post.editorComment}
               </p>
             </section>

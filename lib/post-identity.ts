@@ -58,8 +58,8 @@ export function buildGeneratedPostIdentityKey({
   type?: Post["type"];
 }) {
   const identity = buildPostIdentityValue({ sourceUrl, title, type });
-  if (type === "video" && identity.startsWith("douyin:")) {
-    return `video::${identity}`;
+  if (!isTitleFallbackIdentity(identity, type)) {
+    return `${type ?? "post"}::${identity}`;
   }
   return `${sourceId ?? "unknown"}::${identity}`;
 }
@@ -131,6 +131,10 @@ function normalizeIdentityTitle(title?: string) {
     .replace(/\s+/g, " ")
     .replace(/[“”"'`]/g, "")
     .toLowerCase();
+}
+
+function isTitleFallbackIdentity(identity: string, type?: Post["type"]) {
+  return identity.startsWith(`${type ?? "post"}:`);
 }
 
 function extractDouyinVideoId(value: string) {

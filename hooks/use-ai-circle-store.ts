@@ -134,10 +134,89 @@ function dedupePosts(posts: Post[]) {
   const seen = new Set<string>();
 
   return posts.filter((post) => {
-    if (seen.has(post.id)) return false;
-    seen.add(post.id);
+    const identity = buildClientPostIdentity(post);
+    if (seen.has(identity)) return false;
+    seen.add(identity);
     return true;
   });
+}
+
+function buildClientPostIdentity(post: Post) {
+  const normalizedUrl = normalizeClientIdentityUrl(post.sourceUrl);
+  if (normalizedUrl) return `${post.type}::${normalizedUrl}`;
+
+  return `${post.sourceId ?? "unknown"}::${post.type}:${normalizeClientIdentityTitle(post.title)}`;
+}
+
+function normalizeClientIdentityUrl(sourceUrl?: string) {
+  if (!sourceUrl) return "";
+  const trimmed = sourceUrl.trim();
+  if (!trimmed) return "";
+
+  const douyinVideoId = extractClientDouyinVideoId(trimmed);
+  if (douyinVideoId) return `douyin:${douyinVideoId}`;
+
+  try {
+    const url = new URL(trimmed);
+    url.hash = "";
+
+    for (const key of [...url.searchParams.keys()]) {
+      const lowerKey = key.toLowerCase();
+      if (
+        lowerKey.startsWith("utm_") ||
+        [
+          "f",
+          "from",
+          "source",
+          "spm",
+          "timestamp",
+          "ts",
+          "mid",
+          "sec_uid",
+          "sec_user_id",
+        ].includes(lowerKey)
+      ) {
+        url.searchParams.delete(key);
+      }
+    }
+
+    const query = [...url.searchParams.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, value]) => `${key}=${value}`)
+      .join("&");
+    const pathname = url.pathname.replace(/\/+$/, "") || "/";
+
+    return `${url.origin.toLowerCase()}${pathname}${query ? `?${query}` : ""}`;
+  } catch {
+    return trimmed.replace(/#.*$/, "").trim().toLowerCase();
+  }
+}
+
+function normalizeClientIdentityTitle(title?: string) {
+  return (title ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/[“”"'`]/g, "")
+    .toLowerCase();
+}
+
+function extractClientDouyinVideoId(value: string) {
+  const pathMatch = value.match(/\/(?:share\/)?video\/(\d+)/)?.[1];
+  if (pathMatch) return pathMatch;
+
+  try {
+    const url = new URL(value);
+    return (
+      url.searchParams.get("modal_id") ||
+      url.searchParams.get("aweme_id") ||
+      url.searchParams.get("item_id") ||
+      url.searchParams.get("object_id") ||
+      url.searchParams.get("video_id") ||
+      ""
+    );
+  } catch {
+    return value.match(/(?:modal_id|aweme_id|item_id|object_id|video_id)=(\d+)/)?.[1] ?? "";
+  }
 }
 
 function isCommunitySubmission(post: Post) {
