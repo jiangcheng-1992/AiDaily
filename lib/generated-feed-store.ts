@@ -15,6 +15,7 @@ export type GeneratedFeed = {
 
 type ReadGeneratedFeedOptions = {
   includeSkills?: boolean;
+  allowFallback?: boolean;
 };
 
 export const GENERATED_FEED_POLICY_VERSION = "2026-05-core-sources-v1";
@@ -43,7 +44,7 @@ export async function readGeneratedFeed(
   const filePath = getGeneratedFeedPath();
 
   if (!existsSync(filePath)) {
-    return buildFallbackFeed(options);
+    return options.allowFallback === false ? emptyFeed : buildFallbackFeed(options);
   }
 
   try {
@@ -63,10 +64,27 @@ export async function readGeneratedFeed(
     // version changed, otherwise the homepage can flash empty before the next
     // ingest finishes rewriting the file.
     const sanitizedFeed = sanitizeGeneratedFeed(normalizedFeed, options);
-    return sanitizedFeed.posts.length > 0 ? sanitizedFeed : buildFallbackFeed(options);
+    return sanitizedFeed.posts.length > 0 || options.allowFallback === false
+      ? sanitizedFeed
+      : buildFallbackFeed(options);
   } catch {
-    return buildFallbackFeed(options);
+    return options.allowFallback === false ? emptyFeed : buildFallbackFeed(options);
   }
+}
+
+export async function readGeneratedFeedStatus(
+  options: Omit<ReadGeneratedFeedOptions, "allowFallback"> = {},
+) {
+  const filePath = getGeneratedFeedPath();
+  const persistedFeed = await readGeneratedFeed({ ...options, allowFallback: false });
+
+  return {
+    filePath,
+    exists: existsSync(filePath),
+    hasPersistedPosts: persistedFeed.posts.length > 0,
+    persistedPostCount: persistedFeed.posts.length,
+    fallbackActive: persistedFeed.posts.length === 0,
+  };
 }
 
 export async function writeGeneratedFeed(feed: GeneratedFeed) {

@@ -1,6 +1,7 @@
 import {
   GENERATED_FEED_POLICY_VERSION,
   readGeneratedFeed,
+  readGeneratedFeedStatus,
 } from "@/lib/generated-feed-store";
 import { getAdminAuthStatus, getAuthPersistenceInfo } from "@/lib/auth-store";
 import { getMiniMaxTextStatus } from "@/lib/minimax-text";
@@ -10,6 +11,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const feed = await readGeneratedFeed();
+  const feedStatus = await readGeneratedFeedStatus();
   const authPersistence = getAuthPersistenceInfo();
   const textAi = getMiniMaxTextStatus();
 
@@ -19,6 +21,7 @@ export async function GET() {
     checkedAt: new Date().toISOString(),
     feedUpdatedAt: feed.updatedAt ?? null,
     postCount: feed.posts.length,
+    feedStorage: feedStatus,
     feedPolicyVersion: GENERATED_FEED_POLICY_VERSION,
     autoIngest: {
       enabled: !["0", "false", "no", "off"].includes(

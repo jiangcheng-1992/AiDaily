@@ -71,7 +71,7 @@ async function handleIngestRequest(request: Request) {
     backupVideoItemLimit,
     submittedSourceLimit,
   });
-  const current = await readGeneratedFeed({ includeSkills: true });
+  const current = await readGeneratedFeed({ includeSkills: true, allowFallback: false });
   const hasIncomingFeed = run.posts.length > 0 || Object.keys(run.comments).length > 0;
   const mergedFeed = hasIncomingFeed
     ? mergeGeneratedFeed({
