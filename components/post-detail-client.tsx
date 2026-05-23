@@ -713,7 +713,7 @@ export function PostDetailClient({
                       rel="noreferrer"
                       className="mx-auto inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-4 py-3 text-sm font-black text-slate-950 transition-colors hover:bg-fuchsia-100"
                     >
-                      去抖音看原视频
+                      去看原视频
                       <ExternalLink className="h-4 w-4" />
                     </a>
                   </div>
