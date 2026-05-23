@@ -39,6 +39,10 @@ export async function fetchSourceItems(
   source: AiSource,
   limit = 8,
 ): Promise<SourceItem[]> {
+  if (source.fetchType === "html") {
+    return fetchHtmlSourceItems(source, limit);
+  }
+
   if (!source.feedUrl) return [];
 
   const response = await fetchWithRetry(source.feedUrl, {
@@ -64,6 +68,33 @@ export async function fetchSourceItems(
     .map((item) => normalizeFeedItem(source, item))
     .filter((item) => hasRequiredFeedFields(item) && isFreshEnough(item, source));
 
+  const hydratedItems = await Promise.all(
+    normalizedItems.map((item) => hydrateSourceItemContent(source, item)),
+  );
+
+  return hydratedItems.filter((item) => matchesSourceKeywords(item, source)).slice(0, limit);
+}
+
+async function fetchHtmlSourceItems(source: AiSource, limit: number): Promise<SourceItem[]> {
+  const pageUrl = source.feedUrl ?? source.homeUrl;
+  const response = await fetchWithRetry(pageUrl, {
+    headers: {
+      "user-agent":
+        process.env.AIQ_USER_AGENT ??
+        "AIQ/1.0 (+https://github.com/jiangcheng-1992/-AIDaily)",
+      accept: "text/html,application/xhtml+xml",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`${source.name} returned HTTP ${response.status}`);
+  }
+
+  const html = await response.text();
+  const candidateCount = Math.max(limit * 8, limit);
+  const normalizedItems = extractHtmlListItems(source, html, pageUrl)
+    .slice(0, candidateCount)
+    .filter((item) => hasRequiredFeedFields(item) && isFreshEnough(item, source));
   const hydratedItems = await Promise.all(
     normalizedItems.map((item) => hydrateSourceItemContent(source, item)),
   );
@@ -221,6 +252,56 @@ function extractCategories(item: RawFeedItem) {
   return toArray(item.category)
     .map((entry) => stripHtmlToText(asText(entry)))
     .filter(Boolean);
+}
+
+function extractHtmlListItems(source: AiSource, html: string, pageUrl: string): SourceItem[] {
+  const linkMatches = Array.from(
+    html.matchAll(/<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi),
+  );
+  const seen = new Set<string>();
+  const items: SourceItem[] = [];
+
+  for (const match of linkMatches) {
+    const url = absolutizeUrl(stripHtmlToText(match[1]), pageUrl);
+    if (!url || seen.has(url)) continue;
+    if (!isLikelyArticleUrl(url)) continue;
+
+    const title = cleanTitleText(stripHtmlToText(match[2]));
+    if (title.length < 8) continue;
+
+    seen.add(url);
+    items.push({
+      sourceId: source.id,
+      sourceName: source.name,
+      title,
+      url,
+      coverImageUrl: extractNearbyImageUrl(html, match.index ?? 0, pageUrl),
+      imageUrls: [],
+      contentBlocks: [],
+      summary: title,
+      content: title,
+      tags: source.tags,
+    });
+  }
+
+  return items;
+}
+
+function isLikelyArticleUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return /(^|\.)ithome\.com$/i.test(url.hostname) && /\/\d+\/\d+\/\d+\.htm$/i.test(url.pathname);
+  } catch {
+    return false;
+  }
+}
+
+function extractNearbyImageUrl(html: string, index: number, pageUrl: string) {
+  const start = Math.max(0, index - 900);
+  const end = Math.min(html.length, index + 900);
+  return extractImageUrlsFromHtml(html.slice(start, end))
+    .map((url) => absolutizeUrl(url, pageUrl))
+    .find((url): url is string => Boolean(url));
 }
 
 function extractFeedImageUrl(item: RawFeedItem, articleUrl?: string) {

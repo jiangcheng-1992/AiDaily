@@ -5,7 +5,6 @@ import {
   Flame,
   Hash,
   Rocket,
-  Trophy,
   UsersRound,
 } from "lucide-react";
 
@@ -27,13 +26,9 @@ export function HomeSidebar({
   const todayHot = [...posts]
     .sort((a, b) => b.likesCount + b.commentsCount * 2 - (a.likesCount + a.commentsCount * 2))
     .slice(0, 4);
-  const productRanking = posts
-    .filter((post) => post.type === "product" || post.type === "tool")
-    .sort((a, b) => b.savesCount - a.savesCount)
-    .slice(0, 4);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-6">
       <Card className="rounded-3xl p-5">
         <div className="mb-4 flex items-center gap-2">
           <Flame className="h-5 w-5 text-violet-600" />
@@ -59,37 +54,6 @@ export function HomeSidebar({
                 <span className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-400">
                   <PostTypeBadge type={post.type} className="px-2 py-0.5" />
                   {formatCompactNumber(post.likesCount)} 热度
-                </span>
-              </span>
-            </Link>
-          ))}
-        </div>
-      </Card>
-
-      <Card className="rounded-3xl p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <Trophy className="h-5 w-5 text-amber-500" />
-          <h3 className="font-black text-slate-950">本周 AI 产品榜</h3>
-        </div>
-        <div className="space-y-3">
-          {productRanking.map((post, index) => (
-            <Link
-              href={`/post/${post.id}`}
-              key={post.id}
-              className="flex items-center gap-2.5 rounded-2xl p-2 transition-colors hover:bg-slate-50"
-            >
-              <span className="relative">
-                <PostScoreBadge post={post} size="compact" className="h-8 min-w-8" />
-                <span className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white text-[9px] font-black text-blue-700 shadow-soft">
-                  {index + 1}
-                </span>
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13px] font-bold text-slate-800">
-                  {post.title}
-                </span>
-                <span className="text-[11px] text-slate-400">
-                  {formatCompactNumber(post.savesCount)} 人收藏
                 </span>
               </span>
             </Link>

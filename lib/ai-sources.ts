@@ -322,6 +322,59 @@ export const authoritativeSources: AiSource[] = [
     notes: "雷峰网 AI 频道当前先纳入监控位，后续补分类页解析。",
   },
   {
+    id: "ithome-next-ai",
+    name: "IT之家 Next",
+    authority: "media",
+    status: "ready",
+    homeUrl: "https://next.ithome.com/",
+    fetchType: "html",
+    language: "zh",
+    cadence: "hourly",
+    recommendedType: "news",
+    tags: ["IT之家", "AI 快讯", "大模型", "机器人"],
+    reliabilityScore: 84,
+    autoIngest: true,
+    maxItemAgeDays: 3,
+    includeKeywords: [
+      "ai",
+      "人工智能",
+      "大模型",
+      "openai",
+      "anthropic",
+      "claude",
+      "chatgpt",
+      "gpt",
+      "gemini",
+      "deepseek",
+      "qwen",
+      "千问",
+      "智能体",
+      "agent",
+      "机器人",
+      "具身",
+      "多模态",
+      "视频生成",
+      "开源",
+      "推理",
+      "算力",
+    ],
+    excludeKeywords: [
+      "智能家居补贴",
+      "智能电视",
+      "智能手机",
+      "手机",
+      "汽车",
+      "新能源车",
+      "电动车",
+      "5g",
+      "路由器",
+      "耳机",
+      "手表",
+    ],
+    notes:
+      "IT之家 Next 智能时代频道，使用列表页 HTML 抓取并按 AI/大模型/机器人关键词降噪，适合补充中文快讯型 AI 动态。",
+  },
+  {
     id: "kr36-ai",
     name: "36氪 AI / 科技流",
     authority: "media",
@@ -409,7 +462,7 @@ export const authoritativeSources: AiSource[] = [
 ];
 
 export const fetchableSources = authoritativeSources.filter(
-  (source) => source.status === "ready" && Boolean(source.feedUrl),
+  (source) => source.status === "ready" && (Boolean(source.feedUrl) || source.fetchType === "html"),
 );
 
 function canAutoIngestSource(source: AiSource) {
