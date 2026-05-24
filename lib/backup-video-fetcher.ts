@@ -146,6 +146,7 @@ async function fetchBilibiliSearchItems(keyword: string, limit: number): Promise
     description: stripHtmlToText(asText(item.description)),
     pic: normalizeBilibiliImageUrl(asText(item.pic)),
     author: stripHtmlToText(asText(item.author)),
+    duration: asText(item.duration),
     created: Number(item.pubdate),
     play: Number(item.play),
     review: Number(item.review),
@@ -170,6 +171,7 @@ async function fetchBilibiliSpaceItems(mid: string, limit: number): Promise<Bili
     description: stripHtmlToText(asText(item.description)),
     pic: normalizeBilibiliImageUrl(asText(item.pic)),
     author: stripHtmlToText(asText(item.author)),
+    duration: asText(item.length) || asText(item.duration),
     created: Number(item.created),
     play: Number(item.play),
     review: Number(item.comment),
@@ -226,6 +228,7 @@ type BilibiliApiItem = {
   description: string;
   pic?: string;
   author?: string;
+  duration?: string;
   created?: number;
   play?: number;
   review?: number;
@@ -253,6 +256,7 @@ function normalizeBilibiliApiItem(
     url: sourceUrl,
     videoEmbedUrl: buildEmbedUrl("bilibili", item.bvid),
     coverImageUrl: item.pic,
+    durationMs: parseVideoDurationMs(item.duration),
     author: item.author || source.name.replace(/^B站 · /, ""),
     publishedAt: item.created ? new Date(item.created * 1000).toISOString() : undefined,
     likesCount: toSafeNumber(item.play),
@@ -312,6 +316,10 @@ function normalizeBackupVideoItem(
       ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
       : undefined);
   const sourceUrl = normalizeSourceUrl(url, source.platform, videoId);
+  const durationMs =
+    readMediaDurationMs(mediaGroup?.["media:content"]) ||
+    readMediaDurationMs(item["media:content"]) ||
+    parseVideoDurationMs(asText(item["itunes:duration"]) || asText(item.duration));
 
   return {
     sourceId: source.id,
@@ -325,6 +333,7 @@ function normalizeBackupVideoItem(
     url: sourceUrl,
     videoEmbedUrl: buildEmbedUrl(source.platform, videoId),
     coverImageUrl,
+    durationMs,
     author: source.name.replace(/^(YouTube|B站) · /, ""),
     publishedAt,
     likesCount: readNumber(mediaGroup?.["media:community"], "media:statistics", "@_views"),
@@ -416,6 +425,55 @@ function readMediaUrl(value: unknown): string | undefined {
     const record = value as Record<string, unknown>;
     return asText(record["@_url"]) || asText(record.url) || asText(record["@_href"]) || undefined;
   }
+  return undefined;
+}
+
+function readMediaDurationMs(value: unknown): number | undefined {
+  if (!value) return undefined;
+  if (Array.isArray(value)) {
+    return value.map(readMediaDurationMs).find((duration): duration is number => Boolean(duration));
+  }
+  if (typeof value !== "object") return undefined;
+
+  const record = value as Record<string, unknown>;
+  return parseVideoDurationMs(
+    asText(record["@_duration"]) ||
+      asText(record.duration) ||
+      asText(record["@_yt:duration"]),
+  );
+}
+
+function parseVideoDurationMs(value: unknown): number | undefined {
+  if (value === null || value === undefined) return undefined;
+
+  if (typeof value === "number") {
+    if (!Number.isFinite(value) || value <= 0) return undefined;
+    return value > 1000 ? Math.round(value) : Math.round(value * 1000);
+  }
+
+  const raw = String(value).trim();
+  if (!raw) return undefined;
+
+  const numeric = Number(raw);
+  if (Number.isFinite(numeric) && numeric > 0) {
+    return numeric > 1000 ? Math.round(numeric) : Math.round(numeric * 1000);
+  }
+
+  const parts = raw.split(":").map((part) => Number.parseInt(part, 10));
+  if (parts.length >= 2 && parts.length <= 3 && parts.every((part) => Number.isFinite(part))) {
+    const seconds = parts.reduce((total, part) => total * 60 + part, 0);
+    return seconds > 0 ? seconds * 1000 : undefined;
+  }
+
+  const isoMatch = raw.match(/P(?:T)?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/i);
+  if (isoMatch) {
+    const hours = Number(isoMatch[1] ?? 0);
+    const minutes = Number(isoMatch[2] ?? 0);
+    const seconds = Number(isoMatch[3] ?? 0);
+    const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+    return totalSeconds > 0 ? totalSeconds * 1000 : undefined;
+  }
+
   return undefined;
 }
 

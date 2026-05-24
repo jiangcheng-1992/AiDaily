@@ -3,10 +3,14 @@
 import { useMemo, useState } from "react";
 import { X } from "lucide-react";
 
+import { GoogleAdSlot } from "@/components/google-ad-slot";
 import { HomeSidebar } from "@/components/home-sidebar";
 import { PostCard } from "@/components/post-card";
 import { useAiCircleStore } from "@/hooks/use-ai-circle-store";
 import type { Post } from "@/lib/mock-data";
+
+const adsenseClient = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_CLIENT;
+const feedAdSlot = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_FEED_SLOT;
 
 function sortPosts(posts: Post[]) {
   return [...posts].sort(
@@ -79,17 +83,24 @@ export function HomeClient({ initialPosts = [] }: { initialPosts?: Post[] }) {
             </div>
           ) : null}
 
-          {filteredPosts.map((post) => (
-            <PostCard
-              key={post.id}
-              post={post}
-              stats={getPostStats(post)}
-              onLike={toggleLike}
-              onSave={toggleSave}
-              onTagClick={setSelectedTag}
-              onShare={handleShare}
-              shared={sharedPostId === post.id}
-            />
+          {filteredPosts.map((post, index) => (
+            <div key={post.id} className="space-y-4 sm:space-y-5">
+              {adsenseClient && feedAdSlot && index === 5 ? (
+                <div className="rounded-[1.6rem] border border-slate-100 bg-white/95 p-4 shadow-soft">
+                  <div className="mb-2 text-[11px] font-bold text-slate-400">广告</div>
+                  <GoogleAdSlot slot={feedAdSlot} className="min-h-[120px]" />
+                </div>
+              ) : null}
+              <PostCard
+                post={post}
+                stats={getPostStats(post)}
+                onLike={toggleLike}
+                onSave={toggleSave}
+                onTagClick={setSelectedTag}
+                onShare={handleShare}
+                shared={sharedPostId === post.id}
+              />
+            </div>
           ))}
 
           {filteredPosts.length === 0 ? (

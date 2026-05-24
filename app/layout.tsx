@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
 
 const GA_MEASUREMENT_ID = "G-0W61YMLPCN";
+const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_CLIENT;
 
 export const metadata: Metadata = {
   title: "AI圈 | 每天 5 分钟，刷完 AI 圈新动态",
@@ -40,6 +41,14 @@ export default function RootLayout({
             gtag('config', '${GA_MEASUREMENT_ID}');
           `}
         </Script>
+        {ADSENSE_CLIENT ? (
+          <Script
+            async
+            crossOrigin="anonymous"
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
+            strategy="afterInteractive"
+          />
+        ) : null}
         <SiteHeader />
         <main className="pb-[calc(8.5rem+env(safe-area-inset-bottom))] md:pb-12">{children}</main>
         <MobileTabbar />

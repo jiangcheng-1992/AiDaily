@@ -8,6 +8,7 @@ import {
   UsersRound,
 } from "lucide-react";
 
+import { GoogleAdSlot } from "@/components/google-ad-slot";
 import { PostScoreBadge } from "@/components/post-score-badge";
 import { PostTypeBadge } from "@/components/post-type-badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -15,6 +16,9 @@ import { Card } from "@/components/ui/card";
 import type { Post } from "@/lib/mock-data";
 import { hotTags } from "@/lib/mock-data";
 import { cn, formatCompactNumber } from "@/lib/utils";
+
+const adsenseClient = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_CLIENT;
+const sidebarAdSlot = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_SIDEBAR_SLOT;
 
 export function HomeSidebar({
   posts,
@@ -79,6 +83,13 @@ export function HomeSidebar({
           ))}
         </div>
       </Card>
+
+      {adsenseClient && sidebarAdSlot ? (
+        <Card className="rounded-3xl p-5">
+          <div className="mb-3 text-[11px] font-bold text-slate-400">广告</div>
+          <GoogleAdSlot slot={sidebarAdSlot} className="min-h-[250px]" />
+        </Card>
+      ) : null}
 
       <Card className="rounded-3xl p-5">
         <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
