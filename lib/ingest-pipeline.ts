@@ -93,9 +93,7 @@ export async function runIngestPipeline({
     ...submittedResult.posts,
     ...videoResult.posts,
   ].sort(
-    (a, b) =>
-      new Date(b.collectedAt ?? b.createdAt).getTime() -
-      new Date(a.collectedAt ?? a.createdAt).getTime(),
+    (a, b) => getPostPublishedSortTime(b) - getPostPublishedSortTime(a),
   );
   const submittedPostIds = new Set(submittedResult.posts.map((post) => post.id));
   const comments: Record<string, Comment[]> = {};
@@ -659,6 +657,14 @@ function uniqueTags(tags: string[]) {
     .map((tag) => tag.trim())
     .filter(Boolean)
     .filter((tag, index, arr) => arr.indexOf(tag) === index);
+}
+
+function getPostPublishedSortTime(post: Post) {
+  const createdAt = new Date(post.createdAt).getTime();
+  if (Number.isFinite(createdAt)) return createdAt;
+
+  const collectedAt = new Date(post.collectedAt ?? "").getTime();
+  return Number.isFinite(collectedAt) ? collectedAt : 0;
 }
 
 async function mapWithConcurrency<TItem, TResult>(

@@ -153,8 +153,7 @@ export function mergeGeneratedFeed({
   const posts = Array.from(dedupedPosts.values())
     .sort(
       (a, b) =>
-        new Date(b.collectedAt ?? b.createdAt).getTime() -
-        new Date(a.collectedAt ?? a.createdAt).getTime(),
+        getPostPublishedSortTime(b) - getPostPublishedSortTime(a),
     )
     .slice(0, limit);
   const postIds = new Set(posts.map((post) => post.id));
@@ -239,9 +238,7 @@ function dedupePostsByIdentity(posts: Post[]) {
   }
 
   return Array.from(deduped.values()).sort(
-    (a, b) =>
-      new Date(b.collectedAt ?? b.createdAt).getTime() -
-      new Date(a.collectedAt ?? a.createdAt).getTime(),
+    (a, b) => getPostPublishedSortTime(b) - getPostPublishedSortTime(a),
   );
 }
 
@@ -252,4 +249,12 @@ function shouldKeepGeneratedPost(post: Post, options: ReadGeneratedFeedOptions) 
 
 function buildFallbackFeed(options: ReadGeneratedFeedOptions = {}) {
   return sanitizeGeneratedFeed(baselineFeed, options);
+}
+
+function getPostPublishedSortTime(post: Post) {
+  const createdAt = new Date(post.createdAt).getTime();
+  if (Number.isFinite(createdAt)) return createdAt;
+
+  const collectedAt = new Date(post.collectedAt ?? "").getTime();
+  return Number.isFinite(collectedAt) ? collectedAt : 0;
 }

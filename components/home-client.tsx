@@ -15,10 +15,17 @@ const feedAdSlot = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_FEED_SLOT;
 function sortPosts(posts: Post[]) {
   return [...posts].sort(
     (a, b) =>
-      new Date(b.collectedAt ?? b.createdAt).getTime() -
-        new Date(a.collectedAt ?? a.createdAt).getTime() ||
+      getPostPublishedSortTime(b) - getPostPublishedSortTime(a) ||
       Number(b.featured) - Number(a.featured),
   );
+}
+
+function getPostPublishedSortTime(post: Post) {
+  const createdAt = new Date(post.createdAt).getTime();
+  if (Number.isFinite(createdAt)) return createdAt;
+
+  const collectedAt = new Date(post.collectedAt ?? "").getTime();
+  return Number.isFinite(collectedAt) ? collectedAt : 0;
 }
 
 export function HomeClient({ initialPosts = [] }: { initialPosts?: Post[] }) {
