@@ -27,16 +27,20 @@ export function HomeClient({ initialPosts = [] }: { initialPosts?: Post[] }) {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedChannel, setSelectedChannel] = useState<HomeChannelId>("all");
   const [visiblePostCount, setVisiblePostCount] = useState(INITIAL_VISIBLE_POST_COUNT);
+  const [liveFeedPosts, setLiveFeedPosts] = useState<Post[]>(initialPosts);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const sourcePosts = useMemo(() => {
     const generatedOrSubmissionPosts = allPosts.filter((post) => post.type !== "skill");
-    if (initialPosts.length > 0 && (!hydrated || generatedOrSubmissionPosts.length === 0)) {
-      return buildHomeFeedPosts(initialPosts);
+    const fallbackPosts = liveFeedPosts.length > 0 ? liveFeedPosts : initialPosts;
+
+    if (fallbackPosts.length > 0 && (!hydrated || generatedOrSubmissionPosts.length === 0)) {
+      return buildHomeFeedPosts(fallbackPosts);
     }
 
-    return buildHomeFeedPosts(allPosts);
-  }, [allPosts, hydrated, initialPosts]);
+    const storePosts = buildHomeFeedPosts(allPosts);
+    return storePosts.length > 0 ? storePosts : buildHomeFeedPosts(fallbackPosts);
+  }, [allPosts, hydrated, initialPosts, liveFeedPosts]);
 
   const filteredPosts = useMemo(() => {
     const channelPosts = filterPostsByHomeChannel(sourcePosts, selectedChannel);
@@ -44,7 +48,8 @@ export function HomeClient({ initialPosts = [] }: { initialPosts?: Post[] }) {
       ? channelPosts.filter((post) => post.tags.includes(selectedTag))
       : channelPosts;
 
-    return buildHomeFeedPosts(visiblePosts);
+    const filtered = buildHomeFeedPosts(visiblePosts);
+    return filtered.length > 0 ? filtered : selectedChannel === "all" && !selectedTag ? sourcePosts : [];
   }, [selectedChannel, selectedTag, sourcePosts]);
 
   const displayedPosts = filteredPosts.slice(0, visiblePostCount);
@@ -53,6 +58,32 @@ export function HomeClient({ initialPosts = [] }: { initialPosts?: Post[] }) {
   useEffect(() => {
     setVisiblePostCount(INITIAL_VISIBLE_POST_COUNT);
   }, [selectedChannel, selectedTag]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadLiveFeed() {
+      try {
+        const response = await fetch("/api/feed", { cache: "no-store" });
+        if (!response.ok) return;
+
+        const data = (await response.json()) as {
+          posts?: Post[];
+          fallbackActive?: boolean;
+          persistedPostCount?: number;
+        };
+
+        if (!active || data.fallbackActive || data.persistedPostCount === 0) return;
+        if (Array.isArray(data.posts) && data.posts.length > 0) {
+          setLiveFeedPosts(data.posts);
+        }
+      } catch {
+        // Keep SSR posts on transient client fetch failures.
+      }
+    }
+
+    void loadLiveFeed();
+  }, []);
 
   useEffect(() => {
     if (!hasMorePosts) return;
@@ -183,7 +214,10 @@ export function HomeClient({ initialPosts = [] }: { initialPosts?: Post[] }) {
               <p className="mt-2 text-sm text-slate-500">换个标签看看，新的 AI 机会可能藏在别处。</p>
               <button
                 type="button"
-                onClick={() => setSelectedTag(null)}
+                onClick={() => {
+                  setSelectedTag(null);
+                  setSelectedChannel("all");
+                }}
                 className="mt-5 rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700"
               >
                 查看全部

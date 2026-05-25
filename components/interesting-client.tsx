@@ -37,14 +37,14 @@ export function InterestingClient({ initialWorks }: { initialWorks: WorkItem[] }
 
   return (
     <div className="mx-auto max-w-7xl px-3 py-4 sm:px-6 sm:py-8 lg:px-8">
-      <section className="relative overflow-hidden rounded-[2rem] border border-white/80 bg-[#050816] px-5 py-8 text-white shadow-lift sm:px-8 sm:py-10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(99,102,241,0.42),transparent_32%),radial-gradient(circle_at_82%_26%,rgba(14,165,233,0.32),transparent_28%),radial-gradient(circle_at_50%_100%,rgba(168,85,247,0.24),transparent_34%)]" />
-        <div className="absolute inset-0 opacity-[0.18] [background-image:linear-gradient(rgba(255,255,255,0.18)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.18)_1px,transparent_1px)] [background-size:36px_36px]" />
-        <div className="absolute -left-20 top-1/2 h-44 w-44 -translate-y-1/2 rounded-full border border-white/10" />
-        <div className="absolute -right-14 top-6 h-32 w-32 rounded-full border border-blue-300/20" />
-        <div className="absolute bottom-5 right-8 h-1.5 w-36 rounded-full bg-gradient-to-r from-blue-400 via-fuchsia-400 to-amber-300 opacity-80 blur-[1px]" />
-        <div className="relative flex min-h-28 items-center">
-          <h1 className="max-w-full whitespace-nowrap text-[clamp(1.45rem,4vw,3.8rem)] font-black leading-none tracking-tight">
+      <section className="relative overflow-hidden rounded-[1.7rem] border border-white/80 bg-[#060a18] px-5 py-5 text-white shadow-[0_18px_52px_rgba(15,23,42,0.16)] ring-1 ring-slate-950/5 sm:px-7 sm:py-6">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(99,102,241,0.32),transparent_30%),radial-gradient(circle_at_84%_26%,rgba(14,165,233,0.26),transparent_26%),linear-gradient(120deg,rgba(255,255,255,0.08),transparent_42%)]" />
+        <div className="absolute inset-0 opacity-[0.12] [background-image:linear-gradient(rgba(255,255,255,0.22)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.22)_1px,transparent_1px)] [background-size:32px_32px]" />
+        <div className="absolute -left-14 top-1/2 h-32 w-32 -translate-y-1/2 rounded-full border border-white/10" />
+        <div className="absolute -right-10 top-4 h-24 w-24 rounded-full border border-blue-200/20" />
+        <div className="absolute bottom-4 right-7 h-1 w-28 rounded-full bg-gradient-to-r from-blue-300 via-fuchsia-300 to-amber-200 opacity-80 shadow-[0_0_18px_rgba(129,140,248,0.55)]" />
+        <div className="relative flex min-h-20 items-center">
+          <h1 className="max-w-full whitespace-nowrap text-[clamp(1.18rem,3.15vw,2.65rem)] font-black leading-none tracking-[-0.03em]">
             发现全网好玩的 AI 作品、网站和灵感
           </h1>
         </div>
