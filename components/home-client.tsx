@@ -1,24 +1,20 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Sparkles, X } from "lucide-react";
+import { X } from "lucide-react";
 
 import { GoogleAdSlot } from "@/components/google-ad-slot";
 import { HomeSidebar } from "@/components/home-sidebar";
 import { PostCard } from "@/components/post-card";
-import { PostScoreBadge } from "@/components/post-score-badge";
-import { PostTypeBadge } from "@/components/post-type-badge";
 import { useAiCircleStore } from "@/hooks/use-ai-circle-store";
 import {
   buildHomeFeedPosts,
   filterPostsByHomeChannel,
-  getDailyBriefPosts,
   homeChannels,
   type HomeChannelId,
 } from "@/lib/feed-view";
 import type { Post } from "@/lib/mock-data";
-import { cn, formatRelativeTime } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 const adsenseClient = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_CLIENT;
 const feedAdSlot = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_FEED_SLOT;
@@ -37,8 +33,6 @@ export function HomeClient({ initialPosts = [] }: { initialPosts?: Post[] }) {
 
     return buildHomeFeedPosts(allPosts);
   }, [allPosts, hydrated, initialPosts]);
-
-  const dailyBriefPosts = useMemo(() => getDailyBriefPosts(sourcePosts), [sourcePosts]);
 
   const filteredPosts = useMemo(() => {
     const channelPosts = filterPostsByHomeChannel(sourcePosts, selectedChannel);
@@ -71,50 +65,6 @@ export function HomeClient({ initialPosts = [] }: { initialPosts?: Post[] }) {
     <div>
       <section className="mx-auto grid w-full max-w-screen-sm gap-3 px-2.5 pt-2 sm:max-w-3xl sm:px-4 sm:pt-3 lg:max-w-7xl lg:gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
         <div className="min-w-0 space-y-4 sm:space-y-5">
-          {dailyBriefPosts.length > 0 ? (
-            <div className="rounded-[1.7rem] border border-blue-100 bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-600 p-4 text-white shadow-lift sm:p-5">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[11px] font-black tracking-[0.08em] text-blue-50">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    每日简报
-                  </div>
-                  <h2 className="mt-3 text-xl font-black leading-tight sm:text-2xl">
-                    今天最值得看的 3 件事
-                  </h2>
-                </div>
-                <span className="hidden rounded-full bg-white/12 px-3 py-1.5 text-xs font-bold text-blue-50 sm:inline-flex">
-                  5 分钟刷完
-                </span>
-              </div>
-              <div className="mt-4 grid gap-2.5">
-                {dailyBriefPosts.map((post, index) => (
-                  <Link
-                    key={post.id}
-                    href={`/post/${post.id}`}
-                    className="group grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl bg-white/12 p-3 transition-colors hover:bg-white/18"
-                  >
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-black text-blue-700">
-                      {index + 1}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="line-clamp-1 text-sm font-black leading-5 text-white">
-                        {post.title}
-                      </span>
-                      <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-blue-100">
-                        <PostTypeBadge type={post.type} className="border-white/20 bg-white/15 text-white" />
-                        {post.sourceName}
-                        <span className="opacity-70">·</span>
-                        {formatRelativeTime(post.createdAt)}
-                      </span>
-                    </span>
-                    <PostScoreBadge post={post} size="compact" className="bg-white text-blue-700" />
-                  </Link>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
           <div className="rounded-[1.6rem] border border-slate-100 bg-white/90 p-3 shadow-soft backdrop-blur">
             <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
               {homeChannels.map((channel) => (

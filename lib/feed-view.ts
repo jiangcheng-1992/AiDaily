@@ -40,8 +40,7 @@ export function getDailyBriefPosts(posts: Post[], limit = 3) {
       score:
         calculatePostScore(post) +
         scoreFreshness(post, today) +
-        scoreSourceAuthority(post) +
-        (post.type === "video" ? -0.35 : 0),
+        scoreSourceAuthority(post),
     }))
     .sort(
       (left, right) =>
@@ -136,6 +135,5 @@ function scoreSourceAuthority(post: Post) {
   const text = `${post.sourceName} ${post.tags.join(" ")}`.toLowerCase();
   if (/(openai|anthropic|deepmind|google|nvidia|microsoft|官方)/i.test(text)) return 0.8;
   if (/(量子位|36氪|it之家|机器之心|新智元)/i.test(text)) return 0.45;
-  if (post.type === "video") return -0.15;
   return 0;
 }
