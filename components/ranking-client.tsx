@@ -6,9 +6,7 @@ import {
   ChartNoAxesColumnIncreasing,
   Flame,
   MessageCircle,
-  Sparkles,
   Trophy,
-  Wrench,
 } from "lucide-react";
 
 import { PostScoreBadge } from "@/components/post-score-badge";
@@ -45,14 +43,6 @@ export function RankingClient() {
     )
     .slice(0, 5);
   const weekHot = [...allPosts].sort((a, b) => withScore(b) - withScore(a)).slice(0, 5);
-  const productHot = allPosts
-    .filter((post) => post.type === "product" || post.type === "tool")
-    .sort((a, b) => getPostStats(b).savesCount - getPostStats(a).savesCount)
-    .slice(0, 5);
-  const skillHot = allPosts
-    .filter((post) => post.type === "skill")
-    .sort((a, b) => getPostStats(b).savesCount - getPostStats(a).savesCount)
-    .slice(0, 5);
   const commentsHot = [...allPosts]
     .sort((a, b) => getPostStats(b).commentsCount - getPostStats(a).commentsCount)
     .slice(0, 5);
@@ -84,18 +74,6 @@ export function RankingClient() {
           icon={Trophy}
           posts={weekHot}
           metric={(post) => `${formatCompactNumber(withScore(post))} 综合分`}
-        />
-        <RankingSection
-          title="AI 产品榜"
-          icon={Wrench}
-          posts={productHot}
-          metric={(post) => `${formatCompactNumber(getPostStats(post).savesCount)} 收藏`}
-        />
-        <RankingSection
-          title="最受欢迎技巧"
-          icon={Sparkles}
-          posts={skillHot}
-          metric={(post) => `${formatCompactNumber(getPostStats(post).savesCount)} 收藏`}
         />
         <RankingSection
           title="评论最多内容"
