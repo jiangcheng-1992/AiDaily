@@ -252,6 +252,15 @@ export function useAiCircleStore() {
 
   useEffect(() => {
     let active = true;
+    let retryTimer: number | undefined;
+
+    function scheduleRetry() {
+      if (!active) return;
+      if (retryTimer) window.clearTimeout(retryTimer);
+      retryTimer = window.setTimeout(() => {
+        void loadGeneratedFeed();
+      }, 15_000);
+    }
 
     async function loadGeneratedFeed() {
       try {
@@ -261,9 +270,21 @@ export function useAiCircleStore() {
         const data = (await response.json()) as {
           posts?: Post[];
           comments?: Record<string, Comment[]>;
+          fallbackActive?: boolean;
+          persistedPostCount?: number;
         };
 
         if (active) {
+          if (data.fallbackActive || data.persistedPostCount === 0) {
+            setGeneratedFeedLoaded(true);
+            scheduleRetry();
+            return;
+          }
+
+          if (retryTimer) {
+            window.clearTimeout(retryTimer);
+            retryTimer = undefined;
+          }
           setGeneratedFeed({
             posts: Array.isArray(data.posts) ? data.posts : [],
             comments:
@@ -273,7 +294,6 @@ export function useAiCircleStore() {
         }
       } catch {
         if (active) {
-          setGeneratedFeed(emptyGeneratedFeed);
           setGeneratedFeedLoaded(true);
         }
       }
@@ -284,6 +304,7 @@ export function useAiCircleStore() {
 
     return () => {
       active = false;
+      if (retryTimer) window.clearTimeout(retryTimer);
       window.clearInterval(timer);
     };
   }, []);

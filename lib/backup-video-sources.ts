@@ -109,6 +109,28 @@ const bilibiliSources: BackupVideoSource[] = [
     autoIngest: true,
   },
   {
+    id: "bilibili-andrew-ng-agent",
+    name: "B站 · 吴恩达 AI Agent",
+    platform: "bilibili",
+    feedUrl: "bilibili-search://吴恩达 AI Agent",
+    profileUrl:
+      "https://search.bilibili.com/all?keyword=%E5%90%B4%E6%81%A9%E8%BE%BE%20AI%20Agent",
+    bilibiliKeyword: "吴恩达 AI Agent",
+    tags: ["B站", "吴恩达", "AI视频", "Agent", "课程"],
+    includeKeywords: [
+      "吴恩达",
+      "andrew",
+      "ng",
+      "ai",
+      "agent",
+      "智能体",
+      "大模型",
+      "课程",
+    ],
+    maxItemAgeDays: 30,
+    autoIngest: true,
+  },
+  {
     id: "bilibili-qbitai",
     name: "B站 · 量子位",
     platform: "bilibili",

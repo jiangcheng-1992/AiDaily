@@ -43,8 +43,6 @@ export function HomeClient({ initialPosts = [] }: { initialPosts?: Post[] }) {
     return buildHomeFeedPosts(visiblePosts);
   }, [selectedChannel, selectedTag, sourcePosts]);
 
-  const selectedChannelMeta = homeChannels.find((channel) => channel.id === selectedChannel);
-
   const handleShare = async (post: Post) => {
     const url = `${window.location.origin}/post/${post.id}`;
 
@@ -82,12 +80,6 @@ export function HomeClient({ initialPosts = [] }: { initialPosts?: Post[] }) {
                   {channel.label}
                 </button>
               ))}
-            </div>
-            <div className="mt-2 px-1 text-[12px] font-medium text-slate-400">
-              {selectedChannelMeta?.description}
-              {selectedTag ? (
-                <span className="ml-1 text-blue-600">当前叠加标签 #{selectedTag}</span>
-              ) : null}
             </div>
           </div>
 

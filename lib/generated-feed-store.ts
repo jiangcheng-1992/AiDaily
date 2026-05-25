@@ -43,9 +43,10 @@ export async function readGeneratedFeed(
   options: ReadGeneratedFeedOptions = {},
 ): Promise<GeneratedFeed> {
   const filePath = getGeneratedFeedPath();
+  const allowFallback = shouldAllowGeneratedFeedFallback(options);
 
   if (!existsSync(filePath)) {
-    return options.allowFallback === false ? emptyFeed : buildFallbackFeed(options);
+    return allowFallback ? buildFallbackFeed(options) : emptyFeed;
   }
 
   try {
@@ -65,11 +66,11 @@ export async function readGeneratedFeed(
     // version changed, otherwise the homepage can flash empty before the next
     // ingest finishes rewriting the file.
     const sanitizedFeed = sanitizeGeneratedFeed(normalizedFeed, options);
-    return sanitizedFeed.posts.length > 0 || options.allowFallback === false
+    return sanitizedFeed.posts.length > 0 || !allowFallback
       ? sanitizedFeed
       : buildFallbackFeed(options);
   } catch {
-    return options.allowFallback === false ? emptyFeed : buildFallbackFeed(options);
+    return allowFallback ? buildFallbackFeed(options) : emptyFeed;
   }
 }
 
@@ -250,4 +251,9 @@ function shouldKeepGeneratedPost(post: Post, options: ReadGeneratedFeedOptions) 
 
 function buildFallbackFeed(options: ReadGeneratedFeedOptions = {}) {
   return sanitizeGeneratedFeed(baselineFeed, options);
+}
+
+function shouldAllowGeneratedFeedFallback(options: ReadGeneratedFeedOptions) {
+  if (typeof options.allowFallback === "boolean") return options.allowFallback;
+  return process.env.NODE_ENV !== "production";
 }

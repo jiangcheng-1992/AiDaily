@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function HomePage() {
-  const feed = await readGeneratedFeed();
+  const feed = await readGeneratedFeed({ allowFallback: false });
 
   return <HomeClient initialPosts={buildHomeFeedPosts(feed.posts)} />;
 }

@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const feed = await readGeneratedFeed();
+  const feed = await readGeneratedFeed({ allowFallback: false });
   const feedStatus = await readGeneratedFeedStatus();
   const authPersistence = getAuthPersistenceInfo();
   const textAi = getMiniMaxTextStatus();
@@ -57,7 +57,8 @@ export async function GET() {
         ),
         backupPlatforms: {
           youtube: true,
-          bilibili: Boolean(process.env.RSSHUB_BASE_URL),
+          bilibili: true,
+          bilibiliRssHub: Boolean(process.env.RSSHUB_BASE_URL),
         },
       },
     },
