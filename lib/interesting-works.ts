@@ -18,6 +18,12 @@ export type WorkSource =
   | "manual";
 
 export type WorkStatus = "draft" | "pending" | "approved" | "rejected";
+export type WorkCategoryId =
+  | "all"
+  | "image"
+  | "video"
+  | "site-project"
+  | "prompt-workflow";
 
 export type WorkItem = {
   id: string;
@@ -74,14 +80,12 @@ export const workSourceLabels: Record<WorkSource, string> = {
   manual: "手动收录",
 };
 
-export const interestingCategories: Array<{ id: "all" | WorkType; label: string }> = [
+export const interestingCategories: Array<{ id: WorkCategoryId; label: string }> = [
   { id: "all", label: "全部" },
   { id: "image", label: "图片" },
   { id: "video", label: "视频" },
-  { id: "website", label: "网站" },
-  { id: "prompt", label: "Prompt" },
-  { id: "workflow", label: "工作流" },
-  { id: "github", label: "开源项目" },
+  { id: "site-project", label: "网站/项目" },
+  { id: "prompt-workflow", label: "Prompt/工作流" },
 ];
 
 export const interestingWorks: WorkItem[] = [

@@ -16,22 +16,20 @@ import {
   interestingCategories,
   workSourceLabels,
   workTypeLabels,
+  type WorkCategoryId,
   type WorkItem,
-  type WorkType,
 } from "@/lib/interesting-works";
 import { cn, formatCompactNumber, formatRelativeTime, formatVideoDuration } from "@/lib/utils";
 
-type CategoryId = "all" | WorkType;
-
 export function InterestingClient({ initialWorks }: { initialWorks: WorkItem[] }) {
-  const [category, setCategory] = useState<CategoryId>("all");
+  const [category, setCategory] = useState<WorkCategoryId>("all");
   const [likedIds, setLikedIds] = useState<string[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
 
   const works = useMemo(() => {
     return initialWorks
       .filter((work) => work.status === "approved")
-      .filter((work) => category === "all" || work.type === category)
+      .filter((work) => workMatchesCategory(work, category))
       .sort((a, b) => Number(b.featured) - Number(a.featured) || b.heatScore - a.heatScore);
   }, [category, initialWorks]);
 
@@ -105,6 +103,18 @@ export function InterestingClient({ initialWorks }: { initialWorks: WorkItem[] }
       ) : null}
     </div>
   );
+}
+
+function workMatchesCategory(work: WorkItem, category: WorkCategoryId) {
+  if (category === "all") return true;
+  if (category === "site-project") {
+    return work.type === "website" || work.type === "app" || work.type === "github";
+  }
+  if (category === "prompt-workflow") {
+    return work.type === "prompt" || work.type === "workflow";
+  }
+
+  return work.type === category;
 }
 
 function InterestingWorkCard({
