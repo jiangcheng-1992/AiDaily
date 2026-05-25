@@ -6,7 +6,6 @@ type ProductHuntPost = {
   tagline?: string;
   description?: string;
   url?: string;
-  website?: string;
   votesCount?: number;
   commentsCount?: number;
   createdAt?: string;
@@ -176,7 +175,73 @@ async function fetchProductHuntPosts({
                 tagline
                 description
                 url
-                website
+                votesCount
+                commentsCount
+                createdAt
+                featuredAt
+                thumbnail { url }
+                media { type url videoUrl }
+                topics { edges { node { name slug } } }
+                makers { name username profileImage }
+              }
+            }
+          }
+        }
+      `,
+      variables: {
+        first,
+        postedAfter: postedAfter.toISOString(),
+      },
+    }),
+    cache: "no-store",
+  });
+
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(`Product Hunt API HTTP ${response.status}: ${text.slice(0, 300)}`);
+  }
+
+  const payload = JSON.parse(text) as ProductHuntApiResponse;
+  const apiError = payload.errors?.map((error) => error.message).filter(Boolean).join("; ");
+
+  if (apiError) {
+    return fetchProductHuntPostsWithoutOrder({ token, first, postedAfter }).catch(() => {
+      throw new Error(apiError);
+    });
+  }
+
+  return payload.data?.posts?.edges?.map((edge) => edge.node).filter(isProductHuntPost) ?? [];
+}
+
+async function fetchProductHuntPostsWithoutOrder({
+  token,
+  first,
+  postedAfter,
+}: {
+  token: string;
+  first: number;
+  postedAfter: Date;
+}) {
+  const response = await fetch(PRODUCT_HUNT_API_URL, {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+      "user-agent": process.env.AIQ_USER_AGENT ?? "AIQ/1.0 ProductHunt ingest",
+    },
+    body: JSON.stringify({
+      query: `
+        query ProductHuntAiWorksFallback($first: Int!, $postedAfter: DateTime!) {
+          posts(first: $first, postedAfter: $postedAfter) {
+            edges {
+              node {
+                id
+                name
+                tagline
+                description
+                url
                 votesCount
                 commentsCount
                 createdAt
@@ -244,7 +309,7 @@ function productHuntPostToWork(post: ProductHuntPost): WorkItem {
   const media = post.media ?? [];
   const videoMedia = media.find((item) => item.videoUrl || item.type?.toLowerCase() === "video");
   const maker = post.makers?.[0];
-  const externalUrl = post.website || post.url || "https://www.producthunt.com/";
+  const externalUrl = post.url || "https://www.producthunt.com/";
   const coverUrl =
     normalizeImageUrl(post.thumbnail?.url) ||
     normalizeImageUrl(media.find((item) => item.url)?.url) ||
