@@ -4,18 +4,15 @@ import Link from "next/link";
 import {
   Flame,
   Hash,
-  Rocket,
-  UsersRound,
 } from "lucide-react";
 
 import { GoogleAdSlot } from "@/components/google-ad-slot";
 import { PostScoreBadge } from "@/components/post-score-badge";
 import { PostTypeBadge } from "@/components/post-type-badge";
-import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { Post } from "@/lib/mock-data";
 import { hotTags } from "@/lib/mock-data";
-import { cn, formatCompactNumber } from "@/lib/utils";
+import { formatCompactNumber } from "@/lib/utils";
 
 const adsenseClient = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_CLIENT;
 const sidebarAdSlot = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_SIDEBAR_SLOT;
@@ -90,23 +87,6 @@ export function HomeSidebar({
           <GoogleAdSlot slot={sidebarAdSlot} className="min-h-[250px]" />
         </Card>
       ) : null}
-
-      <Card className="rounded-3xl p-5">
-        <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
-          <UsersRound className="h-5 w-5 text-emerald-500" />
-          加入 AI 圈社区
-        </div>
-        <p className="mt-3 text-sm leading-6 text-slate-500">
-          每天一条高质量 AI 动态，和创作者、产品经理、独立开发者一起拆机会。
-        </p>
-        <Link
-          href="/me"
-          className={cn(buttonVariants({ variant: "secondary" }), "mt-4 w-full")}
-        >
-          <Rocket className="h-4 w-4" />
-          查看我的圈子
-        </Link>
-      </Card>
     </div>
   );
 }
