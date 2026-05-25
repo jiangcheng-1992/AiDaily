@@ -397,27 +397,76 @@ function extractEvidence(title: string, paragraphs: string[], theme: InsightThem
 function buildWhyItMatters(theme: InsightTheme, subject: string, evidence: string[]) {
   const primary = clip(evidence[0] ?? subject, 68);
   const secondary = clip(evidence[1] ?? evidence[0] ?? subject, 68);
+  const variant = getCopyVariant(`${theme}:${subject}:${primary}`, 3);
 
   switch (theme) {
     case "media":
-      return `${subject} 这条值得跟，不是因为又多了一条 AIGC 资讯，而是文中明确出现了“${primary}”和“${secondary}”这类生产或发行动作。它说明 AI 已开始碰到内容工业化最难的那部分：既要提产能，还要把质量和回款链路一起打通。`;
+      return pickCopyVariant(variant, [
+        `这不是普通内容生产新闻。关键在“${primary}”，它直接指向 AIGC 从单次演示走向批量生产；如果“${secondary}”也能接住分发和回收，内容团队的成本结构会被重写。`,
+        `这条的看点在供给链，而不是热闹本身。“${primary}”说明 AI 已经进入素材、制作或发行环节；后续要看“${secondary}”能不能把效率优势变成稳定产出。`,
+        `它把 AIGC 的问题从“能不能生成”推进到“能不能规模化交付”。如果“${primary}”背后的流程跑通，创作者和媒体团队都会重新计算人力、周期和品控。`,
+      ]);
     case "agent":
-      return `${subject} 真正重要的地方在于，文中不是只写“更聪明”，而是给出了“${primary}”这类可执行动作。只要这些动作能持续复现，AI 的价值就不再是聊天效果，而是开始替代一段真实人工流程。`;
+      return pickCopyVariant(variant, [
+        `这条最有价值的信号是“${primary}”：Agent 不再只是聊天入口，而是在接管具体步骤。下一步要看它是否能稳定完成任务、处理异常，并被真实团队重复使用。`,
+        `重点不是又多了一个智能体概念，而是“${primary}”暴露了它正在替代哪段人工流程。如果“${secondary}”能持续复现，才说明它有机会进入工作流。`,
+        `可以把这条当成 Agent 落地样本看。“${primary}”代表明确任务边界，真正的判断点是执行链路是否闭环，以及出错时有没有人机协同兜底。`,
+      ]);
     case "model":
-      return `${subject} 值得跟的不是模型名次本身，而是“${primary}”这类结果是否真的把能力边界往真实场景推了一步。只要模型优势开始落到产品体验、服务交付或多模态能力上，它就不再只是排行榜新闻。`;
+      return pickCopyVariant(variant, [
+        `这条要看的不是模型名次，而是“${primary}”带来的实际能力变化。只要能力能落到产品体验、服务交付或多模态任务上，它才会从参数竞争变成应用机会。`,
+        `模型新闻最容易变成排行榜叙事，但“${primary}”更像真实使用场景。后续如果能补上成本、延迟和稳定性，这条线就值得继续跟。`,
+        `它的价值在于把模型能力拉回具体结果。“${primary}”如果不是一次性展示，而是可重复能力，开发者和产品团队才有理由重新设计功能边界。`,
+      ]);
     case "research":
-      return `${subject} 的价值在于把研究结论往可验证能力上推进。文章里真正该盯的是“${primary}”和“${secondary}”这种可度量信号，它们决定这项能力能不能进入后续产品或工程栈。`;
+      return pickCopyVariant(variant, [
+        `这条适合按验证线索来读。“${primary}”提供了一个可追踪指标，后续要看是否有公开 benchmark、复现条件和失败样本，否则很容易高估能力。`,
+        `研究价值不在结论多漂亮，而在“${primary}”是否能被别人复现。只要评测口径清楚，这类成果才可能进入产品或工程栈。`,
+        `它给出的关键线索是“${primary}”。如果“${secondary}”能继续补足实验边界和对比结果，这条就不只是论文动态，而是后续产品能力的前置信号。`,
+      ]);
     case "robotics":
-      return `${subject} 说明 AI 价值正在往物理世界延伸。文中如果已经出现“${primary}”这类感知、控制或执行细节，就代表它离可交付系统更近一步，而不只是演示视频。`;
+      return pickCopyVariant(variant, [
+        `机器人方向最怕停在演示视频。“${primary}”更值得看，因为它涉及感知、控制或执行细节；如果稳定性和成本也跟上，才接近可交付系统。`,
+        `这条把 AI 从屏幕带到物理世界。“${primary}”说明任务已经触达真实环境，下一步要盯连续执行、故障率和维护成本。`,
+        `它的意义在于“${primary}”不只是模型输出，而是开始影响实体动作。商业化能不能走快，取决于“${secondary}”背后的可靠性。`,
+      ]);
     case "infra":
-      return `${subject} 重要的不是基础设施概念本身，而是“${primary}”这类成本、吞吐或交付效率信号有没有出现。只要基础设施指标被改写，AI 产品的落地上限就会跟着改变。`;
+      return pickCopyVariant(variant, [
+        `基础设施新闻要看指标。“${primary}”如果能降低成本、延迟或部署复杂度，下游 AI 产品的可用边界会一起扩大。`,
+        `这条的核心不是概念，而是“${primary}”有没有改变工程账本。只要吞吐、成本或稳定性改善，应用层很快会跟着受益。`,
+        `它值得跟，是因为“${primary}”可能影响 AI 产品的底层约束。基础设施一旦变便宜或更好接入，很多原本不经济的场景会重新成立。`,
+      ]);
     case "devtools":
-      return `${subject} 对开发者更重要的点在于，它是否把复杂能力封装成更低门槛的工程入口。文中的“${primary}”如果代表接入链路更短、调试更省或复用更强，这类能力就会快速渗透到真实团队工作流。`;
+      return pickCopyVariant(variant, [
+        `开发者工具的判断标准很直接：“${primary}”有没有减少接入、调试或协作成本。如果答案是肯定的，它会比单纯模型升级更快进入团队日常。`,
+        `这条的价值在工程入口。“${primary}”如果让复杂能力变得更容易复用，开发团队会更愿意把它纳入默认工作流。`,
+        `它不是泛泛的“AI 编程”消息，关键是“${primary}”有没有缩短从想法到上线的距离。能省掉重复劳动的工具，才会形成粘性。`,
+      ]);
     case "business":
-      return `${subject} 背后反映的是 AI 已经开始改变成本结构和收入模型。文章里出现“${primary}”这种业务动作时，通常意味着平台正在验证新的付费链路，而不是停留在概念层。`;
+      return pickCopyVariant(variant, [
+        `商业侧要看投入产出。“${primary}”说明 AI 已经进入成本、定价或采购决策；如果后续有留存和付费数据，才算真正跑通。`,
+        `这条不是单纯公司动态，而是在测试 AI 能不能改变业务账本。“${primary}”背后如果能带来更低成本或新增收入，就有持续跟踪价值。`,
+        `它把 AI 讨论从技术效果拉到经营结果。“${primary}”如果能转化成采购、续费或效率提升，才说明市场真的愿意买单。`,
+      ]);
     default:
-      return `${subject} 重要的地方在于，它把 AI 从抽象趋势往具体业务动作又推进了一步。像“${primary}”这样的信号如果后续还能被放大并形成可复制结果，这条线才真正值得持续跟。`;
+      return pickCopyVariant(variant, [
+        `这条的核心线索是“${primary}”。它比单纯趋势判断更具体，后续只要能继续出现可复现结果，就说明这不是短期噪音。`,
+        `我会先看“${primary}”对应的真实场景，再看“${secondary}”有没有形成连续动作。能被复用、能降本或能带来新体验，才值得放进主线观察。`,
+        `它值得保留在信息流里，是因为“${primary}”给出了一个可验证方向。后续如果缺少用户反馈、成本边界或落地案例，热度就需要降权。`,
+      ]);
   }
+}
+
+function pickCopyVariant(optionsIndex: number, options: string[]) {
+  return options[optionsIndex % options.length];
+}
+
+function getCopyVariant(seed: string, modulo: number) {
+  let hash = 0;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash = (hash * 31 + seed.charCodeAt(index)) >>> 0;
+  }
+  return hash % modulo;
 }
 
 function buildEditorComment(theme: InsightTheme, subject: string, evidence: string[]) {

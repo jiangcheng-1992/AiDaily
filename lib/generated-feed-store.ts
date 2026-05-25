@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 
 import { mockComments, mockPosts } from "@/lib/mock-data";
 import type { Comment, Post } from "@/lib/mock-data";
+import { getPostPublishedSortTime } from "@/lib/feed-view";
 import { buildIdentityKeyFromPost } from "@/lib/post-identity";
 
 export type GeneratedFeed = {
@@ -249,30 +250,4 @@ function shouldKeepGeneratedPost(post: Post, options: ReadGeneratedFeedOptions) 
 
 function buildFallbackFeed(options: ReadGeneratedFeedOptions = {}) {
   return sanitizeGeneratedFeed(baselineFeed, options);
-}
-
-function getPostPublishedSortTime(post: Post) {
-  const createdAt = new Date(post.createdAt).getTime();
-  if (Number.isFinite(createdAt)) {
-    if (hasUntrustedDouyinPublishTime(post, createdAt)) {
-      return createdAt - 7 * 24 * 60 * 60 * 1000;
-    }
-
-    return createdAt;
-  }
-
-  const collectedAt = new Date(post.collectedAt ?? "").getTime();
-  return Number.isFinite(collectedAt) ? collectedAt : 0;
-}
-
-function hasUntrustedDouyinPublishTime(post: Post, createdAt: number) {
-  if (post.type !== "video") return false;
-  if (!post.sourceId?.startsWith("douyin-")) return false;
-
-  const collectedAt = new Date(post.collectedAt ?? "").getTime();
-  if (!Number.isFinite(collectedAt)) return true;
-
-  // Douyin fallback pages often do not expose publish time; those items used
-  // collection time as createdAt, which should not outrank truly fresh content.
-  return Math.abs(createdAt - collectedAt) < 2 * 60 * 1000;
 }

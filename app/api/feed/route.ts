@@ -1,3 +1,4 @@
+import { buildHomeFeedPosts } from "@/lib/feed-view";
 import { readGeneratedFeed, readGeneratedFeedStatus } from "@/lib/generated-feed-store";
 
 export const runtime = "nodejs";
@@ -8,6 +9,7 @@ let backgroundRebuildPromise: Promise<void> | null = null;
 export async function GET(request: Request) {
   const feed = await readGeneratedFeed();
   const status = await readGeneratedFeedStatus();
+  const posts = buildHomeFeedPosts(feed.posts);
 
   if (status.fallbackActive) {
     triggerBackgroundFeedRebuild(request);
@@ -17,10 +19,12 @@ export async function GET(request: Request) {
     {
       ok: true,
       updatedAt: feed.updatedAt,
-      posts: feed.posts,
+      posts,
       comments: feed.comments,
+      feedPolicyVersion: feed.policyVersion,
       fallbackActive: status.fallbackActive,
       persistedPostCount: status.persistedPostCount,
+      visiblePostCount: posts.length,
     },
     {
       headers: {
