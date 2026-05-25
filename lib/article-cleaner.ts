@@ -77,10 +77,15 @@ const TAIL_NOISE_MARKERS = [
   "\n创投平台",
   "\n自助报道",
   "\n违法和不良信息",
+  "\n广告声明",
+  "\n相关文章",
+  "\n软媒旗下网站",
+  "\n软媒旗下软件",
 ];
 
 const TAIL_NOISE_TEXT_MARKERS = [
   "相关阅读",
+  "相关文章",
   "推荐阅读",
   "关于量子位",
   "热门文章",
@@ -89,6 +94,10 @@ const TAIL_NOISE_TEXT_MARKERS = [
   "加入我们",
   "商务合作",
   "评论 feed",
+  "广告声明",
+  "软媒旗下网站",
+  "软媒旗下软件",
+  "IT之家所有文章均包含本声明",
 ];
 
 export function cleanTitleText(value: string) {
@@ -363,6 +372,17 @@ function trimHtmlTailBySite(html: string, pageUrl?: string) {
     ]);
   }
 
+  if (hostname.endsWith("ithome.com")) {
+    return cutAtFirstMarker(html, [
+      "广告声明",
+      "相关文章",
+      "软媒旗下网站",
+      "软媒旗下软件",
+      "IT之家所有文章均包含本声明",
+      "结果仅供参考",
+    ]);
+  }
+
   return html;
 }
 
@@ -396,7 +416,9 @@ function extractSiteArticleHtmlBlock(html: string, pageUrl?: string) {
 
   return extractAroundClassKeyword(html, [
     "article-content",
+    "post_content",
     "post-content",
+    "news-content",
     "entry-content",
     "rich-text",
     "content-body",
@@ -419,8 +441,12 @@ function extractAroundClassKeyword(html: string, keywords: string[]) {
     "<aside",
     "<footer",
     "相关推荐",
+    "相关文章",
     "推荐阅读",
     "热门文章",
+    "广告声明",
+    "软媒旗下网站",
+    "软媒旗下软件",
     "关于36氪",
     "本站由阿里云",
     "违法和不良信息",
