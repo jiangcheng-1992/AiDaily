@@ -345,6 +345,22 @@ export function SubmitClient() {
       </Card>
 
       <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+        <Card className="rounded-3xl border-blue-100 bg-gradient-to-br from-blue-50 to-violet-50 p-5">
+          <div className="flex items-center gap-2 text-lg font-black text-slate-950">
+            <Sparkles className="h-5 w-5 text-blue-700" />
+            推荐 AI 作品
+          </div>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            发现好玩的 AI 图片、视频、网站、小游戏、Prompt 或开源项目，可以先推荐到“有点意思”。
+          </p>
+          <Link
+            href="/interesting"
+            className="mt-4 inline-flex w-full items-center justify-center rounded-full bg-slate-950 px-4 py-2.5 text-sm font-black text-white transition-colors hover:bg-blue-700"
+          >
+            去看有点意思
+          </Link>
+        </Card>
+
         <Card className="rounded-3xl p-5">
           <div className="flex items-center gap-2 text-lg font-black text-blue-700">
             <Lightbulb className="h-5 w-5" />

@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/", label: "首页" },
+  { href: "/interesting", label: "有点意思" },
   { href: "/skills", label: "Skill" },
   { href: "/ranking", label: "榜单" },
   { href: "/portfolio", label: "姜承作品集" },
