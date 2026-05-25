@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 
 import { GoogleAdSlot } from "@/components/google-ad-slot";
@@ -18,12 +18,16 @@ import { cn } from "@/lib/utils";
 
 const adsenseClient = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_CLIENT;
 const feedAdSlot = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_FEED_SLOT;
+const INITIAL_VISIBLE_POST_COUNT = 10;
+const LOAD_MORE_POST_COUNT = 8;
 
 export function HomeClient({ initialPosts = [] }: { initialPosts?: Post[] }) {
   const { allPosts, hydrated, getPostStats, toggleLike, toggleSave } = useAiCircleStore();
   const [sharedPostId, setSharedPostId] = useState<string | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedChannel, setSelectedChannel] = useState<HomeChannelId>("all");
+  const [visiblePostCount, setVisiblePostCount] = useState(INITIAL_VISIBLE_POST_COUNT);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const sourcePosts = useMemo(() => {
     const generatedOrSubmissionPosts = allPosts.filter((post) => post.type !== "skill");
@@ -42,6 +46,36 @@ export function HomeClient({ initialPosts = [] }: { initialPosts?: Post[] }) {
 
     return buildHomeFeedPosts(visiblePosts);
   }, [selectedChannel, selectedTag, sourcePosts]);
+
+  const displayedPosts = filteredPosts.slice(0, visiblePostCount);
+  const hasMorePosts = visiblePostCount < filteredPosts.length;
+
+  useEffect(() => {
+    setVisiblePostCount(INITIAL_VISIBLE_POST_COUNT);
+  }, [selectedChannel, selectedTag]);
+
+  useEffect(() => {
+    if (!hasMorePosts) return;
+    const target = loadMoreRef.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+
+        setVisiblePostCount((count) =>
+          Math.min(count + LOAD_MORE_POST_COUNT, filteredPosts.length),
+        );
+      },
+      { rootMargin: "480px 0px" },
+    );
+
+    observer.observe(target);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [filteredPosts.length, hasMorePosts]);
 
   const handleShare = async (post: Post) => {
     const url = `${window.location.origin}/post/${post.id}`;
@@ -101,7 +135,7 @@ export function HomeClient({ initialPosts = [] }: { initialPosts?: Post[] }) {
             </div>
           ) : null}
 
-          {filteredPosts.map((post, index) => (
+          {displayedPosts.map((post, index) => (
             <div key={post.id} className="space-y-4 sm:space-y-5">
               {adsenseClient && feedAdSlot && index === 5 ? (
                 <div className="rounded-[1.6rem] border border-slate-100 bg-white/95 p-4 shadow-soft">
@@ -120,6 +154,28 @@ export function HomeClient({ initialPosts = [] }: { initialPosts?: Post[] }) {
               />
             </div>
           ))}
+
+          {filteredPosts.length > 0 ? (
+            <div ref={loadMoreRef} className="flex justify-center pb-8 pt-1">
+              {hasMorePosts ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setVisiblePostCount((count) =>
+                      Math.min(count + LOAD_MORE_POST_COUNT, filteredPosts.length),
+                    )
+                  }
+                  className="rounded-full border border-slate-200 bg-white/90 px-4 py-2 text-xs font-bold text-slate-500 shadow-soft transition-colors hover:border-blue-200 hover:text-blue-700"
+                >
+                  继续加载更多
+                </button>
+              ) : (
+                <div className="rounded-full bg-slate-100 px-4 py-2 text-xs font-bold text-slate-400">
+                  已显示全部，新的内容会自动补充
+                </div>
+              )}
+            </div>
+          ) : null}
 
           {filteredPosts.length === 0 ? (
             <div className="rounded-3xl border border-slate-100 bg-white/90 p-8 text-center shadow-soft">
