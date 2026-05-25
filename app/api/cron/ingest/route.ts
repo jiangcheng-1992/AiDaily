@@ -5,10 +5,16 @@ import {
   readGeneratedFeed,
   writeGeneratedFeed,
 } from "@/lib/generated-feed-store";
+import {
+  mergeGeneratedWorks,
+  readGeneratedWorks,
+  writeGeneratedWorks,
+} from "@/lib/generated-works-store";
 import { validateIngestRequest } from "@/lib/ingest-request-auth";
 import type { GeneratedFeed } from "@/lib/generated-feed-store";
 import type { Comment } from "@/lib/mock-data";
 import { runIngestPipeline } from "@/lib/ingest-pipeline";
+import { fetchProductHuntWorks } from "@/lib/product-hunt-fetcher";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -61,6 +67,14 @@ async function handleIngestRequest(request: Request) {
     url.searchParams.get("submittedSourceLimit") ?? process.env.SUBMITTED_SOURCE_LIMIT,
     8,
   );
+  const productHuntWeeklyLimit = readNonNegativeInt(
+    url.searchParams.get("productHuntWeeklyLimit") ?? process.env.PRODUCT_HUNT_WEEKLY_LIMIT,
+    50,
+  );
+  const productHuntDailyLimit = readNonNegativeInt(
+    url.searchParams.get("productHuntDailyLimit") ?? process.env.PRODUCT_HUNT_DAILY_LIMIT,
+    20,
+  );
   const run = await runIngestPipeline({
     sourceLimit,
     itemLimit,
@@ -94,6 +108,29 @@ async function handleIngestRequest(request: Request) {
   if (!dryRun && !wouldClearExistingFeed) {
     await writeGeneratedFeed(nextFeed);
   }
+  const worksRun = await fetchProductHuntWorks({
+    weeklyLimit: productHuntWeeklyLimit,
+    dailyLimit: productHuntDailyLimit,
+  });
+  const currentWorks = await readGeneratedWorks({ allowFallback: false });
+  const nextWorks = mergeGeneratedWorks({
+    current: currentWorks,
+    incomingWorks: worksRun.works,
+    sourceStatus: {
+      producthunt: {
+        ok: worksRun.ok,
+        count: worksRun.count,
+        fetchedAt: run.fetchedAt,
+        error: worksRun.error,
+      },
+    },
+    limit: readPositiveInt(process.env.GENERATED_WORKS_LIMIT, 200),
+  });
+
+  if (!dryRun && worksRun.works.length > 0) {
+    await writeGeneratedWorks(nextWorks);
+  }
+
   const attemptedCount =
     sourceLimit + (githubLimit > 0 ? 1 : 0);
   const ingestOk = attemptedCount === 0 || run.primarySuccessCount > 0 || run.posts.length > 0;
@@ -122,8 +159,18 @@ async function handleIngestRequest(request: Request) {
         postCount: run.video.postCount,
         sources: run.video.sources,
       },
+      works: {
+        productHunt: {
+          ok: worksRun.ok,
+          count: worksRun.count,
+          error: worksRun.error,
+          configured: Boolean(process.env.PRODUCT_HUNT_TOKEN || process.env.PRODUCTHUNT_TOKEN),
+        },
+        totalWorkCount: nextWorks.works.length,
+        persisted: !dryRun && worksRun.works.length > 0,
+      },
       message:
-        "已完成 AI 文章源和 GitHub 热门 Skill 抓取，并独立尝试抖音、YouTube、B站等视频源抓取。视频失败不会影响文章落地；GitHub、抖音和公开视频源使用真实公开互动指标，不提供互动指标的来源不会编造点赞数。",
+        "已完成 AI 文章源、GitHub 热门 Skill、Product Hunt AI 作品抓取，并独立尝试抖音、YouTube、B站等视频源抓取。视频或作品源失败不会影响文章落地；公开来源使用真实互动指标，不提供互动指标的来源不会编造点赞数。",
       sources: run.sources,
       github: run.github,
     },

@@ -622,9 +622,13 @@ export function getInterestingWorkById(id: string) {
   return interestingWorks.find((work) => work.id === id);
 }
 
-export function getRelatedInterestingWorks(work: WorkItem, limit = 3) {
+export function getRelatedInterestingWorks(
+  work: WorkItem,
+  limit = 3,
+  works: WorkItem[] = interestingWorks,
+) {
   const tagSet = new Set(work.tags);
-  return interestingWorks
+  return works
     .filter((item) => item.id !== work.id)
     .map((item) => ({
       item,

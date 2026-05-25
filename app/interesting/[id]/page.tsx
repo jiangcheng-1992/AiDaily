@@ -15,11 +15,11 @@ import { CopyPromptButton } from "@/components/copy-prompt-button";
 import { Card } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import {
-  getInterestingWorkById,
   getRelatedInterestingWorks,
   workSourceLabels,
   workTypeLabels,
 } from "@/lib/interesting-works";
+import { readGeneratedWorks } from "@/lib/generated-works-store";
 import { cn, formatCompactNumber, formatRelativeTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -30,11 +30,12 @@ export default async function InterestingDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const work = getInterestingWorkById(id);
+  const worksFeed = await readGeneratedWorks({ allowFallback: true });
+  const work = worksFeed.works.find((item) => item.id === id);
 
   if (!work) notFound();
 
-  const relatedWorks = getRelatedInterestingWorks(work);
+  const relatedWorks = getRelatedInterestingWorks(work, 3, worksFeed.works);
   const primaryUrl = work.externalUrl || work.videoUrl || work.githubUrl;
 
   return (

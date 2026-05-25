@@ -3,6 +3,7 @@ import {
   readGeneratedFeed,
   readGeneratedFeedStatus,
 } from "@/lib/generated-feed-store";
+import { readGeneratedWorksStatus } from "@/lib/generated-works-store";
 import { getAdminAuthStatus, getAuthPersistenceInfo } from "@/lib/auth-store";
 import { getMiniMaxTextStatus } from "@/lib/minimax-text";
 
@@ -12,6 +13,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const feed = await readGeneratedFeed({ allowFallback: false });
   const feedStatus = await readGeneratedFeedStatus();
+  const worksStatus = await readGeneratedWorksStatus();
   const authPersistence = getAuthPersistenceInfo();
   const textAi = getMiniMaxTextStatus();
 
@@ -22,6 +24,7 @@ export async function GET() {
     feedUpdatedAt: feed.updatedAt ?? null,
     postCount: feed.posts.length,
     feedStorage: feedStatus,
+    worksStorage: worksStatus,
     feedPolicyVersion: GENERATED_FEED_POLICY_VERSION,
     autoIngest: {
       enabled: !["0", "false", "no", "off"].includes(
@@ -59,6 +62,13 @@ export async function GET() {
           youtube: true,
           bilibili: true,
           bilibiliRssHub: Boolean(process.env.RSSHUB_BASE_URL),
+        },
+      },
+      works: {
+        productHunt: {
+          configured: Boolean(process.env.PRODUCT_HUNT_TOKEN || process.env.PRODUCTHUNT_TOKEN),
+          weeklyLimit: readNonNegativeNumber(process.env.PRODUCT_HUNT_WEEKLY_LIMIT, 50),
+          dailyLimit: readNonNegativeNumber(process.env.PRODUCT_HUNT_DAILY_LIMIT, 20),
         },
       },
     },

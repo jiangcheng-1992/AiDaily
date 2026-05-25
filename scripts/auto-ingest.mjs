@@ -135,6 +135,20 @@ function buildLocalIngestUrl() {
     url.searchParams.set("submittedSourceLimit", process.env.AUTO_INGEST_SUBMITTED_SOURCE_LIMIT);
   }
 
+  if (process.env.AUTO_INGEST_PRODUCT_HUNT_WEEKLY_LIMIT) {
+    url.searchParams.set(
+      "productHuntWeeklyLimit",
+      process.env.AUTO_INGEST_PRODUCT_HUNT_WEEKLY_LIMIT,
+    );
+  }
+
+  if (process.env.AUTO_INGEST_PRODUCT_HUNT_DAILY_LIMIT) {
+    url.searchParams.set(
+      "productHuntDailyLimit",
+      process.env.AUTO_INGEST_PRODUCT_HUNT_DAILY_LIMIT,
+    );
+  }
+
   return url;
 }
 

@@ -9,13 +9,11 @@ import {
   MessageCircle,
   Play,
   Search,
-  Star,
 } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import {
   interestingCategories,
-  interestingWorks,
   workSourceLabels,
   workTypeLabels,
   type WorkItem,
@@ -25,41 +23,30 @@ import { cn, formatCompactNumber, formatRelativeTime, formatVideoDuration } from
 
 type CategoryId = "all" | WorkType;
 
-export function InterestingClient() {
+export function InterestingClient({ initialWorks }: { initialWorks: WorkItem[] }) {
   const [category, setCategory] = useState<CategoryId>("all");
   const [likedIds, setLikedIds] = useState<string[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
 
   const works = useMemo(() => {
-    return interestingWorks
+    return initialWorks
       .filter((work) => work.status === "approved")
       .filter((work) => category === "all" || work.type === category)
       .sort((a, b) => Number(b.featured) - Number(a.featured) || b.heatScore - a.heatScore);
-  }, [category]);
+  }, [category, initialWorks]);
 
   return (
     <div className="mx-auto max-w-7xl px-3 py-4 sm:px-6 sm:py-8 lg:px-8">
-      <section className="relative overflow-hidden rounded-[2rem] border border-white/80 bg-slate-950 p-5 text-white shadow-lift sm:p-8">
-        <div className="absolute right-0 top-0 h-56 w-56 rounded-full bg-blue-500/30 blur-3xl" />
-        <div className="absolute bottom-0 left-1/3 h-52 w-52 rounded-full bg-fuchsia-500/20 blur-3xl" />
-        <div className="relative">
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-black text-blue-100 ring-1 ring-white/10">
-            <Star className="h-4 w-4 text-amber-300" />
-            有点意思
-          </div>
-          <h1 className="mt-4 max-w-3xl text-3xl font-black leading-tight sm:text-5xl">
-            发现全网好玩的 AI 作品、视频、网站和灵感
+      <section className="relative overflow-hidden rounded-[2rem] border border-white/80 bg-[#050816] px-5 py-8 text-white shadow-lift sm:px-8 sm:py-10">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(99,102,241,0.42),transparent_32%),radial-gradient(circle_at_82%_26%,rgba(14,165,233,0.32),transparent_28%),radial-gradient(circle_at_50%_100%,rgba(168,85,247,0.24),transparent_34%)]" />
+        <div className="absolute inset-0 opacity-[0.18] [background-image:linear-gradient(rgba(255,255,255,0.18)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.18)_1px,transparent_1px)] [background-size:36px_36px]" />
+        <div className="absolute -left-20 top-1/2 h-44 w-44 -translate-y-1/2 rounded-full border border-white/10" />
+        <div className="absolute -right-14 top-6 h-32 w-32 rounded-full border border-blue-300/20" />
+        <div className="absolute bottom-5 right-8 h-1.5 w-36 rounded-full bg-gradient-to-r from-blue-400 via-fuchsia-400 to-amber-300 opacity-80 blur-[1px]" />
+        <div className="relative flex min-h-28 items-center">
+          <h1 className="max-w-full whitespace-nowrap text-[clamp(1.45rem,4vw,3.8rem)] font-black leading-none tracking-tight">
+            发现全网好玩的 AI 作品、网站和灵感
           </h1>
-          <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-            聚合 AI 圈里有意思的作品、图片、视频、网站、小游戏、App、Prompt、开源项目，让你每天都能刷到灵感。
-          </p>
-          <div className="mt-5 flex flex-wrap gap-2 text-xs font-bold text-slate-200">
-            {["AI 图片", "AI 视频", "小游戏", "App", "Prompt", "开源项目"].map((tag) => (
-              <span key={tag} className="rounded-full bg-white/10 px-3 py-1.5">
-                #{tag}
-              </span>
-            ))}
-          </div>
         </div>
       </section>
 
