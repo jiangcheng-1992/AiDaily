@@ -29,6 +29,7 @@ async function rebuildGeneratedFeed(reason: string) {
     backupVideoSourceLimit: readNonNegativeInt(process.env.BACKUP_VIDEO_SOURCE_LIMIT, 6),
     backupVideoItemLimit: readPositiveInt(process.env.BACKUP_VIDEO_ITEMS_PER_SOURCE, 2),
     submittedSourceLimit: readNonNegativeInt(process.env.SUBMITTED_SOURCE_LIMIT, 8),
+    generateAiComments: false,
   });
   const current = await readGeneratedFeed({ includeSkills: true, allowFallback: false });
 

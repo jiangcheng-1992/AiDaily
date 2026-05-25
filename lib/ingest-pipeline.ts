@@ -62,6 +62,7 @@ export async function runIngestPipeline({
   backupVideoSourceLimit = 6,
   backupVideoItemLimit = 2,
   submittedSourceLimit = 8,
+  generateAiComments = true,
 }: {
   sourceLimit?: number;
   itemLimit?: number;
@@ -71,6 +72,7 @@ export async function runIngestPipeline({
   backupVideoSourceLimit?: number;
   backupVideoItemLimit?: number;
   submittedSourceLimit?: number;
+  generateAiComments?: boolean;
 }): Promise<IngestRunResult> {
   const sources = autoIngestSources.slice(0, sourceLimit);
   const fetchedSources = await fetchSourcesWithLimit(sources, itemLimit, 4);
@@ -97,7 +99,7 @@ export async function runIngestPipeline({
   );
   const submittedPostIds = new Set(submittedResult.posts.map((post) => post.id));
   const comments: Record<string, Comment[]> = {};
-  const aiCommentResults = await mapWithConcurrency(
+  const aiCommentResults = generateAiComments ? await mapWithConcurrency(
       posts.filter((post) => !submittedPostIds.has(post.id)),
     2,
     async (post) => {
@@ -111,7 +113,7 @@ export async function runIngestPipeline({
       }
       return [post.id, result.comments] as const;
     },
-  );
+  ) : [];
   const primarySuccessCount =
     fetchedSources.filter((result) => result.ok).length +
     (githubAttempted && githubResult.ok ? 1 : 0);

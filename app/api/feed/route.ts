@@ -6,8 +6,15 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const feed = await readGeneratedFeed({ allowFallback: false });
-  const status = await readGeneratedFeedStatus();
+  let feed = await readGeneratedFeed({ allowFallback: false });
+  let status = await readGeneratedFeedStatus();
+
+  if (status.fallbackActive) {
+    await waitForBackgroundFeedRebuild(request.url);
+    feed = await readGeneratedFeed({ allowFallback: false });
+    status = await readGeneratedFeedStatus();
+  }
+
   const posts = buildHomeFeedPosts(feed.posts);
 
   if (status.fallbackActive) {
@@ -32,6 +39,14 @@ export async function GET(request: Request) {
       },
     },
   );
+}
+
+async function waitForBackgroundFeedRebuild(requestUrl: string) {
+  const rebuild = triggerFeedRebuild(`api-feed:${new URL(requestUrl).pathname}`);
+  await Promise.race([
+    rebuild,
+    new Promise((resolve) => setTimeout(resolve, 25_000)),
+  ]);
 }
 
 function triggerBackgroundFeedRebuild(requestUrl: string) {
