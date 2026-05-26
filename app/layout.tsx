@@ -6,7 +6,8 @@ import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
 
 const GA_MEASUREMENT_ID = "G-0W61YMLPCN";
-const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_CLIENT;
+const DEFAULT_ADSENSE_CLIENT = "ca-pub-6821198896914466";
+const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_CLIENT || DEFAULT_ADSENSE_CLIENT;
 
 export const metadata: Metadata = {
   title: "AI圈 | 每天 5 分钟，刷完 AI 圈新动态",

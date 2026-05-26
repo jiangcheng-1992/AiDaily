@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 
 import { ExternalImage } from "@/components/external-image";
+import { GoogleAdSlot } from "@/components/google-ad-slot";
 import { InteractionButton } from "@/components/interaction-button";
 import { PostScoreBadge } from "@/components/post-score-badge";
 import { PostTypeBadge } from "@/components/post-type-badge";
@@ -36,6 +37,8 @@ import {
   formatRelativeTime,
   formatVideoDuration,
 } from "@/lib/utils";
+
+const detailAdSlot = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_DETAIL_SLOT;
 
 export function PostDetailClient({
   postId,
@@ -816,6 +819,20 @@ export function PostDetailClient({
             </div>
           </div>
         </article>
+      </Card>
+
+      <Card className="mt-6 rounded-[2rem] border-white/80 bg-white/95 p-4 sm:p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <span className="text-[11px] font-bold text-slate-400">广告</span>
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-400">
+            Google AdSense
+          </span>
+        </div>
+        <GoogleAdSlot
+          slot={detailAdSlot}
+          className="min-h-[120px] sm:min-h-[160px]"
+          previewLabel="详情页正文下方广告位"
+        />
       </Card>
 
       <Card id="comments" className="mt-6 rounded-[2rem] bg-white/95 p-5 sm:p-8">

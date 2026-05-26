@@ -14,7 +14,6 @@ import type { Post } from "@/lib/mock-data";
 import { hotTags } from "@/lib/mock-data";
 import { formatCompactNumber } from "@/lib/utils";
 
-const adsenseClient = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_CLIENT;
 const sidebarAdSlot = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_SIDEBAR_SLOT;
 
 export function HomeSidebar({
@@ -29,7 +28,7 @@ export function HomeSidebar({
     .slice(0, 4);
 
   return (
-    <div className="space-y-4 pb-6">
+    <div className="space-y-4 pb-10">
       <Card className="rounded-3xl p-5">
         <div className="mb-4 flex items-center gap-2">
           <Flame className="h-5 w-5 text-violet-600" />
@@ -81,12 +80,19 @@ export function HomeSidebar({
         </div>
       </Card>
 
-      {adsenseClient && sidebarAdSlot ? (
-        <Card className="rounded-3xl p-5">
-          <div className="mb-3 text-[11px] font-bold text-slate-400">广告</div>
-          <GoogleAdSlot slot={sidebarAdSlot} className="min-h-[250px]" />
-        </Card>
-      ) : null}
+      <Card className="rounded-3xl p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <span className="text-[11px] font-bold text-slate-400">广告</span>
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-400">
+            Google AdSense
+          </span>
+        </div>
+        <GoogleAdSlot
+          slot={sidebarAdSlot}
+          className="min-h-[250px]"
+          previewLabel="首页右侧热门标签下方广告位"
+        />
+      </Card>
     </div>
   );
 }

@@ -226,7 +226,7 @@ export function HomeClient({ initialPosts = [] }: { initialPosts?: Post[] }) {
           ) : null}
         </div>
 
-        <aside className="hidden max-h-[calc(100vh-5.5rem)] overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin] lg:sticky lg:top-20 lg:block lg:self-start">
+        <aside className="hidden max-h-[calc(100vh-5rem)] overflow-y-auto overscroll-contain pr-1 scroll-pb-8 [scrollbar-gutter:stable] [scrollbar-width:thin] lg:sticky lg:top-20 lg:block lg:self-start">
           <HomeSidebar posts={sourcePosts} onTagClick={setSelectedTag} />
         </aside>
 
