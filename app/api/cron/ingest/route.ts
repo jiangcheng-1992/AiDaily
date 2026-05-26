@@ -82,11 +82,11 @@ async function handleIngestRequest(request: Request) {
   );
   const itchioReviewLimit = readNonNegativeInt(
     url.searchParams.get("itchioReviewLimit") ?? process.env.ITCHIO_REVIEW_LIMIT,
-    10,
+    40,
   );
   const itchioPublishLimit = readNonNegativeInt(
     url.searchParams.get("itchioPublishLimit") ?? process.env.ITCHIO_PUBLISH_LIMIT,
-    3,
+    10,
   );
   const replaceWorks = url.searchParams.get("replaceWorks") === "1";
   const run = await runIngestPipeline({

@@ -50,8 +50,8 @@ export type ItchioFetchResult = {
 const ITCHIO_SOURCE: WorkSource = "itchio";
 const ITCHIO_BASE_URL = "https://itch.io";
 const DEFAULT_SOURCE_LIMIT = 20;
-const DEFAULT_REVIEW_LIMIT = 10;
-const DEFAULT_PUBLISH_LIMIT = 3;
+const DEFAULT_REVIEW_LIMIT = 40;
+const DEFAULT_PUBLISH_LIMIT = 10;
 const itchioSourcePages = [
   {
     url: "https://itch.io/games/html5/tag-ai",
@@ -128,7 +128,7 @@ export async function fetchItchioWorks({
 } = {}): Promise<ItchioFetchResult> {
   try {
     const sourceLimitPerPage = Math.max(1, Math.min(sourceLimit, 20));
-    const reviewCount = Math.max(1, Math.min(reviewLimit, 10));
+    const reviewCount = Math.max(1, Math.min(reviewLimit, 50));
     const publishCount = Math.max(1, Math.min(publishLimit, reviewCount));
     const { cards, sourceCounts } = await fetchItchioGameCards(sourceLimitPerPage);
     const uniqueCards = dedupeCards(cards).slice(0, reviewCount * 3);
@@ -138,7 +138,7 @@ export async function fetchItchioWorks({
       if (!passesHardFilters(card, detail)) return null;
       passedHardFilterCount += 1;
       const score = scoreItchioGame(card, detail);
-      if (score < 75) return null;
+      if (score < 78) return null;
       return { card, detail, score };
     });
     const scoredItems = scored.filter((item): item is ScoredItchGame => Boolean(item));
@@ -378,8 +378,8 @@ function scoreItchioGame(card: ItchGameCard, detail: ItchGameDetail) {
   const commentCount = Number(detail.commentCount ?? 0);
   const visualScore = Math.min(25, 12 + (detail.coverUrl || card.coverUrl ? 8 : 0) + Math.min(detail.screenshotCount, 5));
   const gameplayScore = Math.min(
-    25,
-    14 +
+    20,
+    10 +
       (combinedText.includes("play in browser") || combinedText.includes("play in your browser") ? 6 : 0) +
       (detail.description.length > 80 ? 3 : 0) +
       (card.genre ? 2 : 0),
@@ -391,15 +391,17 @@ function scoreItchioGame(card: ItchGameCard, detail: ItchGameDetail) {
       (detail.tags.some((tag) => /ai|artificial|generated/i.test(tag)) ? 3 : 0),
   );
   const spreadScore = Math.min(
-    15,
-    (preferredKeywords.some((keyword) => combinedText.includes(keyword)) ? 5 : 0) +
+    10,
+    (preferredKeywords.some((keyword) => combinedText.includes(keyword)) ? 4 : 0) +
       (combinedText.includes("jam") ? 4 : 0) +
-      (combinedText.includes("funny") || combinedText.includes("satirical") ? 3 : 0) +
-      (detail.description.length > 40 ? 3 : 0),
+      (combinedText.includes("funny") || combinedText.includes("satirical") ? 2 : 0) +
+      (detail.description.length > 40 ? 2 : 0),
   );
   const interactionScore = Math.min(
-    10,
-    (ratingValue >= 4 ? 3 : 0) + Math.min(ratingCount, 5) + Math.min(commentCount, 2),
+    20,
+    (ratingValue >= 4.5 ? 5 : ratingValue >= 4 ? 3 : ratingValue > 0 ? 1 : 0) +
+      Math.min(10, Math.ceil(Math.log10(ratingCount + 1) * 5)) +
+      Math.min(5, Math.ceil(Math.log10(commentCount + 1) * 3)),
   );
   const mobileScore = combinedText.includes("mobile") || card.sourceUrl.includes("platform-mobile-web") ? 5 : 0;
 

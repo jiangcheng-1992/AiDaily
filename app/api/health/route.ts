@@ -73,8 +73,8 @@ export async function GET() {
         itchio: {
           configured: true,
           sourceLimit: readNonNegativeNumber(process.env.ITCHIO_SOURCE_LIMIT, 20),
-          reviewLimit: readNonNegativeNumber(process.env.ITCHIO_REVIEW_LIMIT, 10),
-          publishLimit: readNonNegativeNumber(process.env.ITCHIO_PUBLISH_LIMIT, 3),
+          reviewLimit: readNonNegativeNumber(process.env.ITCHIO_REVIEW_LIMIT, 40),
+          publishLimit: readNonNegativeNumber(process.env.ITCHIO_PUBLISH_LIMIT, 10),
         },
       },
     },
