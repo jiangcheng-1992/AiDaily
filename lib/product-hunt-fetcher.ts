@@ -7,6 +7,8 @@ type ProductHuntPost = {
   tagline?: string;
   description?: string;
   url?: string;
+  website?: string;
+  redirectUrl?: string;
   votesCount?: number;
   commentsCount?: number;
   createdAt?: string;
@@ -47,6 +49,11 @@ type ProductHuntApiResponse = {
   }>;
 };
 
+type ProductHuntPostFieldInfo = {
+  names: Set<string>;
+  scalarNames: Set<string>;
+};
+
 type ProductHuntWorkCopy = {
   title: string;
   description: string;
@@ -67,6 +74,7 @@ export type ProductHuntFetchResult = {
 const PRODUCT_HUNT_API_URL = "https://api.producthunt.com/v2/api/graphql";
 const PRODUCT_HUNT_SOURCE: WorkSource = "producthunt";
 const PRODUCT_HUNT_MAX_QUERY_LIMIT = 20;
+const productHuntPostFieldCache = new Map<string, ProductHuntPostFieldInfo>();
 const aiKeywords = [
   "ai",
   "artificial intelligence",
@@ -166,6 +174,8 @@ async function fetchProductHuntPosts({
   postedAfter: Date;
 }) {
   const safeFirst = Math.min(Math.max(first, 1), PRODUCT_HUNT_MAX_QUERY_LIMIT);
+  const fieldInfo = await fetchProductHuntPostFieldInfo(token);
+  const optionalFields = buildOptionalPostFields(fieldInfo);
   const response = await fetch(PRODUCT_HUNT_API_URL, {
     method: "POST",
     headers: {
@@ -189,6 +199,7 @@ async function fetchProductHuntPosts({
                 commentsCount
                 createdAt
                 featuredAt
+                ${optionalFields}
                 thumbnail { url }
               }
             }
@@ -219,8 +230,147 @@ async function fetchProductHuntPosts({
   return payload.data?.posts?.edges?.map((edge) => edge.node).filter(isProductHuntPost) ?? [];
 }
 
+async function fetchProductHuntPostFieldInfo(token: string): Promise<ProductHuntPostFieldInfo> {
+  const cacheKey = token.slice(0, 8);
+  const cached = productHuntPostFieldCache.get(cacheKey);
+
+  if (cached) return cached;
+
+  const response = await fetch(PRODUCT_HUNT_API_URL, {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+      "user-agent": process.env.AIQ_USER_AGENT ?? "AIQ/1.0 ProductHunt ingest",
+    },
+    body: JSON.stringify({
+      query: `
+        query ProductHuntPostFields {
+          __type(name: "Post") {
+            fields {
+              name
+              type {
+                name
+                kind
+                ofType {
+                  name
+                  kind
+                  ofType {
+                    name
+                    kind
+                  }
+                }
+              }
+            }
+          }
+        }
+      `,
+    }),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const fallback = { names: new Set<string>(), scalarNames: new Set<string>() };
+    productHuntPostFieldCache.set(cacheKey, fallback);
+    return fallback;
+  }
+
+  const payload = (await response.json()) as {
+    data?: {
+      __type?: {
+        fields?: Array<{
+          name?: string;
+          type?: GraphqlTypeInfo;
+        }>;
+      };
+    };
+  };
+  const fields = payload.data?.__type?.fields ?? [];
+  const names = new Set(fields.map((field) => field.name).filter((name): name is string => Boolean(name)));
+  const scalarNames = new Set(
+    fields
+      .filter((field) => isGraphqlScalarLike(field.type))
+      .map((field) => field.name)
+      .filter((name): name is string => Boolean(name)),
+  );
+  const result = { names, scalarNames };
+  productHuntPostFieldCache.set(cacheKey, result);
+  return result;
+}
+
+type GraphqlTypeInfo = {
+  name?: string;
+  kind?: string;
+  ofType?: GraphqlTypeInfo;
+};
+
+function isGraphqlScalarLike(type?: GraphqlTypeInfo): boolean {
+  if (!type) return false;
+  if (type.kind === "SCALAR" || type.kind === "ENUM") return true;
+  return isGraphqlScalarLike(type.ofType);
+}
+
+function buildOptionalPostFields(fieldInfo: ProductHuntPostFieldInfo) {
+  const lines: string[] = [];
+
+  for (const fieldName of ["website", "redirectUrl"]) {
+    if (fieldInfo.scalarNames.has(fieldName)) {
+      lines.push(fieldName);
+    }
+  }
+
+  if (fieldInfo.names.has("media")) {
+    lines.push("media { type url videoUrl }");
+  }
+
+  return lines.join("\n                ");
+}
+
 function isProductHuntPost(value: ProductHuntPost | undefined): value is ProductHuntPost {
   return Boolean(value);
+}
+
+function readProductHuntVisitUrl(post: ProductHuntPost) {
+  for (const url of [post.redirectUrl, post.website]) {
+    const normalized = normalizeExternalUrl(url);
+    if (normalized && !isProductHuntPostUrl(normalized)) return normalized;
+  }
+
+  return post.url || "https://www.producthunt.com/";
+}
+
+function readBestProductHuntMediaUrl(media: ProductHuntPost["media"]) {
+  const items = media ?? [];
+  const imageItems = items.filter((item) => {
+    const type = item.type?.toLowerCase() ?? "";
+    const url = item.url ?? "";
+    return Boolean(url) && !item.videoUrl && !type.includes("video") && isLikelyImageUrl(url);
+  });
+
+  return imageItems[0]?.url || items.find((item) => item.url && isLikelyImageUrl(item.url))?.url || "";
+}
+
+function isLikelyImageUrl(value: string) {
+  return /\.(?:png|jpe?g|webp|gif)(?:[?#].*)?$/i.test(value) || /ph-files\.imgix\.net|imgix\.net|cloudfront|producthunt/i.test(value);
+}
+
+function normalizeExternalUrl(value?: string) {
+  if (!value) return "";
+  try {
+    return new URL(value).toString();
+  } catch {
+    return "";
+  }
+}
+
+function isProductHuntPostUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return /(^|\.)producthunt\.com$/i.test(url.hostname) && url.pathname.startsWith("/posts/");
+  } catch {
+    return false;
+  }
 }
 
 function shouldKeepProductHuntPost(post: ProductHuntPost) {
@@ -247,13 +397,13 @@ async function productHuntPostToWork(post: ProductHuntPost): Promise<WorkItem> {
   const createdAt = normalizeDate(post.featuredAt || post.createdAt);
   const media = post.media ?? [];
   const videoMedia = media.find((item) => item.videoUrl || item.type?.toLowerCase() === "video");
-  const externalUrl = post.url || "https://www.producthunt.com/";
+  const externalUrl = readProductHuntVisitUrl(post);
   const type = inferWorkType(post);
   const copy = await buildChineseProductHuntCopy(post, type);
   const title = copy.title;
   const coverUrl =
+    normalizeImageUrl(readBestProductHuntMediaUrl(media)) ||
     normalizeImageUrl(post.thumbnail?.url) ||
-    normalizeImageUrl(media.find((item) => item.url)?.url) ||
     fallbackCoverUrl({
       title: originalTitle,
       description: copy.description,
@@ -276,7 +426,7 @@ async function productHuntPostToWork(post: ProductHuntPost): Promise<WorkItem> {
     videoUrl: videoMedia?.videoUrl,
     externalUrl,
     authorName: "Product Hunt",
-    originalAuthorUrl: "https://www.producthunt.com/",
+    originalAuthorUrl: post.url || "https://www.producthunt.com/",
     toolNames: copy.toolNames,
     tags: copy.tags,
     status: "approved",
