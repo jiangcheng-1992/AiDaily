@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState, useTransition } from "react";
 import {
   ArrowUpRight,
   Eye,
@@ -23,15 +23,58 @@ import { cn, formatCompactNumber, formatRelativeTime, formatVideoDuration } from
 
 export function InterestingClient({ initialWorks }: { initialWorks: WorkItem[] }) {
   const [category, setCategory] = useState<WorkCategoryId>("all");
-  const [likedIds, setLikedIds] = useState<string[]>([]);
-  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+  const [likedIds, setLikedIds] = useState<Set<string>>(() => new Set());
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(() => new Set());
+  const [isPending, startTransition] = useTransition();
 
-  const works = useMemo(() => {
+  const approvedWorks = useMemo(() => {
     return initialWorks
       .filter((work) => work.status === "approved")
-      .filter((work) => workMatchesInterestingCategory(work, category))
       .sort((a, b) => Number(b.featured) - Number(a.featured) || b.heatScore - a.heatScore);
-  }, [category, initialWorks]);
+  }, [initialWorks]);
+
+  const worksByCategory = useMemo(() => {
+    const grouped = Object.fromEntries(
+      interestingCategories.map((item) => [item.id, [] as WorkItem[]]),
+    ) as Record<WorkCategoryId, WorkItem[]>;
+
+    for (const work of approvedWorks) {
+      grouped.all.push(work);
+
+      for (const item of interestingCategories) {
+        if (item.id === "all") continue;
+        if (workMatchesInterestingCategory(work, item.id)) {
+          grouped[item.id].push(work);
+        }
+      }
+    }
+
+    return grouped;
+  }, [approvedWorks]);
+
+  const works = worksByCategory[category] ?? worksByCategory.all;
+
+  const handleCategoryChange = useCallback((nextCategory: WorkCategoryId) => {
+    startTransition(() => setCategory(nextCategory));
+  }, []);
+
+  const handleLike = useCallback((workId: string) => {
+    setLikedIds((current) => {
+      const next = new Set(current);
+      if (next.has(workId)) next.delete(workId);
+      else next.add(workId);
+      return next;
+    });
+  }, []);
+
+  const handleFavorite = useCallback((workId: string) => {
+    setFavoriteIds((current) => {
+      const next = new Set(current);
+      if (next.has(workId)) next.delete(workId);
+      else next.add(workId);
+      return next;
+    });
+  }, []);
 
   return (
     <div className="mx-auto max-w-7xl px-3 py-4 sm:px-6 sm:py-8 lg:px-8">
@@ -54,12 +97,13 @@ export function InterestingClient({ initialWorks }: { initialWorks: WorkItem[] }
             <button
               type="button"
               key={item.id}
-              onClick={() => setCategory(item.id)}
+              onClick={() => handleCategoryChange(item.id)}
               className={cn(
                 "shrink-0 rounded-full px-3.5 py-2 text-xs font-black transition-colors",
                 category === item.id
                   ? "bg-slate-950 text-white"
                   : "bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-700",
+                isPending && category === item.id && "opacity-85",
               )}
             >
               {item.label}
@@ -73,23 +117,11 @@ export function InterestingClient({ initialWorks }: { initialWorks: WorkItem[] }
           <InterestingWorkCard
             key={work.id}
             work={work}
-            liked={likedIds.includes(work.id)}
-            favorited={favoriteIds.includes(work.id)}
+            liked={likedIds.has(work.id)}
+            favorited={favoriteIds.has(work.id)}
             priority={index < 4}
-            onLike={() =>
-              setLikedIds((current) =>
-                current.includes(work.id)
-                  ? current.filter((id) => id !== work.id)
-                  : [...current, work.id],
-              )
-            }
-            onFavorite={() =>
-              setFavoriteIds((current) =>
-                current.includes(work.id)
-                  ? current.filter((id) => id !== work.id)
-                  : [...current, work.id],
-              )
-            }
+            onLike={handleLike}
+            onFavorite={handleFavorite}
           />
         ))}
       </div>
@@ -105,7 +137,7 @@ export function InterestingClient({ initialWorks }: { initialWorks: WorkItem[] }
   );
 }
 
-function InterestingWorkCard({
+const InterestingWorkCard = memo(function InterestingWorkCard({
   work,
   liked,
   favorited,
@@ -117,8 +149,8 @@ function InterestingWorkCard({
   liked: boolean;
   favorited: boolean;
   priority: boolean;
-  onLike: () => void;
-  onFavorite: () => void;
+  onLike: (workId: string) => void;
+  onFavorite: (workId: string) => void;
 }) {
   const likeCount = work.likeCount + (liked ? 1 : 0);
   const favoriteCount = work.favoriteCount + (favorited ? 1 : 0);
@@ -200,7 +232,7 @@ function InterestingWorkCard({
           <div className="flex items-center gap-1.5">
             <button
               type="button"
-              onClick={onLike}
+              onClick={() => onLike(work.id)}
               className={cn(
                 "rounded-full px-2.5 py-1 text-[11px] font-black transition-colors",
                 liked ? "bg-rose-50 text-rose-600" : "bg-slate-100 text-slate-500",
@@ -210,7 +242,7 @@ function InterestingWorkCard({
             </button>
             <button
               type="button"
-              onClick={onFavorite}
+              onClick={() => onFavorite(work.id)}
               className={cn(
                 "rounded-full px-2.5 py-1 text-[11px] font-black transition-colors",
                 favorited ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-500",
@@ -230,4 +262,4 @@ function InterestingWorkCard({
       </div>
     </Card>
   );
-}
+});
