@@ -29,6 +29,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
+      <head>
+        {ADSENSE_CLIENT ? (
+          <script
+            async
+            crossOrigin="anonymous"
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
+          />
+        ) : null}
+      </head>
       <body className="overflow-x-hidden antialiased">
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
@@ -42,14 +51,6 @@ export default function RootLayout({
             gtag('config', '${GA_MEASUREMENT_ID}');
           `}
         </Script>
-        {ADSENSE_CLIENT ? (
-          <Script
-            async
-            crossOrigin="anonymous"
-            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
-            strategy="afterInteractive"
-          />
-        ) : null}
         <SiteHeader />
         <main className="pb-[calc(8.5rem+env(safe-area-inset-bottom))] md:pb-12">{children}</main>
         <MobileTabbar />
