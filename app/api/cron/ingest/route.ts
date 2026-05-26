@@ -16,6 +16,7 @@ import type { Comment } from "@/lib/mock-data";
 import { runIngestPipeline } from "@/lib/ingest-pipeline";
 import { fetchItchioWorks } from "@/lib/itchio-fetcher";
 import { fetchProductHuntWorks } from "@/lib/product-hunt-fetcher";
+import { fetchYoutubeWorks } from "@/lib/youtube-works-fetcher";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -88,6 +89,18 @@ async function handleIngestRequest(request: Request) {
     url.searchParams.get("itchioPublishLimit") ?? process.env.ITCHIO_PUBLISH_LIMIT,
     10,
   );
+  const youtubeWorksSourceLimit = readNonNegativeInt(
+    url.searchParams.get("youtubeWorksSourceLimit") ?? process.env.YOUTUBE_WORKS_SOURCE_LIMIT,
+    20,
+  );
+  const youtubeWorksItemLimit = readNonNegativeInt(
+    url.searchParams.get("youtubeWorksItemLimit") ?? process.env.YOUTUBE_WORKS_ITEM_LIMIT,
+    3,
+  );
+  const youtubeWorksPublishLimit = readNonNegativeInt(
+    url.searchParams.get("youtubeWorksPublishLimit") ?? process.env.YOUTUBE_WORKS_PUBLISH_LIMIT,
+    8,
+  );
   const replaceWorks = url.searchParams.get("replaceWorks") === "1";
   const run = await runIngestPipeline({
     sourceLimit,
@@ -125,6 +138,8 @@ async function handleIngestRequest(request: Request) {
   const shouldFetchProductHunt = productHuntWeeklyLimit > 0 || productHuntDailyLimit > 0;
   const shouldFetchItchio =
     itchioSourceLimit > 0 && itchioReviewLimit > 0 && itchioPublishLimit > 0;
+  const shouldFetchYoutubeWorks =
+    youtubeWorksSourceLimit > 0 && youtubeWorksItemLimit > 0 && youtubeWorksPublishLimit > 0;
   const worksRun = shouldFetchProductHunt
     ? await fetchProductHuntWorks({
         weeklyLimit: productHuntWeeklyLimit,
@@ -148,8 +163,20 @@ async function handleIngestRequest(request: Request) {
         count: 0,
         works: [],
       };
+  const youtubeWorksRun = shouldFetchYoutubeWorks
+    ? await fetchYoutubeWorks({
+        sourceLimit: youtubeWorksSourceLimit,
+        itemLimit: youtubeWorksItemLimit,
+        publishLimit: youtubeWorksPublishLimit,
+      })
+    : {
+        ok: true,
+        source: "youtube" as const,
+        count: 0,
+        works: [],
+      };
   const currentWorks = await readGeneratedWorks({ allowFallback: false });
-  const incomingWorks = [...worksRun.works, ...itchioRun.works];
+  const incomingWorks = [...worksRun.works, ...itchioRun.works, ...youtubeWorksRun.works];
   const worksSourceStatus = {
     ...(shouldFetchProductHunt
       ? {
@@ -168,6 +195,16 @@ async function handleIngestRequest(request: Request) {
             count: itchioRun.count,
             fetchedAt: run.fetchedAt,
             error: itchioRun.error,
+          },
+        }
+      : {}),
+    ...(shouldFetchYoutubeWorks
+      ? {
+          youtube: {
+            ok: youtubeWorksRun.ok,
+            count: youtubeWorksRun.count,
+            fetchedAt: run.fetchedAt,
+            error: youtubeWorksRun.error,
           },
         }
       : {}),
@@ -232,6 +269,16 @@ async function handleIngestRequest(request: Request) {
           reviewLimit: itchioReviewLimit,
           publishLimit: itchioPublishLimit,
           skipped: !shouldFetchItchio,
+        },
+        youtube: {
+          ok: youtubeWorksRun.ok,
+          count: youtubeWorksRun.count,
+          error: youtubeWorksRun.error,
+          diagnostics: youtubeWorksRun.diagnostics,
+          sourceLimit: youtubeWorksSourceLimit,
+          itemLimit: youtubeWorksItemLimit,
+          publishLimit: youtubeWorksPublishLimit,
+          skipped: !shouldFetchYoutubeWorks,
         },
         previousWorkCount: currentWorks.works.length,
         totalWorkCount: nextWorks.works.length,

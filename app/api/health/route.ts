@@ -76,6 +76,12 @@ export async function GET() {
           reviewLimit: readNonNegativeNumber(process.env.ITCHIO_REVIEW_LIMIT, 60),
           publishLimit: readNonNegativeNumber(process.env.ITCHIO_PUBLISH_LIMIT, 10),
         },
+        youtube: {
+          configured: true,
+          sourceLimit: readNonNegativeNumber(process.env.YOUTUBE_WORKS_SOURCE_LIMIT, 20),
+          itemLimit: readNonNegativeNumber(process.env.YOUTUBE_WORKS_ITEM_LIMIT, 3),
+          publishLimit: readNonNegativeNumber(process.env.YOUTUBE_WORKS_PUBLISH_LIMIT, 8),
+        },
       },
     },
     aiComments: {

@@ -224,7 +224,7 @@ function InterestingWorkCard({
           href={`/interesting/${work.id}`}
           className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-slate-950 px-4 py-2.5 text-xs font-black text-white transition-colors hover:bg-blue-700"
         >
-          {work.source === "itchio" ? "直接试玩" : "查看作品"}
+          {work.source === "itchio" ? "直接试玩" : work.source === "youtube" ? "观看作品" : "查看作品"}
           <ArrowUpRight className="h-3.5 w-3.5" />
         </Link>
       </div>

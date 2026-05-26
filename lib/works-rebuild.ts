@@ -1,5 +1,6 @@
 import { fetchItchioWorks } from "@/lib/itchio-fetcher";
 import { fetchProductHuntWorks } from "@/lib/product-hunt-fetcher";
+import { fetchYoutubeWorks } from "@/lib/youtube-works-fetcher";
 import {
   mergeGeneratedWorks,
   readGeneratedWorks,
@@ -44,8 +45,20 @@ async function rebuildGeneratedWorks(reason: string) {
         count: 0,
         works: [],
       };
+  const youtubeRun = shouldFetchYoutubeWorks()
+    ? await fetchYoutubeWorks({
+        sourceLimit: readNonNegativeInt(process.env.YOUTUBE_WORKS_SOURCE_LIMIT, 20),
+        itemLimit: readNonNegativeInt(process.env.YOUTUBE_WORKS_ITEM_LIMIT, 3),
+        publishLimit: readNonNegativeInt(process.env.YOUTUBE_WORKS_PUBLISH_LIMIT, 8),
+      })
+    : {
+        ok: true,
+        source: "youtube" as const,
+        count: 0,
+        works: [],
+      };
   const current = await readGeneratedWorks({ allowFallback: false });
-  const incomingWorks = [...productHuntRun.works, ...itchioRun.works];
+  const incomingWorks = [...productHuntRun.works, ...itchioRun.works, ...youtubeRun.works];
 
   if (incomingWorks.length === 0 && current.works.length === 0) {
     throw new Error("[works-rebuild] skipped persist because ingest returned no works");
@@ -67,6 +80,12 @@ async function rebuildGeneratedWorks(reason: string) {
         fetchedAt: new Date().toISOString(),
         error: itchioRun.error,
       },
+      youtube: {
+        ok: youtubeRun.ok,
+        count: youtubeRun.count,
+        fetchedAt: new Date().toISOString(),
+        error: youtubeRun.error,
+      },
     },
     limit: readPositiveInt(process.env.GENERATED_WORKS_LIMIT, 200),
   });
@@ -77,6 +96,7 @@ async function rebuildGeneratedWorks(reason: string) {
     reason,
     productHuntCount: productHuntRun.count,
     itchioCount: itchioRun.count,
+    youtubeCount: youtubeRun.count,
     totalWorkCount: nextWorks.works.length,
   });
 }
@@ -93,6 +113,14 @@ function shouldFetchItchio() {
     readNonNegativeInt(process.env.ITCHIO_SOURCE_LIMIT, 20) > 0 &&
     readNonNegativeInt(process.env.ITCHIO_REVIEW_LIMIT, 60) > 0 &&
     readNonNegativeInt(process.env.ITCHIO_PUBLISH_LIMIT, 10) > 0
+  );
+}
+
+function shouldFetchYoutubeWorks() {
+  return (
+    readNonNegativeInt(process.env.YOUTUBE_WORKS_SOURCE_LIMIT, 20) > 0 &&
+    readNonNegativeInt(process.env.YOUTUBE_WORKS_ITEM_LIMIT, 3) > 0 &&
+    readNonNegativeInt(process.env.YOUTUBE_WORKS_PUBLISH_LIMIT, 8) > 0
   );
 }
 
