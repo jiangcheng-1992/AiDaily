@@ -32,10 +32,12 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-white/70 bg-white/88 backdrop-blur-xl">
       <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-3 sm:h-16 sm:px-6 lg:px-8">
-        <Link href="/" className="flex min-w-0 items-center gap-3">
-          <span className="text-[2rem] font-black leading-none tracking-normal brand-gradient sm:text-3xl">
-            AI圈
-          </span>
+        <Link href="/" className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+          <img
+            src="/aiq-logo.png"
+            alt="AI圈"
+            className="h-8 w-auto max-w-[110px] object-contain sm:h-9 sm:max-w-[132px] lg:h-10 lg:max-w-[150px]"
+          />
           <span className="hidden max-w-[240px] truncate text-sm text-slate-500 lg:block">
             每天 5 分钟，刷完 AI 圈新动态
           </span>
