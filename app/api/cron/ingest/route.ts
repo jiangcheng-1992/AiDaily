@@ -79,11 +79,11 @@ async function handleIngestRequest(request: Request) {
   );
   const itchioSourceLimit = readNonNegativeInt(
     url.searchParams.get("itchioSourceLimit") ?? process.env.ITCHIO_SOURCE_LIMIT,
-    20,
+    24,
   );
   const itchioReviewLimit = readNonNegativeInt(
     url.searchParams.get("itchioReviewLimit") ?? process.env.ITCHIO_REVIEW_LIMIT,
-    60,
+    70,
   );
   const itchioPublishLimit = readNonNegativeInt(
     url.searchParams.get("itchioPublishLimit") ?? process.env.ITCHIO_PUBLISH_LIMIT,
@@ -95,11 +95,11 @@ async function handleIngestRequest(request: Request) {
   );
   const youtubeWorksItemLimit = readNonNegativeInt(
     url.searchParams.get("youtubeWorksItemLimit") ?? process.env.YOUTUBE_WORKS_ITEM_LIMIT,
-    3,
+    5,
   );
   const youtubeWorksPublishLimit = readNonNegativeInt(
     url.searchParams.get("youtubeWorksPublishLimit") ?? process.env.YOUTUBE_WORKS_PUBLISH_LIMIT,
-    8,
+    10,
   );
   const replaceWorks = url.searchParams.get("replaceWorks") === "1";
   const run = await runIngestPipeline({

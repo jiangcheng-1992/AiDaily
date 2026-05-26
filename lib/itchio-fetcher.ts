@@ -52,8 +52,8 @@ export type ItchioFetchResult = {
 
 const ITCHIO_SOURCE: WorkSource = "itchio";
 const ITCHIO_BASE_URL = "https://itch.io";
-const DEFAULT_SOURCE_LIMIT = 20;
-const DEFAULT_REVIEW_LIMIT = 60;
+const DEFAULT_SOURCE_LIMIT = 24;
+const DEFAULT_REVIEW_LIMIT = 70;
 const DEFAULT_PUBLISH_LIMIT = 10;
 const itchioSourcePages = [
   {
@@ -106,6 +106,31 @@ const itchioSourcePages = [
     label: "HTML5 + strategy",
     aiTagged: false,
   },
+  {
+    url: "https://itch.io/games/html5/tag-card-game",
+    label: "HTML5 + card-game",
+    aiTagged: false,
+  },
+  {
+    url: "https://itch.io/games/html5/tag-idle",
+    label: "HTML5 + idle",
+    aiTagged: false,
+  },
+  {
+    url: "https://itch.io/games/html5/tag-point-and-click",
+    label: "HTML5 + point-and-click",
+    aiTagged: false,
+  },
+  {
+    url: "https://itch.io/games/html5/tag-casual",
+    label: "HTML5 + casual",
+    aiTagged: false,
+  },
+  {
+    url: "https://itch.io/games/html5/tag-simulation",
+    label: "HTML5 + simulation",
+    aiTagged: false,
+  },
 ];
 const aiKeywords = [
   "ai",
@@ -145,6 +170,13 @@ const lightInteractiveKeywords = [
   "snake",
   "chess",
   "tic tac toe",
+  "point and click",
+  "card game",
+  "board game",
+  "merge",
+  "survival",
+  "simulation",
+  "casual",
 ];
 const dialogueHeavyKeywords = [
   "chatgpt",
@@ -192,8 +224,8 @@ export async function fetchItchioWorks({
   publishLimit?: number;
 } = {}): Promise<ItchioFetchResult> {
   try {
-    const sourceLimitPerPage = Math.max(1, Math.min(sourceLimit, 20));
-    const reviewCount = Math.max(1, Math.min(reviewLimit, 70));
+    const sourceLimitPerPage = Math.max(1, Math.min(sourceLimit, 24));
+    const reviewCount = Math.max(1, Math.min(reviewLimit, 90));
     const publishCount = Math.max(1, Math.min(publishLimit, reviewCount));
     const { cards, sourceCounts, sourceErrors } = await fetchItchioGameCards(sourceLimitPerPage);
     const uniqueCards = selectReviewCards(cards, reviewCount);
@@ -209,8 +241,9 @@ export async function fetchItchioWorks({
       if (!passesHardFilters(card, detail)) return null;
       passedHardFilterCount += 1;
       const score = scoreItchioGame(card, detail);
-      const hasLightInteraction = hasAnyKeyword(buildGameText(card, detail), lightInteractiveKeywords);
-      if (score < 78 && !(hasLightInteraction && score >= 72)) return null;
+      const gameText = buildGameText(card, detail);
+      const hasLightInteraction = hasAnyKeyword(gameText, lightInteractiveKeywords);
+      if (score < 76 && !(hasLightInteraction && score >= 68)) return null;
       return { card, detail, score };
     });
     const scoredItems = scored.filter((item): item is ScoredItchGame => Boolean(item));
@@ -399,6 +432,11 @@ function passesHardFilters(card: ItchGameCard, detail: ItchGameDetail) {
     Number(detail.commentCount ?? 0) > 0 ||
     combinedText.includes("rated") ||
     combinedText.includes("comments");
+  const hasPresentationSignals =
+    detail.screenshotCount >= 2 ||
+    combinedText.includes("game jam") ||
+    combinedText.includes("featured") ||
+    combinedText.includes("popular");
   const rejected =
     rejectKeywords.some((keyword) => combinedText.includes(keyword)) ||
     isRejectedByContext(card, detail, combinedText);
@@ -411,7 +449,7 @@ function passesHardFilters(card: ItchGameCard, detail: ItchGameDetail) {
     playableInBrowser &&
     hasCover &&
     hasDescription &&
-    hasInteraction &&
+    (hasInteraction || hasPresentationSignals) &&
     !rejected &&
     !downloadOnly
   );
@@ -440,8 +478,8 @@ function scoreItchioGame(card: ItchGameCard, detail: ItchGameDetail) {
   const ratingValue = Number(detail.ratingValue ?? 0);
   const ratingCount = Number(detail.ratingCount ?? 0);
   const commentCount = Number(detail.commentCount ?? 0);
-  const lightInteractionScore = Math.min(10, countKeywordMatches(combinedText, lightInteractiveKeywords) * 2);
-  const dialoguePenalty = Math.min(12, countKeywordMatches(combinedText, dialogueHeavyKeywords) * 3);
+  const lightInteractionScore = Math.min(14, countKeywordMatches(combinedText, lightInteractiveKeywords) * 2);
+  const dialoguePenalty = Math.min(9, countKeywordMatches(combinedText, dialogueHeavyKeywords) * 2);
   const visualScore = Math.min(25, 12 + (detail.coverUrl || card.coverUrl ? 8 : 0) + Math.min(detail.screenshotCount, 5));
   const gameplayScore = Math.min(
     25,
@@ -461,6 +499,7 @@ function scoreItchioGame(card: ItchGameCard, detail: ItchGameDetail) {
     10,
     (preferredKeywords.some((keyword) => combinedText.includes(keyword)) ? 4 : 0) +
       (combinedText.includes("jam") ? 4 : 0) +
+      (combinedText.includes("featured") || combinedText.includes("popular") ? 2 : 0) +
       (combinedText.includes("funny") || combinedText.includes("satirical") ? 2 : 0) +
       (detail.description.length > 40 ? 2 : 0),
   );

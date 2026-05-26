@@ -76,11 +76,11 @@ export type YoutubeWorksFetchResult = {
 
 const YOUTUBE_SOURCE: WorkSource = "youtube";
 const DEFAULT_SOURCE_LIMIT = 20;
-const DEFAULT_ITEM_LIMIT = 3;
-const DEFAULT_PUBLISH_LIMIT = 8;
-const MAX_ITEM_AGE_DAYS = 180;
-const MIN_DURATION_MS = 30_000;
-const STRONG_VIEW_THRESHOLD = 10_000;
+const DEFAULT_ITEM_LIMIT = 5;
+const DEFAULT_PUBLISH_LIMIT = 10;
+const MAX_ITEM_AGE_DAYS = 365;
+const MIN_DURATION_MS = 20_000;
+const STRONG_VIEW_THRESHOLD = 3_000;
 
 const parser = new XMLParser({
   ignoreAttributes: false,
@@ -90,16 +90,62 @@ const parser = new XMLParser({
 
 const includeKeywords = [
   "ai short film",
+  "ai short",
   "ai film",
+  "ai movie",
+  "ai video",
   "ai animation",
   "ai anime",
   "ai music video",
   "ai commercial",
   "ai spec ad",
+  "short film",
+  "short movie",
+  "animated short",
+  "official music video",
+  "music video",
+  "spec ad",
+  "commercial",
+  "cinematic short",
   "official short film",
   "cinematic ai",
   "generative ai short film",
   "experimental ai film",
+];
+
+const workFormatKeywords = [
+  "short film",
+  "short movie",
+  "short",
+  "film",
+  "movie",
+  "animation",
+  "anime",
+  "music video",
+  "mv",
+  "commercial",
+  "spec ad",
+  "cinematic",
+  "experimental",
+  "visual poem",
+  "film noir",
+];
+
+const aiSignalKeywords = [
+  "ai",
+  "artificial intelligence",
+  "generative",
+  "generated",
+  "gen ai",
+  "midjourney",
+  "runway",
+  "sora",
+  "veo",
+  "kling",
+  "pika",
+  "minimax",
+  "hailuo",
+  "comfyui",
 ];
 
 const excludeKeywords = [
@@ -187,7 +233,7 @@ export async function fetchYoutubeWorks({
     if (index > 0) await sleep(800);
 
     try {
-      const result = await fetchSourceCandidates(sourceConfig, Math.max(1, Math.min(itemLimit, 5)));
+      const result = await fetchSourceCandidates(sourceConfig, Math.max(1, Math.min(itemLimit, 8)));
       resolvedSourceCount += 1;
       candidates.push(...result.items);
       sourceDiagnostics.push({
@@ -284,7 +330,7 @@ async function fetchSourceCandidates(sourceConfig: YoutubeWorksSource, limit: nu
 
   if (!response.ok) throw new Error(`RSS returned HTTP ${response.status}`);
 
-  const rawItems = extractRawItems(parser.parse(await response.text())).slice(0, Math.max(limit * 4, limit));
+  const rawItems = extractRawItems(parser.parse(await response.text())).slice(0, Math.max(limit * 5, limit));
   const normalizedItems = rawItems
     .map((item) => normalizeYoutubeItem(sourceConfig, item))
     .filter((item): item is YoutubeVideoCandidate => Boolean(item));
@@ -371,13 +417,13 @@ function normalizeYoutubeItem(sourceConfig: YoutubeWorksSource, item: RawYoutube
 function getPublishingRejectionReasons(candidate: YoutubeVideoCandidate, score: number) {
   const title = candidate.title.toLowerCase();
   const text = `${candidate.title} ${candidate.description}`.toLowerCase();
-  const matchedInclude = includeKeywords.some((keyword) => title.includes(keyword));
+  const matchedInclude = hasPublishingKeyword(candidate, title, text);
   const matchedExclude = excludeKeywords.some((keyword) => text.includes(keyword));
   const matchedIpRisk = ipRiskKeywords.some((keyword) => text.includes(keyword));
   const hasEnoughDuration = candidate.durationMs === undefined || candidate.durationMs >= MIN_DURATION_MS;
   const isFresh = isWithinDays(candidate.publishedAt, MAX_ITEM_AGE_DAYS);
   const hasStrongPerformance = candidate.viewCount >= STRONG_VIEW_THRESHOLD;
-  const minScore = candidate.source.tier === "B" ? 78 : 70;
+  const minScore = candidate.source.tier === "B" ? 64 : 58;
   const reasons: YoutubeRejectionReason[] = [];
 
   if (!matchedInclude) reasons.push("missing-include-keyword");
@@ -394,7 +440,9 @@ function scoreCandidate(candidate: YoutubeVideoCandidate) {
   const title = candidate.title.toLowerCase();
   const text = `${candidate.title} ${candidate.description}`.toLowerCase();
   const tierScore = candidate.source.tier === "S" ? 20 : candidate.source.tier === "A" ? 14 : 8;
-  const includeScore = includeKeywords.reduce((total, keyword) => total + (title.includes(keyword) ? 8 : 0), 0);
+  const includeScore = includeKeywords.reduce((total, keyword) => total + (text.includes(keyword) ? 6 : 0), 0);
+  const formatSignalScore = Math.min(14, workFormatKeywords.reduce((total, keyword) => total + (text.includes(keyword) ? 4 : 0), 0));
+  const aiSignalScore = Math.min(10, aiSignalKeywords.reduce((total, keyword) => total + (text.includes(keyword) ? 3 : 0), 0));
   const formatScore = inferVideoWorkKind(candidate).score;
   const freshnessScore = isWithinDays(candidate.publishedAt, 30)
     ? 12
@@ -412,7 +460,7 @@ function scoreCandidate(candidate: YoutubeVideoCandidate) {
     excludeKeywords.reduce((total, keyword) => total + (text.includes(keyword) ? 12 : 0), 0) +
     ipRiskKeywords.reduce((total, keyword) => total + (text.includes(keyword) ? 20 : 0), 0);
 
-  return tierScore + includeScore + formatScore + freshnessScore + durationScore + viewScore - penalty;
+  return tierScore + includeScore + formatSignalScore + aiSignalScore + formatScore + freshnessScore + durationScore + viewScore - penalty;
 }
 
 function youtubeCandidateToWork({ candidate, score }: ScoredYoutubeWork): WorkItem {
@@ -449,15 +497,24 @@ function youtubeCandidateToWork({ candidate, score }: ScoredYoutubeWork): WorkIt
 }
 
 function inferVideoWorkKind(candidate: YoutubeVideoCandidate) {
-  const title = candidate.title.toLowerCase();
+  const text = `${candidate.title} ${candidate.description}`.toLowerCase();
 
-  if (title.includes("music video")) return { label: "AI音乐视频", score: 18 };
-  if (title.includes("commercial") || title.includes("spec ad")) return { label: "AI广告片", score: 18 };
-  if (title.includes("animation") || title.includes("anime")) return { label: "AI动画", score: 16 };
-  if (title.includes("experimental")) return { label: "AI视觉实验", score: 14 };
-  if (title.includes("cinematic") || title.includes("film")) return { label: "AI短片", score: 16 };
+  if (text.includes("music video") || /\bmv\b/.test(text)) return { label: "AI音乐视频", score: 18 };
+  if (text.includes("commercial") || text.includes("spec ad")) return { label: "AI广告片", score: 18 };
+  if (text.includes("animation") || text.includes("anime") || text.includes("animated short")) return { label: "AI动画", score: 16 };
+  if (text.includes("experimental") || text.includes("visual poem")) return { label: "AI视觉实验", score: 14 };
+  if (text.includes("cinematic") || text.includes("film") || text.includes("movie") || text.includes("short")) return { label: "AI短片", score: 16 };
 
   return { label: "AI电影", score: 12 };
+}
+
+function hasPublishingKeyword(candidate: YoutubeVideoCandidate, title: string, text: string) {
+  const hasExplicitInclude = includeKeywords.some((keyword) => text.includes(keyword));
+  const hasWorkFormat = workFormatKeywords.some((keyword) => text.includes(keyword));
+  const hasAiSignal = aiSignalKeywords.some((keyword) => text.includes(keyword));
+  const trustedWhitelistedSource = candidate.source.tier !== "B";
+
+  return hasExplicitInclude || (hasWorkFormat && (hasAiSignal || trustedWhitelistedSource || title.includes("ai")));
 }
 
 function buildChineseTitle(candidate: YoutubeVideoCandidate, label: string) {
