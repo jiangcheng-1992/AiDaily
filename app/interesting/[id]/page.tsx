@@ -66,9 +66,21 @@ export default async function InterestingDetailPage({
               />
               {work.type === "video" ? (
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/90 text-blue-700 shadow-lift">
-                    <Play className="h-7 w-7 fill-current" />
-                  </span>
+                  {primaryUrl ? (
+                    <a
+                      href={primaryUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label="观看作品"
+                      className="flex h-16 w-16 items-center justify-center rounded-full bg-white/90 text-blue-700 shadow-lift transition-transform hover:scale-105"
+                    >
+                      <Play className="h-7 w-7 fill-current" />
+                    </a>
+                  ) : (
+                    <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/90 text-blue-700 shadow-lift">
+                      <Play className="h-7 w-7 fill-current" />
+                    </span>
+                  )}
                 </div>
               ) : null}
             </div>
@@ -111,16 +123,6 @@ export default async function InterestingDetailPage({
                   >
                     {work.source === "itchio" ? "直接试玩" : work.source === "youtube" ? "观看作品" : "查看作品"}
                     <ArrowUpRight className="h-4 w-4" />
-                  </a>
-                ) : null}
-                {work.videoUrl ? (
-                  <a
-                    href={work.videoUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
-                  >
-                    观看原视频
                   </a>
                 ) : null}
                 {work.githubUrl ? (
