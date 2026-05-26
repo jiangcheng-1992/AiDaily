@@ -189,6 +189,7 @@ async function fetchProductHuntPosts({
                 commentsCount
                 createdAt
                 featuredAt
+                thumbnail { url }
               }
             }
           }
@@ -489,10 +490,88 @@ function fallbackCoverUrl({
   type: WorkType;
   coverPrompt: string;
 }) {
-  return `https://copilot-cn.bytedance.net/api/ide/v1/text_to_image?prompt=${encodeURIComponent(
+  const visualPrompt =
     coverPrompt ||
-      `realistic ${typeLabel(type)} cover for ${title}, ${description}, clean SaaS web app interface, premium product hunt style, high quality`,
-  )}&image_size=landscape_16_9`;
+    `realistic ${typeLabel(type)} cover for ${title}, ${description}, clean SaaS web app interface, premium product hunt style, high quality`;
+  return buildSvgCoverUrl({
+    title,
+    subtitle: inferCoverSubtitle(description, visualPrompt),
+    type,
+  });
+}
+
+function buildSvgCoverUrl({
+  title,
+  subtitle,
+  type,
+}: {
+  title: string;
+  subtitle: string;
+  type: WorkType;
+}) {
+  const colors = coverColorsByType[type];
+  const svg = `
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="${colors.from}"/>
+      <stop offset="55%" stop-color="${colors.mid}"/>
+      <stop offset="100%" stop-color="${colors.to}"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="72%" cy="18%" r="62%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.38)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </radialGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="22" stdDeviation="24" flood-color="rgba(15,23,42,0.34)"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="675" rx="44" fill="url(#bg)"/>
+  <rect width="1200" height="675" fill="url(#glow)"/>
+  <g opacity="0.18">
+    <path d="M0 114H1200M0 228H1200M0 342H1200M0 456H1200M0 570H1200M150 0V675M300 0V675M450 0V675M600 0V675M750 0V675M900 0V675M1050 0V675" stroke="white" stroke-width="1"/>
+  </g>
+  <circle cx="988" cy="118" r="132" fill="rgba(255,255,255,0.14)"/>
+  <circle cx="1022" cy="144" r="74" fill="rgba(255,255,255,0.12)"/>
+  <rect x="86" y="86" width="1028" height="503" rx="38" fill="rgba(255,255,255,0.16)" stroke="rgba(255,255,255,0.36)" filter="url(#shadow)"/>
+  <rect x="132" y="139" width="430" height="46" rx="23" fill="rgba(255,255,255,0.22)"/>
+  <rect x="132" y="229" width="620" height="52" rx="26" fill="rgba(255,255,255,0.88)"/>
+  <rect x="132" y="314" width="488" height="26" rx="13" fill="rgba(255,255,255,0.54)"/>
+  <rect x="132" y="358" width="390" height="26" rx="13" fill="rgba(255,255,255,0.42)"/>
+  <rect x="132" y="456" width="182" height="58" rx="29" fill="rgba(15,23,42,0.86)"/>
+  <rect x="734" y="214" width="280" height="260" rx="34" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.32)"/>
+  <path d="M794 352C846 292 905 286 960 352C913 408 848 409 794 352Z" fill="rgba(255,255,255,0.74)"/>
+  <circle cx="877" cy="350" r="36" fill="${colors.mid}"/>
+  <text x="132" y="174" fill="rgba(255,255,255,0.86)" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="800">${escapeSvgText(typeLabel(type))} · Product Hunt</text>
+  <text x="132" y="268" fill="#0f172a" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="900">${escapeSvgText(clip(title, 30))}</text>
+  <text x="132" y="333" fill="rgba(255,255,255,0.88)" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700">${escapeSvgText(clip(subtitle, 38))}</text>
+  <text x="173" y="493" fill="white" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="900">AI 圈精选</text>
+</svg>`;
+
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg.trim())}`;
+}
+
+const coverColorsByType: Record<WorkType, { from: string; mid: string; to: string }> = {
+  image: { from: "#7c3aed", mid: "#db2777", to: "#f59e0b" },
+  video: { from: "#0f172a", mid: "#2563eb", to: "#06b6d4" },
+  website: { from: "#172554", mid: "#4f46e5", to: "#a855f7" },
+  app: { from: "#064e3b", mid: "#059669", to: "#22d3ee" },
+  prompt: { from: "#3b0764", mid: "#7e22ce", to: "#f97316" },
+  workflow: { from: "#111827", mid: "#0ea5e9", to: "#14b8a6" },
+  github: { from: "#020617", mid: "#334155", to: "#6366f1" },
+};
+
+function inferCoverSubtitle(description: string, visualPrompt: string) {
+  const source = cleanText(description) || cleanText(visualPrompt);
+  return source || "一个值得体验的 AI 产品";
+}
+
+function escapeSvgText(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function inferChineseUseCase(post: ProductHuntPost, type: WorkType) {
