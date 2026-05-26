@@ -32,7 +32,7 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-white/70 bg-white/88 backdrop-blur-xl">
       <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-3 sm:h-16 sm:px-6 lg:px-8">
-        <Link href="/" className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+        <Link href="/" prefetch className="flex min-w-0 items-center gap-2.5 sm:gap-3">
           <img
             src="/aiq-logo.png"
             alt="AI圈"
@@ -51,6 +51,7 @@ export function SiteHeader() {
             return (
               <Link
                 href={item.href}
+                prefetch
                 key={item.href}
                 className={cn(
                   "rounded-full px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950",

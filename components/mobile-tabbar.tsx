@@ -36,6 +36,7 @@ export function MobileTabbar() {
           return (
             <Link
               href={item.href}
+              prefetch
               key={item.href}
               className={cn(
                 "flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl py-2 text-[10px] font-semibold text-slate-500 transition-all duration-200",
