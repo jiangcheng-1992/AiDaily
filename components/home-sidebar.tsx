@@ -14,7 +14,8 @@ import type { Post } from "@/lib/mock-data";
 import { hotTags } from "@/lib/mock-data";
 import { formatCompactNumber } from "@/lib/utils";
 
-const sidebarAdSlot = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_SIDEBAR_SLOT;
+const DEFAULT_SIDEBAR_AD_SLOT = "4376617489";
+const sidebarAdSlot = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_SIDEBAR_SLOT || DEFAULT_SIDEBAR_AD_SLOT;
 
 export function HomeSidebar({
   posts,
