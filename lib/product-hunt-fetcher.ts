@@ -176,6 +176,40 @@ async function fetchProductHuntPosts({
   const safeFirst = Math.min(Math.max(first, 1), PRODUCT_HUNT_MAX_QUERY_LIMIT);
   const fieldInfo = await fetchProductHuntPostFieldInfo(token);
   const optionalFields = buildOptionalPostFields(fieldInfo);
+  const orderedPosts = await tryFetchProductHuntPosts({
+    token,
+    safeFirst,
+    postedAfter,
+    optionalFields,
+    useVotesOrder: true,
+  });
+
+  if (orderedPosts) return orderedPosts;
+
+  return (
+    (await tryFetchProductHuntPosts({
+      token,
+      safeFirst,
+      postedAfter,
+      optionalFields,
+      useVotesOrder: false,
+    })) ?? []
+  );
+}
+
+async function tryFetchProductHuntPosts({
+  token,
+  safeFirst,
+  postedAfter,
+  optionalFields,
+  useVotesOrder,
+}: {
+  token: string;
+  safeFirst: number;
+  postedAfter: Date;
+  optionalFields: string;
+  useVotesOrder: boolean;
+}) {
   const response = await fetch(PRODUCT_HUNT_API_URL, {
     method: "POST",
     headers: {
@@ -187,7 +221,7 @@ async function fetchProductHuntPosts({
     body: JSON.stringify({
       query: `
         query ProductHuntAiWorks($first: Int!, $postedAfter: DateTime!) {
-          posts(first: $first, postedAfter: $postedAfter) {
+          posts(first: $first, ${useVotesOrder ? "order: VOTES, " : ""}postedAfter: $postedAfter) {
             edges {
               node {
                 id
@@ -217,6 +251,7 @@ async function fetchProductHuntPosts({
   const text = await response.text();
 
   if (!response.ok) {
+    if (useVotesOrder) return null;
     throw new Error(`Product Hunt API HTTP ${response.status}: ${text.slice(0, 300)}`);
   }
 
@@ -224,6 +259,7 @@ async function fetchProductHuntPosts({
   const apiError = payload.errors?.map((error) => error.message).filter(Boolean).join("; ");
 
   if (apiError) {
+    if (useVotesOrder) return null;
     throw new Error(apiError);
   }
 

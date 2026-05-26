@@ -88,6 +88,7 @@ async function handleIngestRequest(request: Request) {
     url.searchParams.get("itchioPublishLimit") ?? process.env.ITCHIO_PUBLISH_LIMIT,
     3,
   );
+  const replaceWorks = url.searchParams.get("replaceWorks") === "1";
   const run = await runIngestPipeline({
     sourceLimit,
     itemLimit,
@@ -121,38 +122,68 @@ async function handleIngestRequest(request: Request) {
   if (!dryRun && !wouldClearExistingFeed) {
     await writeGeneratedFeed(nextFeed);
   }
-  const worksRun = await fetchProductHuntWorks({
-    weeklyLimit: productHuntWeeklyLimit,
-    dailyLimit: productHuntDailyLimit,
-  });
-  const itchioRun = await fetchItchioWorks({
-    sourceLimit: itchioSourceLimit,
-    reviewLimit: itchioReviewLimit,
-    publishLimit: itchioPublishLimit,
-  });
+  const shouldFetchProductHunt = productHuntWeeklyLimit > 0 || productHuntDailyLimit > 0;
+  const shouldFetchItchio =
+    itchioSourceLimit > 0 && itchioReviewLimit > 0 && itchioPublishLimit > 0;
+  const worksRun = shouldFetchProductHunt
+    ? await fetchProductHuntWorks({
+        weeklyLimit: productHuntWeeklyLimit,
+        dailyLimit: productHuntDailyLimit,
+      })
+    : {
+        ok: true,
+        source: "producthunt" as const,
+        count: 0,
+        works: [],
+      };
+  const itchioRun = shouldFetchItchio
+    ? await fetchItchioWorks({
+        sourceLimit: itchioSourceLimit,
+        reviewLimit: itchioReviewLimit,
+        publishLimit: itchioPublishLimit,
+      })
+    : {
+        ok: true,
+        source: "itchio" as const,
+        count: 0,
+        works: [],
+      };
   const currentWorks = await readGeneratedWorks({ allowFallback: false });
   const incomingWorks = [...worksRun.works, ...itchioRun.works];
+  const worksSourceStatus = {
+    ...(shouldFetchProductHunt
+      ? {
+          producthunt: {
+            ok: worksRun.ok,
+            count: worksRun.count,
+            fetchedAt: run.fetchedAt,
+            error: worksRun.error,
+          },
+        }
+      : {}),
+    ...(shouldFetchItchio
+      ? {
+          itchio: {
+            ok: itchioRun.ok,
+            count: itchioRun.count,
+            fetchedAt: run.fetchedAt,
+            error: itchioRun.error,
+          },
+        }
+      : {}),
+  };
   const nextWorks = mergeGeneratedWorks({
     current: currentWorks,
     incomingWorks,
-    sourceStatus: {
-      producthunt: {
-        ok: worksRun.ok,
-        count: worksRun.count,
-        fetchedAt: run.fetchedAt,
-        error: worksRun.error,
-      },
-      itchio: {
-        ok: itchioRun.ok,
-        count: itchioRun.count,
-        fetchedAt: run.fetchedAt,
-        error: itchioRun.error,
-      },
-    },
+    sourceStatus: worksSourceStatus,
     limit: readPositiveInt(process.env.GENERATED_WORKS_LIMIT, 200),
   });
+  const wouldShrinkExistingWorks =
+    !replaceWorks &&
+    currentWorks.works.length > 0 &&
+    nextWorks.works.length < currentWorks.works.length;
 
-  if (!dryRun && incomingWorks.length > 0) {
+  if (!dryRun && incomingWorks.length > 0 && !wouldShrinkExistingWorks) {
     await writeGeneratedWorks(nextWorks);
   }
 
@@ -190,6 +221,7 @@ async function handleIngestRequest(request: Request) {
           count: worksRun.count,
           error: worksRun.error,
           configured: Boolean(process.env.PRODUCT_HUNT_TOKEN || process.env.PRODUCTHUNT_TOKEN),
+          skipped: !shouldFetchProductHunt,
         },
         itchio: {
           ok: itchioRun.ok,
@@ -199,9 +231,12 @@ async function handleIngestRequest(request: Request) {
           sourceLimit: itchioSourceLimit,
           reviewLimit: itchioReviewLimit,
           publishLimit: itchioPublishLimit,
+          skipped: !shouldFetchItchio,
         },
+        previousWorkCount: currentWorks.works.length,
         totalWorkCount: nextWorks.works.length,
-        persisted: !dryRun && incomingWorks.length > 0,
+        persisted: !dryRun && incomingWorks.length > 0 && !wouldShrinkExistingWorks,
+        skippedPersistBecauseWorksWouldShrink: wouldShrinkExistingWorks,
       },
       message:
         "已完成 AI 文章源、GitHub 热门 Skill、Product Hunt AI 作品、itch.io 浏览器小游戏抓取，并独立尝试抖音、YouTube、B站等视频源抓取。视频或作品源失败不会影响文章落地；公开来源使用真实互动指标，不提供互动指标的来源不会编造点赞数。",
