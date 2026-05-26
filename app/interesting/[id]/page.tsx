@@ -39,23 +39,23 @@ export default async function InterestingDetailPage({
   const primaryUrl = work.externalUrl || work.videoUrl || work.githubUrl;
 
   return (
-    <div className="mx-auto max-w-6xl px-3 py-4 sm:px-6 sm:py-8 lg:px-8">
+    <div className="mx-auto max-w-6xl px-3 py-3 sm:px-6 sm:py-6 lg:px-8">
       <Link
         href="/interesting"
-        className="mb-4 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-slate-500 shadow-soft transition-colors hover:text-blue-700"
+        className="mb-3 inline-flex items-center gap-2 rounded-full bg-white px-3.5 py-2 text-xs font-bold text-slate-500 shadow-soft transition-colors hover:text-blue-700"
       >
         <ArrowLeft className="h-4 w-4" />
         回到有点意思
       </Link>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_330px]">
-        <main className="min-w-0 space-y-5">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_330px]">
+        <main className="min-w-0 space-y-4">
           <Card className="overflow-hidden rounded-[2rem] bg-white/95 p-0">
-            <div className="relative overflow-hidden bg-slate-100">
+            <div className="relative aspect-video max-h-[360px] overflow-hidden bg-slate-100 sm:max-h-[420px]">
               <img
                 src={work.coverUrl}
                 alt={work.title}
-                className="max-h-[620px] w-full object-cover"
+                className="h-full w-full object-cover"
               />
               {work.type === "video" ? (
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -65,7 +65,7 @@ export default async function InterestingDetailPage({
                 </div>
               ) : null}
             </div>
-            <div className="p-5 sm:p-7">
+            <div className="p-4 sm:p-5">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-black text-blue-700">
                   {getWorkTypeLabel(work)}
@@ -81,12 +81,12 @@ export default async function InterestingDetailPage({
                 ) : null}
               </div>
 
-              <h1 className="mt-4 text-3xl font-black leading-tight text-slate-950 sm:text-5xl">
+              <h1 className="mt-3 text-2xl font-black leading-tight text-slate-950 sm:text-3xl">
                 {work.title}
               </h1>
-              <p className="mt-4 text-base leading-8 text-slate-600">{work.description}</p>
+              <p className="mt-3 text-sm leading-7 text-slate-600 sm:text-base">{work.description}</p>
 
-              <div className="mt-5 flex flex-wrap items-center gap-3 text-sm font-semibold text-slate-400">
+              <div className="mt-4 flex flex-wrap items-center gap-3 text-sm font-semibold text-slate-400">
                 <span>{work.authorName ?? "匿名作者"}</span>
                 <span>·</span>
                 <span>{formatRelativeTime(work.publishedAt ?? work.createdAt)}</span>
@@ -94,7 +94,7 @@ export default async function InterestingDetailPage({
                 <span>{formatCompactNumber(work.viewCount)} 次查看</span>
               </div>
 
-              <div className="mt-6 flex flex-wrap gap-2">
+              <div className="mt-5 flex flex-wrap gap-2">
                 {primaryUrl ? (
                   <a
                     href={primaryUrl}

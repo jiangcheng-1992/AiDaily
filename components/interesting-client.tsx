@@ -16,7 +16,6 @@ import {
   getWorkTypeLabel,
   interestingCategories,
   workMatchesInterestingCategory,
-  workSourceLabels,
   type WorkCategoryId,
   type WorkItem,
 } from "@/lib/interesting-works";
@@ -169,7 +168,7 @@ function InterestingWorkCard({
             </span>
           ) : null}
         </div>
-        <p className="mt-2 line-clamp-3 text-[13px] leading-6 text-slate-500">
+        <p className="mt-2 line-clamp-2 text-[13px] leading-6 text-slate-500">
           {work.description}
         </p>
         <div className="mt-3 flex flex-wrap gap-1.5">
@@ -179,11 +178,8 @@ function InterestingWorkCard({
             </span>
           ))}
         </div>
-        <div className="mt-3 flex items-center justify-between gap-2 text-[11px] font-semibold text-slate-400">
-          <span className="truncate">
-            {workSourceLabels[work.source]} · {work.authorName ?? "匿名作者"}
-          </span>
-          <span>{formatRelativeTime(work.publishedAt ?? work.createdAt)}</span>
+        <div className="mt-3 text-[11px] font-semibold text-slate-400">
+          {formatRelativeTime(work.publishedAt ?? work.createdAt)}
         </div>
         {work.source === "itchio" ? (
           <div className="mt-3 inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-700">
