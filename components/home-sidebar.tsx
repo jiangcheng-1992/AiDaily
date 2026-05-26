@@ -81,8 +81,8 @@ export function HomeSidebar({
         </div>
       </Card>
 
-      <Card className="rounded-3xl p-5">
-        <div className="mb-3 flex items-center justify-between">
+      <Card className="rounded-3xl p-4">
+        <div className="mb-2 flex items-center justify-between">
           <span className="text-[11px] font-bold text-slate-400">广告</span>
           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-400">
             Google AdSense
@@ -90,7 +90,7 @@ export function HomeSidebar({
         </div>
         <GoogleAdSlot
           slot={sidebarAdSlot}
-          className="min-h-[250px]"
+          className="min-h-[160px] rounded-[1.2rem] bg-slate-50/70 sm:min-h-[180px]"
           previewLabel="首页右侧热门标签下方广告位"
         />
       </Card>

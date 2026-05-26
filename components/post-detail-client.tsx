@@ -822,8 +822,8 @@ export function PostDetailClient({
         </article>
       </Card>
 
-      <Card className="mt-6 rounded-[2rem] border-white/80 bg-white/95 p-4 sm:p-5">
-        <div className="mb-3 flex items-center justify-between">
+      <Card className="mt-6 rounded-[2rem] border-white/80 bg-white/95 p-3 sm:p-4">
+        <div className="mb-2 flex items-center justify-between">
           <span className="text-[11px] font-bold text-slate-400">广告</span>
           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-400">
             Google AdSense
@@ -831,7 +831,7 @@ export function PostDetailClient({
         </div>
         <GoogleAdSlot
           slot={detailAdSlot}
-          className="min-h-[120px] sm:min-h-[160px]"
+          className="min-h-[84px] rounded-[1.2rem] bg-slate-50/70 sm:min-h-[108px]"
           previewLabel="详情页正文下方广告位"
         />
       </Card>
