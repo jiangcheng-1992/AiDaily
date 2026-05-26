@@ -88,11 +88,13 @@ export function HomeSidebar({
             Google AdSense
           </span>
         </div>
-        <GoogleAdSlot
-          slot={sidebarAdSlot}
-          className="min-h-[160px] rounded-[1.2rem] bg-slate-50/70 sm:min-h-[180px]"
-          previewLabel="首页右侧热门标签下方广告位"
-        />
+        <div className="overflow-hidden rounded-[1.2rem] border border-slate-100 bg-slate-50/70 h-[128px] max-h-[128px] sm:h-[144px] sm:max-h-[144px]">
+          <GoogleAdSlot
+            slot={sidebarAdSlot}
+            className="h-full w-full"
+            previewLabel="首页右侧热门标签下方广告位"
+          />
+        </div>
       </Card>
     </div>
   );

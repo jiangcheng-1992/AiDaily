@@ -829,11 +829,13 @@ export function PostDetailClient({
             Google AdSense
           </span>
         </div>
-        <GoogleAdSlot
-          slot={detailAdSlot}
-          className="min-h-[84px] rounded-[1.2rem] bg-slate-50/70 sm:min-h-[108px]"
-          previewLabel="详情页正文下方广告位"
-        />
+        <div className="overflow-hidden rounded-[1.2rem] border border-slate-100 bg-slate-50/70 h-[72px] max-h-[72px] sm:h-[88px] sm:max-h-[88px]">
+          <GoogleAdSlot
+            slot={detailAdSlot}
+            className="h-full w-full"
+            previewLabel="详情页正文下方广告位"
+          />
+        </div>
       </Card>
 
       <Card id="comments" className="mt-6 rounded-[2rem] bg-white/95 p-5 sm:p-8">
