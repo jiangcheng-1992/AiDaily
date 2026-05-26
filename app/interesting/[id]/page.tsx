@@ -51,7 +51,7 @@ export default async function InterestingDetailPage({
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_330px]">
         <main className="min-w-0 space-y-4">
           <Card className="overflow-hidden rounded-[2rem] bg-white/95 p-0">
-            <div className="relative aspect-video max-h-[360px] overflow-hidden bg-slate-100 sm:max-h-[420px]">
+            <div className="relative h-[210px] overflow-hidden bg-slate-100 sm:h-[260px] lg:h-[300px]">
               <img
                 src={work.coverUrl}
                 alt={work.title}

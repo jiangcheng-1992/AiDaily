@@ -207,10 +207,14 @@ async function fetchItchioGameCards(sourceLimit: number) {
 }
 
 function extractGameCards(html: string, sourceUrl: string, sourceLabel: string): ItchGameCard[] {
-  return html
-    .split(/<div\s+data-game_id=/i)
-    .slice(1)
-    .map((part) => `<div data-game_id=${part}`)
+  const matches = Array.from(html.matchAll(/<div\b[^>]*\bgame_cell\b[^>]*\bdata-game_id=["'][^"']+["'][^>]*>/gi));
+
+  return matches
+    .map((match, index) => {
+      const start = match.index ?? 0;
+      const end = matches[index + 1]?.index ?? html.length;
+      return html.slice(start, end);
+    })
     .map((chunk) => normalizeGameCard(chunk, sourceUrl, sourceLabel))
     .filter((card): card is ItchGameCard => Boolean(card));
 }
