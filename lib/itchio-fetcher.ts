@@ -44,7 +44,9 @@ export type ItchioFetchResult = {
     passedHardFilterCount: number;
     scoredCount: number;
     detailFailureCount?: number;
+    sourceFailureCount?: number;
     sourceCounts?: Record<string, number>;
+    sourceErrors?: Record<string, string>;
   };
 };
 
@@ -193,7 +195,7 @@ export async function fetchItchioWorks({
     const sourceLimitPerPage = Math.max(1, Math.min(sourceLimit, 20));
     const reviewCount = Math.max(1, Math.min(reviewLimit, 70));
     const publishCount = Math.max(1, Math.min(publishLimit, reviewCount));
-    const { cards, sourceCounts } = await fetchItchioGameCards(sourceLimitPerPage);
+    const { cards, sourceCounts, sourceErrors } = await fetchItchioGameCards(sourceLimitPerPage);
     const uniqueCards = selectReviewCards(cards, reviewCount);
     let passedHardFilterCount = 0;
     let detailFailureCount = 0;
@@ -225,7 +227,9 @@ export async function fetchItchioWorks({
         passedHardFilterCount,
         scoredCount: scoredItems.length,
         detailFailureCount,
+        sourceFailureCount: Object.keys(sourceErrors).length,
         sourceCounts,
+        sourceErrors,
       },
     };
   } catch (error) {
@@ -241,36 +245,52 @@ export async function fetchItchioWorks({
         passedHardFilterCount: 0,
         scoredCount: 0,
         detailFailureCount: 0,
+        sourceFailureCount: 0,
         sourceCounts: {},
+        sourceErrors: {},
       },
     };
   }
 }
 
 async function fetchItchioGameCards(sourceLimit: number) {
-  const cardGroups = await mapWithConcurrency(itchioSourcePages, 2, async (source) => {
-    const response = await fetchWithTimeout(source.url, {
-      headers: {
-        accept: "text/html,application/xhtml+xml",
-        "user-agent": process.env.AIQ_USER_AGENT ?? "AIQ/1.0 itch.io ingest",
-      },
-    });
+  const cardGroups: Array<{ label: string; cards: ItchGameCard[] }> = [];
+  const sourceErrors: Record<string, string> = {};
 
-    if (!response.ok) {
-      throw new Error(`itch.io source ${source.url} returned HTTP ${response.status}`);
+  for (const [index, source] of itchioSourcePages.entries()) {
+    if (index > 0) await sleep(1_500);
+
+    try {
+      const response = await fetchWithTimeout(source.url, {
+        headers: {
+          accept: "text/html,application/xhtml+xml",
+          "user-agent": process.env.AIQ_USER_AGENT ?? "AIQ/1.0 itch.io ingest",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const html = await response.text();
+      const cards = extractGameCards(html, source.url, source.label).slice(0, sourceLimit);
+      cardGroups.push({
+        label: source.label,
+        cards,
+      });
+    } catch (error) {
+      sourceErrors[source.label] = error instanceof Error ? error.message : "source fetch failed";
+      cardGroups.push({
+        label: source.label,
+        cards: [],
+      });
     }
-
-    const html = await response.text();
-    const cards = extractGameCards(html, source.url, source.label).slice(0, sourceLimit);
-    return {
-      label: source.label,
-      cards,
-    };
-  });
+  }
 
   return {
     cards: cardGroups.flatMap((group) => group.cards),
     sourceCounts: Object.fromEntries(cardGroups.map((group) => [group.label, group.cards.length])),
+    sourceErrors,
   };
 }
 
