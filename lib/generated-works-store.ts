@@ -133,9 +133,15 @@ export function mergeGeneratedWorks({
 function sanitizeGeneratedWorks(works: GeneratedWorks): GeneratedWorks {
   return {
     updatedAt: works.updatedAt,
-    works: dedupeWorks(works.works.filter((work) => work.status === "approved")),
+    works: dedupeWorks(
+      works.works.filter((work) => work.status === "approved" && !isGeneratedPreviewWork(work)),
+    ),
     sources: works.sources ?? {},
   };
+}
+
+function isGeneratedPreviewWork(work: WorkItem) {
+  return work.coverUrl.includes("copilot-cn.bytedance.net/api/ide/v1/text_to_image");
 }
 
 function dedupeWorks(works: WorkItem[]) {

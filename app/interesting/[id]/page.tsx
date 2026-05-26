@@ -20,6 +20,7 @@ import {
   workSourceLabels,
 } from "@/lib/interesting-works";
 import { readGeneratedWorks } from "@/lib/generated-works-store";
+import { triggerWorksRebuild } from "@/lib/works-rebuild";
 import { cn, formatCompactNumber, formatRelativeTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +31,13 @@ export default async function InterestingDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const worksFeed = await readGeneratedWorks({ allowFallback: true });
+  let worksFeed = await readGeneratedWorks({ allowFallback: false });
+
+  if (worksFeed.works.length === 0) {
+    await waitForWorksRebuild(`interesting-detail:${id}`);
+    worksFeed = await readGeneratedWorks({ allowFallback: false });
+  }
+
   const work = worksFeed.works.find((item) => item.id === id);
 
   if (!work) notFound();
@@ -247,6 +254,17 @@ export default async function InterestingDetailPage({
       ) : null}
     </div>
   );
+}
+
+async function waitForWorksRebuild(reason: string) {
+  try {
+    await Promise.race([
+      triggerWorksRebuild(reason),
+      new Promise((resolve) => setTimeout(resolve, 60_000)),
+    ]);
+  } catch (error) {
+    console.error("[interesting-detail] works rebuild failed", error);
+  }
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
