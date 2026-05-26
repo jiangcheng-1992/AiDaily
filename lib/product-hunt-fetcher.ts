@@ -1,3 +1,4 @@
+import { generateMiniMaxText, hasMiniMaxTextAccess } from "@/lib/minimax-text";
 import type { WorkItem, WorkSource, WorkType } from "@/lib/interesting-works";
 
 type ProductHuntPost = {
@@ -44,6 +45,15 @@ type ProductHuntApiResponse = {
   errors?: Array<{
     message?: string;
   }>;
+};
+
+type ProductHuntWorkCopy = {
+  title: string;
+  description: string;
+  whyInteresting: string;
+  tags: string[];
+  toolNames: string[];
+  coverPrompt: string;
 };
 
 export type ProductHuntFetchResult = {
@@ -123,11 +133,11 @@ export async function fetchProductHuntWorks({
       postMap.set(post.id, post);
     }
 
-    const works = Array.from(postMap.values())
+    const keptPosts = Array.from(postMap.values())
       .filter(shouldKeepProductHuntPost)
-      .map(productHuntPostToWork)
-      .sort((a, b) => b.heatScore - a.heatScore)
+      .sort((a, b) => calculateHeatScore(b) - calculateHeatScore(a))
       .slice(0, weeklyLimit);
+    const works = await mapWithConcurrency(keptPosts, 2, productHuntPostToWork);
 
     return {
       ok: true,
@@ -231,18 +241,24 @@ function shouldKeepProductHuntPost(post: ProductHuntPost) {
   return hasAiSignal && hasEnoughAttention && !isLowQualityDirectory;
 }
 
-function productHuntPostToWork(post: ProductHuntPost): WorkItem {
-  const topics = readTopicTexts(post);
-  const title = cleanText(post.name) || "Untitled Product Hunt AI product";
+async function productHuntPostToWork(post: ProductHuntPost): Promise<WorkItem> {
+  const originalTitle = cleanText(post.name) || "Untitled Product Hunt AI product";
   const createdAt = normalizeDate(post.featuredAt || post.createdAt);
   const media = post.media ?? [];
   const videoMedia = media.find((item) => item.videoUrl || item.type?.toLowerCase() === "video");
   const externalUrl = post.url || "https://www.producthunt.com/";
+  const type = inferWorkType(post);
+  const copy = await buildChineseProductHuntCopy(post, type);
+  const title = copy.title;
   const coverUrl =
     normalizeImageUrl(post.thumbnail?.url) ||
     normalizeImageUrl(media.find((item) => item.url)?.url) ||
-    fallbackCoverUrl(title, topics);
-  const type = inferWorkType(post);
+    fallbackCoverUrl({
+      title: originalTitle,
+      description: copy.description,
+      type,
+      coverPrompt: copy.coverPrompt,
+    });
   const likeCount = Number(post.votesCount ?? 0);
   const commentCount = Number(post.commentsCount ?? 0);
   const heatScore = calculateHeatScore(post);
@@ -250,8 +266,8 @@ function productHuntPostToWork(post: ProductHuntPost): WorkItem {
   return {
     id: `producthunt-${slugify(post.id || title)}`,
     title,
-    description: cleanText(post.tagline || post.description) || "来自 Product Hunt 的 AI 产品。",
-    whyInteresting: buildWhyInteresting(post, type),
+    description: copy.description,
+    whyInteresting: copy.whyInteresting,
     type,
     source: PRODUCT_HUNT_SOURCE,
     coverUrl,
@@ -260,8 +276,8 @@ function productHuntPostToWork(post: ProductHuntPost): WorkItem {
     externalUrl,
     authorName: "Product Hunt",
     originalAuthorUrl: "https://www.producthunt.com/",
-    toolNames: readToolNames(post),
-    tags: buildTags(post, type),
+    toolNames: copy.toolNames,
+    tags: copy.tags,
     status: "approved",
     featured: heatScore >= 85,
     sourceVerified: true,
@@ -274,6 +290,61 @@ function productHuntPostToWork(post: ProductHuntPost): WorkItem {
     createdAt,
     publishedAt: createdAt,
   };
+}
+
+async function buildChineseProductHuntCopy(
+  post: ProductHuntPost,
+  type: WorkType,
+): Promise<ProductHuntWorkCopy> {
+  const fallback = buildLocalChineseProductHuntCopy(post, type);
+
+  if (!hasMiniMaxTextAccess()) {
+    return fallback;
+  }
+
+  try {
+    const text = await generateMiniMaxText({
+      systemPrompt:
+        "你是「AI圈」有点意思频道的中文产品编辑。请把 Product Hunt 英文产品信息改写成中文作品卡片 JSON。必须只基于输入信息，不编造官网没有提供的能力；文案要直接说明这个作品、网站或工作流是做什么的，适合谁用，为什么有意思。只输出 JSON。",
+      userPrompt: JSON.stringify({
+        task: "把 Product Hunt 产品转成中文作品流卡片",
+        constraints: [
+          "title 保留原产品名，并用中文说明用途，格式类似「产品名：用 AI 做什么」，不超过 32 个中文字符。",
+          "description 用 45 到 95 个中文字符讲清它具体解决什么问题，不能只写营销口号。",
+          "whyInteresting 用 70 到 150 个中文字符说明它为什么值得放进有点意思，必须结合 votesCount/commentsCount 或具体场景。",
+          "tags 输出 3 到 6 个中文标签，可包含 Product Hunt、AI产品、网页应用、Agent、设计工具、开发工具、效率工具等。",
+          "toolNames 输出 2 到 4 个工具/平台名，必须包含 Product Hunt。",
+          "coverPrompt 输出英文 SDXL 封面提示词，描述一个与产品用途对应的真实网站/应用界面封面，不要写文字水印。",
+        ],
+        product: {
+          name: post.name,
+          tagline: post.tagline,
+          description: post.description,
+          type,
+          votesCount: post.votesCount,
+          commentsCount: post.commentsCount,
+        },
+        outputShape: {
+          title: "产品名：中文用途",
+          description: "一句中文说明",
+          whyInteresting: "为什么有意思",
+          tags: ["Product Hunt", "AI产品", "网页应用"],
+          toolNames: ["Product Hunt", "AI"],
+          coverPrompt: "realistic SaaS web app dashboard cover, ...",
+        },
+      }),
+      temperature: 0.25,
+    });
+
+    return sanitizeProductHuntCopy(parseProductHuntCopy(text), fallback);
+  } catch (error) {
+    console.warn("[producthunt] Chinese copy generation fell back to local copy", {
+      productId: post.id,
+      productName: post.name,
+      error: error instanceof Error ? error.message : "unknown error",
+    });
+    return fallback;
+  }
 }
 
 function inferWorkType(post: ProductHuntPost): WorkType {
@@ -331,6 +402,61 @@ function readTopicTexts(post: ProductHuntPost) {
   );
 }
 
+function buildLocalChineseProductHuntCopy(
+  post: ProductHuntPost,
+  type: WorkType,
+): ProductHuntWorkCopy {
+  const productName = cleanText(post.name) || "Product Hunt AI 产品";
+  const originalDescription = cleanText(post.tagline || post.description);
+  const useCase = inferChineseUseCase(post, type);
+  const typeText = typeLabel(type);
+  const votes = Number(post.votesCount ?? 0);
+  const comments = Number(post.commentsCount ?? 0);
+  const title = clip(`${productName}：${useCase}`, 42);
+  const description = originalDescription
+    ? clip(`这是一个来自 Product Hunt 的${typeText}，主打${useCase}。原始介绍：${originalDescription}`, 110)
+    : `这是一个来自 Product Hunt 的${typeText}，主要帮助用户${useCase}。`;
+
+  return {
+    title,
+    description,
+    whyInteresting: `它把「${useCase}」包装成可直接体验的产品形态，并在 Product Hunt 获得 ${votes} 个赞和 ${comments} 条评论，适合用来观察 AI 产品的新场景和真实需求。`,
+    tags: Array.from(new Set(["Product Hunt", "AI产品", typeText, inferUseCaseTag(post)])).slice(0, 6),
+    toolNames: Array.from(new Set(["Product Hunt", ...readToolNames(post), inferToolName(post)])).slice(0, 4),
+    coverPrompt: buildCoverPrompt(productName, useCase, type),
+  };
+}
+
+function parseProductHuntCopy(value: string): Partial<ProductHuntWorkCopy> {
+  const cleanValue = value
+    .trim()
+    .replace(/^```(?:json)?/i, "")
+    .replace(/```$/i, "")
+    .trim();
+
+  return JSON.parse(cleanValue) as Partial<ProductHuntWorkCopy>;
+}
+
+function sanitizeProductHuntCopy(
+  value: Partial<ProductHuntWorkCopy>,
+  fallback: ProductHuntWorkCopy,
+): ProductHuntWorkCopy {
+  return {
+    title: clip(cleanText(value.title) || fallback.title, 48),
+    description: clip(cleanText(value.description) || fallback.description, 120),
+    whyInteresting: clip(cleanText(value.whyInteresting) || fallback.whyInteresting, 180),
+    tags: sanitizeStringArray(value.tags, fallback.tags, 6),
+    toolNames: sanitizeStringArray(value.toolNames, fallback.toolNames, 4),
+    coverPrompt: cleanText(value.coverPrompt) || fallback.coverPrompt,
+  };
+}
+
+function sanitizeStringArray(value: unknown, fallback: string[], limit: number) {
+  if (!Array.isArray(value)) return fallback;
+  const items = value.map((item) => cleanText(String(item))).filter(Boolean);
+  return Array.from(new Set(items.length ? items : fallback)).slice(0, limit);
+}
+
 function calculateHeatScore(post: ProductHuntPost) {
   const votes = Number(post.votesCount ?? 0);
   const comments = Number(post.commentsCount ?? 0);
@@ -352,10 +478,79 @@ function normalizeImageUrl(value?: string) {
   return value;
 }
 
-function fallbackCoverUrl(title: string, topics: string[]) {
+function fallbackCoverUrl({
+  title,
+  description,
+  type,
+  coverPrompt,
+}: {
+  title: string;
+  description: string;
+  type: WorkType;
+  coverPrompt: string;
+}) {
   return `https://copilot-cn.bytedance.net/api/ide/v1/text_to_image?prompt=${encodeURIComponent(
-    `modern AI product website screenshot, ${title}, ${topics.join(", ")}, clean SaaS interface, product hunt style, high quality`,
+    coverPrompt ||
+      `realistic ${typeLabel(type)} cover for ${title}, ${description}, clean SaaS web app interface, premium product hunt style, high quality`,
   )}&image_size=landscape_16_9`;
+}
+
+function inferChineseUseCase(post: ProductHuntPost, type: WorkType) {
+  const text = [post.name, post.tagline, post.description].filter(Boolean).join(" ").toLowerCase();
+
+  if (/agent|assistant|chatbot|copilot/.test(text)) return "搭建或使用 AI Agent 助手";
+  if (/design|ui|brand|logo|image|poster/.test(text)) return "生成设计素材和视觉内容";
+  if (/video|clip|short|reel/.test(text)) return "生成或处理 AI 视频内容";
+  if (/code|developer|github|api|sdk/.test(text)) return "提升开发和代码协作效率";
+  if (/meeting|calendar|email|doc|note|productivity/.test(text)) return "自动处理办公和效率任务";
+  if (/workflow|automation|zapier|integrat/.test(text)) return "把重复工作串成自动化流程";
+  if (/search|research|knowledge|browser/.test(text)) return "做资料搜索、研究和知识整理";
+
+  const fallback: Record<WorkType, string> = {
+    image: "生成 AI 图片和视觉内容",
+    video: "生成或处理 AI 视频内容",
+    website: "在线体验一个 AI 网页应用",
+    app: "在移动端使用 AI 能力",
+    prompt: "复用一套高质量 Prompt",
+    workflow: "把多个 AI 步骤串成工作流",
+    github: "查看和复用开源 AI 项目",
+  };
+
+  return fallback[type];
+}
+
+function inferUseCaseTag(post: ProductHuntPost) {
+  const text = [post.name, post.tagline, post.description].filter(Boolean).join(" ").toLowerCase();
+
+  if (/agent|assistant|chatbot|copilot/.test(text)) return "Agent";
+  if (/design|ui|brand|logo|image|poster/.test(text)) return "设计工具";
+  if (/video|clip|short|reel/.test(text)) return "视频工具";
+  if (/code|developer|github|api|sdk/.test(text)) return "开发工具";
+  if (/meeting|calendar|email|doc|note|productivity/.test(text)) return "效率工具";
+  if (/workflow|automation|zapier|integrat/.test(text)) return "工作流";
+  if (/search|research|knowledge|browser/.test(text)) return "知识工具";
+  return "可体验项目";
+}
+
+function inferToolName(post: ProductHuntPost) {
+  const text = [post.name, post.tagline, post.description].filter(Boolean).join(" ").toLowerCase();
+
+  if (/agent|assistant|chatbot|copilot/.test(text)) return "AI Agent";
+  if (/design|ui|brand|logo|image|poster/.test(text)) return "AI Design";
+  if (/video|clip|short|reel/.test(text)) return "AI Video";
+  if (/code|developer|github|api|sdk/.test(text)) return "Developer Tool";
+  return "AI Web App";
+}
+
+function buildCoverPrompt(productName: string, useCase: string, type: WorkType) {
+  return [
+    "realistic premium SaaS product cover",
+    `${productName} AI product`,
+    useCase,
+    typeLabel(type),
+    "clean web app dashboard interface",
+    "modern cards, subtle gradients, high quality, no text watermark",
+  ].join(", ");
 }
 
 function slugify(value: string) {
@@ -378,4 +573,34 @@ function typeLabel(type: WorkType) {
   };
 
   return labels[type];
+}
+
+function clip(value: string, maxLength: number) {
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, maxLength - 1)}…`;
+}
+
+async function mapWithConcurrency<TItem, TResult>(
+  items: TItem[],
+  concurrency: number,
+  worker: (item: TItem, index: number) => Promise<TResult>,
+) {
+  if (!items.length) return [] as TResult[];
+
+  const results = new Array<TResult>(items.length);
+  let cursor = 0;
+
+  async function runWorker() {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      results[index] = await worker(items[index], index);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(Math.max(concurrency, 1), items.length) }, () => runWorker()),
+  );
+
+  return results;
 }
