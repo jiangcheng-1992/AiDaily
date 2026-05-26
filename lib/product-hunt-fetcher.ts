@@ -56,6 +56,7 @@ export type ProductHuntFetchResult = {
 
 const PRODUCT_HUNT_API_URL = "https://api.producthunt.com/v2/api/graphql";
 const PRODUCT_HUNT_SOURCE: WorkSource = "producthunt";
+const PRODUCT_HUNT_MAX_QUERY_LIMIT = 20;
 const aiKeywords = [
   "ai",
   "artificial intelligence",
@@ -105,18 +106,16 @@ export async function fetchProductHuntWorks({
     const now = new Date();
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const [weeklyPosts, dailyPosts] = await Promise.all([
-      fetchProductHuntPosts({
-        token,
-        first: weeklyLimit,
-        postedAfter: weekAgo,
-      }),
-      fetchProductHuntPosts({
-        token,
-        first: dailyLimit,
-        postedAfter: dayAgo,
-      }),
-    ]);
+    const weeklyPosts = await fetchProductHuntPosts({
+      token,
+      first: weeklyLimit,
+      postedAfter: weekAgo,
+    });
+    const dailyPosts = await fetchProductHuntPosts({
+      token,
+      first: dailyLimit,
+      postedAfter: dayAgo,
+    });
     const postMap = new Map<string, ProductHuntPost>();
 
     for (const post of [...weeklyPosts, ...dailyPosts]) {
@@ -156,6 +155,7 @@ async function fetchProductHuntPosts({
   first: number;
   postedAfter: Date;
 }) {
+  const safeFirst = Math.min(Math.max(first, 1), PRODUCT_HUNT_MAX_QUERY_LIMIT);
   const response = await fetch(PRODUCT_HUNT_API_URL, {
     method: "POST",
     headers: {
@@ -167,73 +167,6 @@ async function fetchProductHuntPosts({
     body: JSON.stringify({
       query: `
         query ProductHuntAiWorks($first: Int!, $postedAfter: DateTime!) {
-          posts(first: $first, order: VOTES, postedAfter: $postedAfter) {
-            edges {
-              node {
-                id
-                name
-                tagline
-                description
-                url
-                votesCount
-                commentsCount
-                createdAt
-                featuredAt
-                thumbnail { url }
-                media { type url videoUrl }
-                topics { edges { node { name slug } } }
-                makers { name username profileImage }
-              }
-            }
-          }
-        }
-      `,
-      variables: {
-        first,
-        postedAfter: postedAfter.toISOString(),
-      },
-    }),
-    cache: "no-store",
-  });
-
-  const text = await response.text();
-
-  if (!response.ok) {
-    throw new Error(`Product Hunt API HTTP ${response.status}: ${text.slice(0, 300)}`);
-  }
-
-  const payload = JSON.parse(text) as ProductHuntApiResponse;
-  const apiError = payload.errors?.map((error) => error.message).filter(Boolean).join("; ");
-
-  if (apiError) {
-    return fetchProductHuntPostsWithoutOrder({ token, first, postedAfter }).catch(() => {
-      throw new Error(apiError);
-    });
-  }
-
-  return payload.data?.posts?.edges?.map((edge) => edge.node).filter(isProductHuntPost) ?? [];
-}
-
-async function fetchProductHuntPostsWithoutOrder({
-  token,
-  first,
-  postedAfter,
-}: {
-  token: string;
-  first: number;
-  postedAfter: Date;
-}) {
-  const response = await fetch(PRODUCT_HUNT_API_URL, {
-    method: "POST",
-    headers: {
-      accept: "application/json",
-      authorization: `Bearer ${token}`,
-      "content-type": "application/json",
-      "user-agent": process.env.AIQ_USER_AGENT ?? "AIQ/1.0 ProductHunt ingest",
-    },
-    body: JSON.stringify({
-      query: `
-        query ProductHuntAiWorksFallback($first: Int!, $postedAfter: DateTime!) {
           posts(first: $first, postedAfter: $postedAfter) {
             edges {
               node {
@@ -246,17 +179,13 @@ async function fetchProductHuntPostsWithoutOrder({
                 commentsCount
                 createdAt
                 featuredAt
-                thumbnail { url }
-                media { type url videoUrl }
-                topics { edges { node { name slug } } }
-                makers { name username profileImage }
               }
             }
           }
         }
       `,
       variables: {
-        first,
+        first: safeFirst,
         postedAfter: postedAfter.toISOString(),
       },
     }),
@@ -308,7 +237,6 @@ function productHuntPostToWork(post: ProductHuntPost): WorkItem {
   const createdAt = normalizeDate(post.featuredAt || post.createdAt);
   const media = post.media ?? [];
   const videoMedia = media.find((item) => item.videoUrl || item.type?.toLowerCase() === "video");
-  const maker = post.makers?.[0];
   const externalUrl = post.url || "https://www.producthunt.com/";
   const coverUrl =
     normalizeImageUrl(post.thumbnail?.url) ||
@@ -330,11 +258,8 @@ function productHuntPostToWork(post: ProductHuntPost): WorkItem {
     mediaUrls: media.map((item) => item.url).filter((url): url is string => Boolean(url)),
     videoUrl: videoMedia?.videoUrl,
     externalUrl,
-    authorName: maker?.name,
-    authorAvatar: maker?.profileImage,
-    originalAuthorUrl: maker?.username
-      ? `https://www.producthunt.com/@${maker.username}`
-      : undefined,
+    authorName: "Product Hunt",
+    originalAuthorUrl: "https://www.producthunt.com/",
     toolNames: readToolNames(post),
     tags: buildTags(post, type),
     status: "approved",
