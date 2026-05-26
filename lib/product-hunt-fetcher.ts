@@ -414,9 +414,12 @@ function buildLocalChineseProductHuntCopy(
   const votes = Number(post.votesCount ?? 0);
   const comments = Number(post.commentsCount ?? 0);
   const title = clip(`${productName}：${useCase}`, 42);
-  const description = originalDescription
-    ? clip(`这是一个来自 Product Hunt 的${typeText}，主打${useCase}。原始介绍：${originalDescription}`, 110)
-    : `这是一个来自 Product Hunt 的${typeText}，主要帮助用户${useCase}。`;
+  const description = buildSpecificProductDescription({
+    productName,
+    originalDescription,
+    useCase,
+    typeText,
+  });
 
   return {
     title,
@@ -426,6 +429,59 @@ function buildLocalChineseProductHuntCopy(
     toolNames: Array.from(new Set(["Product Hunt", ...readToolNames(post), inferToolName(post)])).slice(0, 4),
     coverPrompt: buildCoverPrompt(productName, useCase, type),
   };
+}
+
+function buildSpecificProductDescription({
+  productName,
+  originalDescription,
+  useCase,
+  typeText,
+}: {
+  productName: string;
+  originalDescription: string;
+  useCase: string;
+  typeText: string;
+}) {
+  const text = originalDescription.toLowerCase();
+  const specific = inferSpecificProductValue(text);
+
+  if (specific) {
+    return clip(`${productName} 是一款${typeText}，${specific}`, 120);
+  }
+
+  return clip(`${productName} 用来${useCase}，适合想直接体验 AI 能力的用户快速试用和判断是否值得接入工作流。`, 120);
+}
+
+function inferSpecificProductValue(text: string) {
+  if (/context|memory|remember|knowledge/.test(text)) {
+    return "帮助 AI 应用保存、更新和调用上下文记忆，让助手更了解用户习惯和历史信息。";
+  }
+  if (/markdown|resume|cv|pdf/.test(text)) {
+    return "把 Markdown 内容转换成结构清晰的简历或 PDF，适合快速生成、预览和定制求职材料。";
+  }
+  if (/test|testing|code|developer|pull request|repo|github/.test(text)) {
+    return "面向开发者自动处理测试、代码检查或协作流程，减少手动排查和重复配置。";
+  }
+  if (/ux|research|interview|user/.test(text)) {
+    return "把用户研究、访谈和洞察整理流程 AI 化，帮助团队更快形成可执行的产品判断。";
+  }
+  if (/design|image|logo|brand|creative|poster/.test(text)) {
+    return "围绕设计、品牌或视觉内容生成提供 AI 辅助，降低从想法到成稿的制作成本。";
+  }
+  if (/video|clip|subtitle|short/.test(text)) {
+    return "面向视频创作和剪辑流程提供 AI 辅助，适合更快生成短视频内容或素材。";
+  }
+  if (/agent|assistant|chatbot|copilot/.test(text)) {
+    return "把 AI Agent 或助手能力包装成可直接使用的产品，适合处理对话、执行和自动化任务。";
+  }
+  if (/search|research|browser|web/.test(text)) {
+    return "面向搜索、资料研究或网页信息整理，让用户更快从大量信息中得到可用结论。";
+  }
+  if (/email|meeting|calendar|note|doc|productivity/.test(text)) {
+    return "处理邮件、会议、文档或待办等效率任务，减少日常办公里的重复操作。";
+  }
+
+  return "";
 }
 
 function parseProductHuntCopy(value: string): Partial<ProductHuntWorkCopy> {
@@ -442,14 +498,27 @@ function sanitizeProductHuntCopy(
   value: Partial<ProductHuntWorkCopy>,
   fallback: ProductHuntWorkCopy,
 ): ProductHuntWorkCopy {
+  const description = cleanText(value.description);
+
   return {
     title: clip(cleanText(value.title) || fallback.title, 48),
-    description: clip(cleanText(value.description) || fallback.description, 120),
+    description: clip(isGenericProductDescription(description) ? fallback.description : description || fallback.description, 120),
     whyInteresting: clip(cleanText(value.whyInteresting) || fallback.whyInteresting, 180),
     tags: sanitizeStringArray(value.tags, fallback.tags, 6),
     toolNames: sanitizeStringArray(value.toolNames, fallback.toolNames, 4),
     coverPrompt: cleanText(value.coverPrompt) || fallback.coverPrompt,
   };
+}
+
+function isGenericProductDescription(value: string) {
+  return (
+    !value ||
+    value.includes("来自 Product Hunt") ||
+    value.includes("主打") ||
+    value.includes("原始介绍") ||
+    value.includes("这是一个") ||
+    value.includes("这是款")
+  );
 }
 
 function sanitizeStringArray(value: unknown, fallback: string[], limit: number) {

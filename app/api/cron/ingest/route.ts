@@ -195,6 +195,7 @@ async function handleIngestRequest(request: Request) {
           ok: itchioRun.ok,
           count: itchioRun.count,
           error: itchioRun.error,
+          diagnostics: itchioRun.diagnostics,
           sourceLimit: itchioSourceLimit,
           reviewLimit: itchioReviewLimit,
           publishLimit: itchioPublishLimit,

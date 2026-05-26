@@ -38,6 +38,13 @@ export type ItchioFetchResult = {
   count: number;
   works: WorkItem[];
   error?: string;
+  diagnostics?: {
+    cardCount: number;
+    reviewedCount: number;
+    passedHardFilterCount: number;
+    scoredCount: number;
+    sourceCounts?: Record<string, number>;
+  };
 };
 
 const ITCHIO_SOURCE: WorkSource = "itchio";
@@ -99,13 +106,6 @@ const preferredKeywords = [
 const rejectKeywords = [
   "adult",
   "nsfw",
-  "asset pack",
-  "game assets",
-  "asset store",
-  "tools",
-  "toolkit",
-  "plugin",
-  "template",
   "source code only",
   "steam",
   "external download only",
@@ -130,15 +130,18 @@ export async function fetchItchioWorks({
     const sourceLimitPerPage = Math.max(1, Math.min(sourceLimit, 20));
     const reviewCount = Math.max(1, Math.min(reviewLimit, 10));
     const publishCount = Math.max(1, Math.min(publishLimit, reviewCount));
-    const cards = await fetchItchioGameCards(sourceLimitPerPage);
+    const { cards, sourceCounts } = await fetchItchioGameCards(sourceLimitPerPage);
     const uniqueCards = dedupeCards(cards).slice(0, reviewCount * 3);
+    let passedHardFilterCount = 0;
     const scored = await mapWithConcurrency(uniqueCards, 3, async (card) => {
       const detail = await fetchItchioGameDetail(card.url);
       if (!passesHardFilters(card, detail)) return null;
+      passedHardFilterCount += 1;
       const score = scoreItchioGame(card, detail);
       if (score < 75) return null;
       return { card, detail, score };
     });
+    const scoredItems = scored.filter((item): item is ScoredItchGame => Boolean(item));
     const works = scored
       .filter((item): item is ScoredItchGame => Boolean(item))
       .sort((left, right) => right.score - left.score)
@@ -150,6 +153,13 @@ export async function fetchItchioWorks({
       source: ITCHIO_SOURCE,
       count: works.length,
       works,
+      diagnostics: {
+        cardCount: cards.length,
+        reviewedCount: uniqueCards.length,
+        passedHardFilterCount,
+        scoredCount: scoredItems.length,
+        sourceCounts,
+      },
     };
   } catch (error) {
     return {
@@ -158,6 +168,13 @@ export async function fetchItchioWorks({
       count: 0,
       works: [],
       error: error instanceof Error ? error.message : "itch.io fetch failed",
+      diagnostics: {
+        cardCount: 0,
+        reviewedCount: 0,
+        passedHardFilterCount: 0,
+        scoredCount: 0,
+        sourceCounts: {},
+      },
     };
   }
 }
@@ -176,10 +193,17 @@ async function fetchItchioGameCards(sourceLimit: number) {
     }
 
     const html = await response.text();
-    return extractGameCards(html, source.url, source.label).slice(0, sourceLimit);
+    const cards = extractGameCards(html, source.url, source.label).slice(0, sourceLimit);
+    return {
+      label: source.label,
+      cards,
+    };
   });
 
-  return cardGroups.flat();
+  return {
+    cards: cardGroups.flatMap((group) => group.cards),
+    sourceCounts: Object.fromEntries(cardGroups.map((group) => [group.label, group.cards.length])),
+  };
 }
 
 function extractGameCards(html: string, sourceUrl: string, sourceLabel: string): ItchGameCard[] {
@@ -295,7 +319,9 @@ function passesHardFilters(card: ItchGameCard, detail: ItchGameDetail) {
     Number(detail.commentCount ?? 0) > 0 ||
     combinedText.includes("rated") ||
     combinedText.includes("comments");
-  const rejected = rejectKeywords.some((keyword) => combinedText.includes(keyword));
+  const rejected =
+    rejectKeywords.some((keyword) => combinedText.includes(keyword)) ||
+    isRejectedByContext(card, detail, combinedText);
   const downloadOnly =
     !playableInBrowser &&
     (combinedText.includes("download now") || combinedText.includes("install instructions"));
@@ -308,6 +334,24 @@ function passesHardFilters(card: ItchGameCard, detail: ItchGameDetail) {
     hasInteraction &&
     !rejected &&
     !downloadOnly
+  );
+}
+
+function isRejectedByContext(card: ItchGameCard, detail: ItchGameDetail, combinedText: string) {
+  const sourcePath = `${card.sourceUrl} ${card.url}`.toLowerCase();
+  const tags = detail.tags.join(" ").toLowerCase();
+
+  return (
+    sourcePath.includes("/game-assets") ||
+    sourcePath.includes("/tools") ||
+    /\basset\s+pack\b/.test(tags) ||
+    /\bgame\s+assets?\b/.test(tags) ||
+    /\btoolkit\b/.test(tags) ||
+    /\bplugin\b/.test(tags) ||
+    /\btemplate\b/.test(tags) ||
+    /\basset\s+pack\b/.test(card.title.toLowerCase()) ||
+    /\bgame\s+assets?\b/.test(card.title.toLowerCase()) ||
+    /\b(download|windows|macos|linux)\s+only\b/.test(combinedText)
   );
 }
 
@@ -400,14 +444,13 @@ function buildChineseTitle(card: ItchGameCard, detail: ItchGameDetail) {
 
 function buildChineseDescription(card: ItchGameCard, detail: ItchGameDetail) {
   const original = cleanText(detail.description || card.description);
-  const genre = card.genre ? `${card.genre} 类型` : "独立小游戏";
   const useCase = inferGameUseCase(card, detail);
+  const specific = inferSpecificGameIntro(card, detail);
 
-  if (original) {
-    return clipText(`一个 itch.io 上可直接试玩的 ${genre}，主打${useCase}。原始介绍：${original}`, 130);
-  }
+  if (specific) return clipText(specific, 130);
+  if (original) return clipText(`${card.title} 是一款${useCase}，核心玩法围绕「${translateGameBlurb(original)}」展开。`, 130);
 
-  return `一个 itch.io 上可直接试玩的 ${genre}，主打${useCase}，适合无需下载直接体验。`;
+  return `${card.title} 是一款${useCase}，打开 itch.io 页面后可以直接在浏览器里试玩。`;
 }
 
 function buildWhyInteresting(card: ItchGameCard, detail: ItchGameDetail, score: number) {
@@ -445,6 +488,52 @@ function inferGameUseCase(card: ItchGameCard, detail: ItchGameDetail) {
   if (text.includes("interactive fiction") || text.includes("visual novel")) return "把 AI 主题做成交互叙事";
   if (text.includes("puzzle")) return "把 AI 主题做成浏览器解谜体验";
   return "围绕 AI 主题做成可试玩的浏览器小游戏";
+}
+
+function inferSpecificGameIntro(card: ItchGameCard, detail: ItchGameDetail) {
+  const title = card.title;
+  const text = `${card.title} ${card.description} ${card.genre ?? ""} ${detail.description} ${detail.tags.join(" ")}`.toLowerCase();
+
+  if (/snake|贪吃蛇/.test(text) && /neural|machine learning|ai/.test(text)) {
+    return `${title} 是一款神经网络贪吃蛇实验游戏，玩家可以训练 AI 学会移动、吃食物并不断优化自己的表现。`;
+  }
+  if (/air fight|flying|bullet|dodge|dash/.test(text)) {
+    return `${title} 是一款浏览器动作小游戏，玩家围绕 AI 飞板进行躲避、冲刺和攻击，节奏更接近轻量街机玩法。`;
+  }
+  if (/chatgpt|narrator|ttrpg|npc|story|fiction|visual novel/.test(text)) {
+    return `${title} 把 AI 对话或叙事系统放进浏览器游戏里，玩家通过选择、输入或角色互动推动故事发展。`;
+  }
+  if (/quote|human|bot|tell|difference|citation|reference/.test(text)) {
+    return `${title} 把“人类还是 AI”做成判断题玩法，玩家需要从文本、引用或线索里辨别内容来源。`;
+  }
+  if (/maze|learn|solve|reinforcement/.test(text)) {
+    return `${title} 展示 AI 学习解谜或走迷宫的过程，适合直接观察算法如何逐步找到通关路径。`;
+  }
+  if (/image|keyword|generated|dall|draw/.test(text)) {
+    return `${title} 把 AI 生成图片、关键词或绘图结果做成谜题，玩家需要根据视觉线索完成判断或解答。`;
+  }
+  if (/satirical|startup|lab|model|investor|innovation/.test(text)) {
+    return `${title} 用讽刺小游戏的方式呈现 AI 创业、模型发布或技术泡沫，适合边玩边看行业梗。`;
+  }
+  if (/chess|tic tac toe|strategy|turn-based/.test(text)) {
+    return `${title} 把 AI 对弈或策略决策做成浏览器棋盘玩法，玩家可以直接体验人机博弈。`;
+  }
+
+  return "";
+}
+
+function translateGameBlurb(value: string) {
+  const text = value.toLowerCase();
+
+  if (/train.*snake|snake.*train|neural network/.test(text)) return "训练一条贪吃蛇，让它借助神经网络自己学习怎么玩";
+  if (/ai decides|decides your fate/.test(text)) return "由 AI 决定玩家命运的派对式互动玩法";
+  if (/quotes.*human.*ai|human.*ai/.test(text)) return "判断文本到底来自人类还是 AI";
+  if (/ai generated image|keywords/.test(text)) return "根据 AI 生成图片和关键词完成解谜";
+  if (/ai narrator|npc/.test(text)) return "由 AI 旁白和 NPC 推动单人角色扮演";
+  if (/self-playing|mini chess/.test(text)) return "观看或操控自动对弈的迷你棋局";
+  if (/satirical|generative ai/.test(text)) return "用互动叙事讽刺生成式 AI 项目和创业话术";
+
+  return value.length > 80 ? `${value.slice(0, 79)}…` : value;
 }
 
 function dedupeCards(cards: ItchGameCard[]) {
