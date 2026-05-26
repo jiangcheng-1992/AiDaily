@@ -43,6 +43,7 @@ export type ItchioFetchResult = {
     reviewedCount: number;
     passedHardFilterCount: number;
     scoredCount: number;
+    detailFailureCount?: number;
     sourceCounts?: Record<string, number>;
   };
 };
@@ -131,10 +132,16 @@ export async function fetchItchioWorks({
     const reviewCount = Math.max(1, Math.min(reviewLimit, 50));
     const publishCount = Math.max(1, Math.min(publishLimit, reviewCount));
     const { cards, sourceCounts } = await fetchItchioGameCards(sourceLimitPerPage);
-    const uniqueCards = dedupeCards(cards).slice(0, reviewCount * 3);
+    const uniqueCards = dedupeCards(cards).slice(0, reviewCount);
     let passedHardFilterCount = 0;
-    const scored = await mapWithConcurrency(uniqueCards, 3, async (card) => {
-      const detail = await fetchItchioGameDetail(card.url);
+    let detailFailureCount = 0;
+    const scored = await mapWithConcurrency(uniqueCards, 1, async (card, index) => {
+      if (index > 0) await sleep(850);
+      const detail = await fetchItchioGameDetail(card.url).catch(() => {
+        detailFailureCount += 1;
+        return null;
+      });
+      if (!detail) return null;
       if (!passesHardFilters(card, detail)) return null;
       passedHardFilterCount += 1;
       const score = scoreItchioGame(card, detail);
@@ -158,6 +165,7 @@ export async function fetchItchioWorks({
         reviewedCount: uniqueCards.length,
         passedHardFilterCount,
         scoredCount: scoredItems.length,
+        detailFailureCount,
         sourceCounts,
       },
     };
@@ -173,6 +181,7 @@ export async function fetchItchioWorks({
         reviewedCount: 0,
         passedHardFilterCount: 0,
         scoredCount: 0,
+        detailFailureCount: 0,
         sourceCounts: {},
       },
     };
@@ -565,6 +574,10 @@ async function fetchWithTimeout(url: string, init: RequestInit) {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function readJsonLdMetadata(html: string) {
