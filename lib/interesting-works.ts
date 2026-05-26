@@ -21,10 +21,9 @@ export type WorkSource =
 export type WorkStatus = "draft" | "pending" | "approved" | "rejected";
 export type WorkCategoryId =
   | "all"
-  | "image"
-  | "video"
-  | "site-project"
-  | "prompt-workflow";
+  | "media"
+  | "website-agent"
+  | "game";
 
 export type WorkItem = {
   id: string;
@@ -84,11 +83,26 @@ export const workSourceLabels: Record<WorkSource, string> = {
 
 export const interestingCategories: Array<{ id: WorkCategoryId; label: string }> = [
   { id: "all", label: "全部" },
-  { id: "image", label: "图片" },
-  { id: "video", label: "视频" },
-  { id: "site-project", label: "网站/项目" },
-  { id: "prompt-workflow", label: "Prompt/工作流" },
+  { id: "media", label: "图片/视频" },
+  { id: "website-agent", label: "网站/agent" },
+  { id: "game", label: "游戏" },
 ];
+
+export function getWorkCategoryId(work: WorkItem): Exclude<WorkCategoryId, "all"> {
+  if (work.source === "itchio") return "game";
+  if (work.type === "image" || work.type === "video") return "media";
+  return "website-agent";
+}
+
+export function workMatchesInterestingCategory(work: WorkItem, category: WorkCategoryId) {
+  if (category === "all") return true;
+  return getWorkCategoryId(work) === category;
+}
+
+export function getWorkTypeLabel(work: WorkItem) {
+  if (getWorkCategoryId(work) === "game") return "游戏";
+  return workTypeLabels[work.type];
+}
 
 export const interestingWorks: WorkItem[] = [
   {

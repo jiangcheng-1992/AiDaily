@@ -13,9 +13,10 @@ import {
 
 import { Card } from "@/components/ui/card";
 import {
+  getWorkTypeLabel,
   interestingCategories,
+  workMatchesInterestingCategory,
   workSourceLabels,
-  workTypeLabels,
   type WorkCategoryId,
   type WorkItem,
 } from "@/lib/interesting-works";
@@ -29,7 +30,7 @@ export function InterestingClient({ initialWorks }: { initialWorks: WorkItem[] }
   const works = useMemo(() => {
     return initialWorks
       .filter((work) => work.status === "approved")
-      .filter((work) => workMatchesCategory(work, category))
+      .filter((work) => workMatchesInterestingCategory(work, category))
       .sort((a, b) => Number(b.featured) - Number(a.featured) || b.heatScore - a.heatScore);
   }, [category, initialWorks]);
 
@@ -105,18 +106,6 @@ export function InterestingClient({ initialWorks }: { initialWorks: WorkItem[] }
   );
 }
 
-function workMatchesCategory(work: WorkItem, category: WorkCategoryId) {
-  if (category === "all") return true;
-  if (category === "site-project") {
-    return work.type === "website" || work.type === "app" || work.type === "github";
-  }
-  if (category === "prompt-workflow") {
-    return work.type === "prompt" || work.type === "workflow";
-  }
-
-  return work.type === category;
-}
-
 function InterestingWorkCard({
   work,
   liked,
@@ -149,7 +138,7 @@ function InterestingWorkCard({
             )}
           />
           <div className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-black text-slate-800 shadow-soft backdrop-blur">
-            {workTypeLabels[work.type]}
+            {getWorkTypeLabel(work)}
           </div>
           {work.type === "video" ? (
             <div className="absolute inset-0 flex items-center justify-center">

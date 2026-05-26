@@ -15,9 +15,9 @@ import { CopyPromptButton } from "@/components/copy-prompt-button";
 import { Card } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import {
+  getWorkTypeLabel,
   getRelatedInterestingWorks,
   workSourceLabels,
-  workTypeLabels,
 } from "@/lib/interesting-works";
 import { readGeneratedWorks } from "@/lib/generated-works-store";
 import { cn, formatCompactNumber, formatRelativeTime } from "@/lib/utils";
@@ -68,7 +68,7 @@ export default async function InterestingDetailPage({
             <div className="p-5 sm:p-7">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-black text-blue-700">
-                  {workTypeLabels[work.type]}
+                  {getWorkTypeLabel(work)}
                 </span>
                 <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-500">
                   {workSourceLabels[work.source]}
@@ -186,7 +186,7 @@ export default async function InterestingDetailPage({
             <div className="mt-4 grid gap-3 text-sm">
               <InfoRow label="作者" value={work.authorName ?? "匿名作者"} />
               <InfoRow label="来源" value={workSourceLabels[work.source]} />
-              <InfoRow label="类型" value={workTypeLabels[work.type]} />
+              <InfoRow label="类型" value={getWorkTypeLabel(work)} />
               <InfoRow label="热度" value={`${work.heatScore}`} />
             </div>
             <div className="mt-5 grid grid-cols-3 gap-2 text-center">
@@ -231,7 +231,7 @@ export default async function InterestingDetailPage({
                 <Card className="overflow-hidden rounded-[1.7rem] p-0 transition-transform hover:-translate-y-1 hover:shadow-lift">
                   <img src={item.coverUrl} alt={item.title} className="aspect-video w-full object-cover" />
                   <div className="p-4">
-                    <div className="text-xs font-black text-blue-700">{workTypeLabels[item.type]}</div>
+                    <div className="text-xs font-black text-blue-700">{getWorkTypeLabel(item)}</div>
                     <div className="mt-1 line-clamp-2 text-sm font-black leading-6 text-slate-950">
                       {item.title}
                     </div>
