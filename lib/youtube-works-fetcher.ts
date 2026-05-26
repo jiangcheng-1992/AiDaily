@@ -33,6 +33,30 @@ type ScoredYoutubeWork = {
   score: number;
 };
 
+type YoutubeRejectionReason =
+  | "missing-include-keyword"
+  | "excluded-keyword"
+  | "ip-risk"
+  | "too-short"
+  | "not-fresh-or-strong"
+  | "score-too-low";
+
+type YoutubeSourceDiagnostics = {
+  sourceId: string;
+  sourceName: string;
+  tier: YoutubeWorksSourceTier;
+  rawCount: number;
+  normalizedCount: number;
+  passedCount: number;
+  rejectedCount: number;
+  rejectionReasonCounts: Partial<Record<YoutubeRejectionReason, number>>;
+  rejectedSamples: Array<{
+    title: string;
+    score: number;
+    reasons: YoutubeRejectionReason[];
+  }>;
+};
+
 export type YoutubeWorksFetchResult = {
   ok: boolean;
   source: WorkSource;
@@ -45,6 +69,8 @@ export type YoutubeWorksFetchResult = {
     candidateCount: number;
     passedFilterCount: number;
     sourceErrors: Record<string, string>;
+    rejectionReasonCounts: Partial<Record<YoutubeRejectionReason, number>>;
+    sourceDiagnostics: YoutubeSourceDiagnostics[];
   };
 };
 
@@ -154,40 +180,98 @@ export async function fetchYoutubeWorks({
   const selectedSources = youtubeWorksSources.slice(0, Math.max(1, Math.min(sourceLimit, youtubeWorksSources.length)));
   const sourceErrors: Record<string, string> = {};
   const candidates: YoutubeVideoCandidate[] = [];
+  const sourceDiagnostics: YoutubeSourceDiagnostics[] = [];
   let resolvedSourceCount = 0;
 
   for (const [index, sourceConfig] of selectedSources.entries()) {
     if (index > 0) await sleep(800);
 
     try {
-      const items = await fetchSourceCandidates(sourceConfig, Math.max(1, Math.min(itemLimit, 5)));
+      const result = await fetchSourceCandidates(sourceConfig, Math.max(1, Math.min(itemLimit, 5)));
       resolvedSourceCount += 1;
-      candidates.push(...items);
+      candidates.push(...result.items);
+      sourceDiagnostics.push({
+        sourceId: sourceConfig.id,
+        sourceName: sourceConfig.name,
+        tier: sourceConfig.tier,
+        rawCount: result.rawCount,
+        normalizedCount: result.normalizedCount,
+        passedCount: 0,
+        rejectedCount: 0,
+        rejectionReasonCounts: {},
+        rejectedSamples: [],
+      });
     } catch (error) {
       sourceErrors[sourceConfig.id] = error instanceof Error ? error.message : "YouTube source failed";
+      sourceDiagnostics.push({
+        sourceId: sourceConfig.id,
+        sourceName: sourceConfig.name,
+        tier: sourceConfig.tier,
+        rawCount: 0,
+        normalizedCount: 0,
+        passedCount: 0,
+        rejectedCount: 0,
+        rejectionReasonCounts: {},
+        rejectedSamples: [],
+      });
     }
   }
 
-  const scored = candidates
-    .map((candidate) => ({ candidate, score: scoreCandidate(candidate) }))
-    .filter((item) => passesPublishingRules(item.candidate, item.score));
+  const rejectionReasonCounts: Partial<Record<YoutubeRejectionReason, number>> = {};
+  const scored: ScoredYoutubeWork[] = [];
+
+  for (const candidate of candidates) {
+    const score = scoreCandidate(candidate);
+    const reasons = getPublishingRejectionReasons(candidate, score);
+    const diagnostics = sourceDiagnostics.find((item) => item.sourceId === candidate.source.id);
+
+    if (reasons.length === 0) {
+      scored.push({ candidate, score });
+      if (diagnostics) diagnostics.passedCount += 1;
+      continue;
+    }
+
+    if (diagnostics) {
+      diagnostics.rejectedCount += 1;
+      for (const reason of reasons) {
+        diagnostics.rejectionReasonCounts[reason] = (diagnostics.rejectionReasonCounts[reason] ?? 0) + 1;
+      }
+      if (diagnostics.rejectedSamples.length < 3) {
+        diagnostics.rejectedSamples.push({
+          title: candidate.title,
+          score,
+          reasons,
+        });
+      }
+    }
+
+    for (const reason of reasons) {
+      rejectionReasonCounts[reason] = (rejectionReasonCounts[reason] ?? 0) + 1;
+    }
+  }
+
   const works = scored
     .sort((left, right) => right.score - left.score)
     .slice(0, Math.max(1, Math.min(publishLimit, 20)))
     .map(youtubeCandidateToWork);
+  const diagnostics = {
+    sourceCount: selectedSources.length,
+    resolvedSourceCount,
+    candidateCount: candidates.length,
+    passedFilterCount: scored.length,
+    sourceErrors,
+    rejectionReasonCounts,
+    sourceDiagnostics,
+  };
+
+  console.info("[youtube-works] diagnostics", diagnostics);
 
   return {
     ok: works.length > 0 || Object.keys(sourceErrors).length < selectedSources.length,
     source: YOUTUBE_SOURCE,
     count: works.length,
     works,
-    diagnostics: {
-      sourceCount: selectedSources.length,
-      resolvedSourceCount,
-      candidateCount: candidates.length,
-      passedFilterCount: scored.length,
-      sourceErrors,
-    },
+    diagnostics,
   };
 }
 
@@ -201,11 +285,15 @@ async function fetchSourceCandidates(sourceConfig: YoutubeWorksSource, limit: nu
   if (!response.ok) throw new Error(`RSS returned HTTP ${response.status}`);
 
   const rawItems = extractRawItems(parser.parse(await response.text())).slice(0, Math.max(limit * 4, limit));
-
-  return rawItems
+  const normalizedItems = rawItems
     .map((item) => normalizeYoutubeItem(sourceConfig, item))
-    .filter((item): item is YoutubeVideoCandidate => Boolean(item))
-    .slice(0, limit);
+    .filter((item): item is YoutubeVideoCandidate => Boolean(item));
+
+  return {
+    rawCount: rawItems.length,
+    normalizedCount: normalizedItems.length,
+    items: normalizedItems.slice(0, limit),
+  };
 }
 
 async function resolveChannelId(sourceConfig: YoutubeWorksSource) {
@@ -280,7 +368,7 @@ function normalizeYoutubeItem(sourceConfig: YoutubeWorksSource, item: RawYoutube
   };
 }
 
-function passesPublishingRules(candidate: YoutubeVideoCandidate, score: number) {
+function getPublishingRejectionReasons(candidate: YoutubeVideoCandidate, score: number) {
   const title = candidate.title.toLowerCase();
   const text = `${candidate.title} ${candidate.description}`.toLowerCase();
   const matchedInclude = includeKeywords.some((keyword) => title.includes(keyword));
@@ -290,15 +378,16 @@ function passesPublishingRules(candidate: YoutubeVideoCandidate, score: number) 
   const isFresh = isWithinDays(candidate.publishedAt, MAX_ITEM_AGE_DAYS);
   const hasStrongPerformance = candidate.viewCount >= STRONG_VIEW_THRESHOLD;
   const minScore = candidate.source.tier === "B" ? 78 : 70;
+  const reasons: YoutubeRejectionReason[] = [];
 
-  return (
-    matchedInclude &&
-    !matchedExclude &&
-    !matchedIpRisk &&
-    hasEnoughDuration &&
-    (isFresh || hasStrongPerformance) &&
-    score >= minScore
-  );
+  if (!matchedInclude) reasons.push("missing-include-keyword");
+  if (matchedExclude) reasons.push("excluded-keyword");
+  if (matchedIpRisk) reasons.push("ip-risk");
+  if (!hasEnoughDuration) reasons.push("too-short");
+  if (!isFresh && !hasStrongPerformance) reasons.push("not-fresh-or-strong");
+  if (score < minScore) reasons.push("score-too-low");
+
+  return reasons;
 }
 
 function scoreCandidate(candidate: YoutubeVideoCandidate) {
