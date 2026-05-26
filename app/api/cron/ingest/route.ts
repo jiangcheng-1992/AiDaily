@@ -82,7 +82,7 @@ async function handleIngestRequest(request: Request) {
   );
   const itchioReviewLimit = readNonNegativeInt(
     url.searchParams.get("itchioReviewLimit") ?? process.env.ITCHIO_REVIEW_LIMIT,
-    40,
+    60,
   );
   const itchioPublishLimit = readNonNegativeInt(
     url.searchParams.get("itchioPublishLimit") ?? process.env.ITCHIO_PUBLISH_LIMIT,

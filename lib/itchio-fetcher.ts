@@ -51,7 +51,7 @@ export type ItchioFetchResult = {
 const ITCHIO_SOURCE: WorkSource = "itchio";
 const ITCHIO_BASE_URL = "https://itch.io";
 const DEFAULT_SOURCE_LIMIT = 20;
-const DEFAULT_REVIEW_LIMIT = 40;
+const DEFAULT_REVIEW_LIMIT = 60;
 const DEFAULT_PUBLISH_LIMIT = 10;
 const itchioSourcePages = [
   {
@@ -79,6 +79,31 @@ const itchioSourcePages = [
     label: "Mobile Web games",
     aiTagged: false,
   },
+  {
+    url: "https://itch.io/games/html5/tag-arcade",
+    label: "HTML5 + arcade",
+    aiTagged: false,
+  },
+  {
+    url: "https://itch.io/games/html5/tag-action",
+    label: "HTML5 + action",
+    aiTagged: false,
+  },
+  {
+    url: "https://itch.io/games/html5/tag-puzzle",
+    label: "HTML5 + puzzle",
+    aiTagged: false,
+  },
+  {
+    url: "https://itch.io/games/html5/tag-platformer",
+    label: "HTML5 + platformer",
+    aiTagged: false,
+  },
+  {
+    url: "https://itch.io/games/html5/tag-strategy",
+    label: "HTML5 + strategy",
+    aiTagged: false,
+  },
 ];
 const aiKeywords = [
   "ai",
@@ -93,6 +118,43 @@ const aiKeywords = [
   "generative",
   "agent",
   "bot",
+];
+const lightInteractiveKeywords = [
+  "arcade",
+  "action",
+  "platformer",
+  "puzzle",
+  "runner",
+  "shooter",
+  "bullet",
+  "dodge",
+  "dash",
+  "jump",
+  "physics",
+  "maze",
+  "strategy",
+  "turn-based",
+  "clicker",
+  "idle",
+  "card",
+  "deck",
+  "rhythm",
+  "racing",
+  "snake",
+  "chess",
+  "tic tac toe",
+];
+const dialogueHeavyKeywords = [
+  "chatgpt",
+  "llm",
+  "ai narrator",
+  "narrator",
+  "interactive fiction",
+  "visual novel",
+  "conversation",
+  "dialogue",
+  "story-driven",
+  "ttrpg",
 ];
 const preferredKeywords = [
   "game jam",
@@ -129,10 +191,10 @@ export async function fetchItchioWorks({
 } = {}): Promise<ItchioFetchResult> {
   try {
     const sourceLimitPerPage = Math.max(1, Math.min(sourceLimit, 20));
-    const reviewCount = Math.max(1, Math.min(reviewLimit, 50));
+    const reviewCount = Math.max(1, Math.min(reviewLimit, 70));
     const publishCount = Math.max(1, Math.min(publishLimit, reviewCount));
     const { cards, sourceCounts } = await fetchItchioGameCards(sourceLimitPerPage);
-    const uniqueCards = dedupeCards(cards).slice(0, reviewCount);
+    const uniqueCards = selectReviewCards(cards, reviewCount);
     let passedHardFilterCount = 0;
     let detailFailureCount = 0;
     const scored = await mapWithConcurrency(uniqueCards, 1, async (card, index) => {
@@ -145,15 +207,12 @@ export async function fetchItchioWorks({
       if (!passesHardFilters(card, detail)) return null;
       passedHardFilterCount += 1;
       const score = scoreItchioGame(card, detail);
-      if (score < 78) return null;
+      const hasLightInteraction = hasAnyKeyword(buildGameText(card, detail), lightInteractiveKeywords);
+      if (score < 78 && !(hasLightInteraction && score >= 72)) return null;
       return { card, detail, score };
     });
     const scoredItems = scored.filter((item): item is ScoredItchGame => Boolean(item));
-    const works = scored
-      .filter((item): item is ScoredItchGame => Boolean(item))
-      .sort((left, right) => right.score - left.score)
-      .slice(0, publishCount)
-      .map(itchGameToWork);
+    const works = selectPublishGames(scoredItems, publishCount).map(itchGameToWork);
 
     return {
       ok: true,
@@ -305,19 +364,7 @@ async function fetchItchioGameDetail(url: string): Promise<ItchGameDetail> {
 }
 
 function passesHardFilters(card: ItchGameCard, detail: ItchGameDetail) {
-  const combinedText = [
-    card.title,
-    card.description,
-    card.genre,
-    card.sourceUrl,
-    detail.title,
-    detail.description,
-    detail.tags.join(" "),
-    detail.pageText,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
+  const combinedText = buildGameText(card, detail, card.sourceUrl);
   const sourceAllowsBrowser =
     card.sourceUrl.includes("/games/html5") || card.sourceUrl.includes("/platform-mobile-web");
   const playableInBrowser =
@@ -369,27 +416,18 @@ function isRejectedByContext(card: ItchGameCard, detail: ItchGameDetail, combine
 }
 
 function scoreItchioGame(card: ItchGameCard, detail: ItchGameDetail) {
-  const combinedText = [
-    card.title,
-    card.description,
-    card.genre,
-    card.sourceLabel,
-    detail.title,
-    detail.description,
-    detail.tags.join(" "),
-    detail.pageText,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
+  const combinedText = buildGameText(card, detail, card.sourceLabel);
   const ratingValue = Number(detail.ratingValue ?? 0);
   const ratingCount = Number(detail.ratingCount ?? 0);
   const commentCount = Number(detail.commentCount ?? 0);
+  const lightInteractionScore = Math.min(10, countKeywordMatches(combinedText, lightInteractiveKeywords) * 2);
+  const dialoguePenalty = Math.min(12, countKeywordMatches(combinedText, dialogueHeavyKeywords) * 3);
   const visualScore = Math.min(25, 12 + (detail.coverUrl || card.coverUrl ? 8 : 0) + Math.min(detail.screenshotCount, 5));
   const gameplayScore = Math.min(
-    20,
+    25,
     10 +
       (combinedText.includes("play in browser") || combinedText.includes("play in your browser") ? 6 : 0) +
+      lightInteractionScore +
       (detail.description.length > 80 ? 3 : 0) +
       (card.genre ? 2 : 0),
   );
@@ -414,7 +452,85 @@ function scoreItchioGame(card: ItchGameCard, detail: ItchGameDetail) {
   );
   const mobileScore = combinedText.includes("mobile") || card.sourceUrl.includes("platform-mobile-web") ? 5 : 0;
 
-  return visualScore + gameplayScore + aiScore + spreadScore + interactionScore + mobileScore;
+  return visualScore + gameplayScore + aiScore + spreadScore + interactionScore + mobileScore - dialoguePenalty;
+}
+
+function selectReviewCards(cards: ItchGameCard[], reviewCount: number) {
+  const uniqueCards = dedupeCards(cards);
+  const groups = new Map<string, ItchGameCard[]>();
+
+  for (const card of uniqueCards) {
+    const group = groups.get(card.sourceLabel) ?? [];
+    group.push(card);
+    groups.set(card.sourceLabel, group);
+  }
+
+  const selected: ItchGameCard[] = [];
+  const groupList = Array.from(groups.values());
+
+  while (selected.length < reviewCount && groupList.some((group) => group.length > 0)) {
+    for (const group of groupList) {
+      const next = group.shift();
+      if (!next) continue;
+      selected.push(next);
+      if (selected.length >= reviewCount) break;
+    }
+  }
+
+  return selected;
+}
+
+function selectPublishGames(items: ScoredItchGame[], publishCount: number) {
+  const sorted = [...items].sort((left, right) => {
+    const leftText = buildGameText(left.card, left.detail);
+    const rightText = buildGameText(right.card, right.detail);
+    const leftLight = hasAnyKeyword(leftText, lightInteractiveKeywords) ? 1 : 0;
+    const rightLight = hasAnyKeyword(rightText, lightInteractiveKeywords) ? 1 : 0;
+
+    return rightLight - leftLight || right.score - left.score;
+  });
+  const selected: ScoredItchGame[] = [];
+  const dialogueHeavy: ScoredItchGame[] = [];
+
+  for (const item of sorted) {
+    const text = buildGameText(item.card, item.detail);
+    const isDialogueHeavy = hasAnyKeyword(text, dialogueHeavyKeywords) && !hasAnyKeyword(text, lightInteractiveKeywords);
+
+    if (isDialogueHeavy) {
+      dialogueHeavy.push(item);
+      continue;
+    }
+
+    selected.push(item);
+    if (selected.length >= publishCount) return selected;
+  }
+
+  return [...selected, ...dialogueHeavy.sort((left, right) => right.score - left.score)].slice(0, publishCount);
+}
+
+function buildGameText(card: ItchGameCard, detail: ItchGameDetail, extra = "") {
+  return [
+    card.title,
+    card.description,
+    card.genre,
+    card.sourceLabel,
+    detail.title,
+    detail.description,
+    detail.tags.join(" "),
+    detail.pageText,
+    extra,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function hasAnyKeyword(text: string, keywords: string[]) {
+  return keywords.some((keyword) => text.includes(keyword));
+}
+
+function countKeywordMatches(text: string, keywords: string[]) {
+  return keywords.reduce((count, keyword) => count + (text.includes(keyword) ? 1 : 0), 0);
 }
 
 function itchGameToWork({ card, detail, score }: ScoredItchGame): WorkItem {
@@ -485,6 +601,9 @@ function buildTags(card: ItchGameCard, detail: ItchGameDetail) {
   const sourceText = `${card.sourceLabel} ${card.genre ?? ""} ${detail.tags.join(" ")}`.toLowerCase();
   const tags = ["AI小游戏", "H5游戏", "浏览器可玩", "无需下载"];
 
+  if (hasAnyKeyword(sourceText, ["arcade", "action", "platformer", "runner", "shooter"])) tags.push("轻互动");
+  if (sourceText.includes("puzzle")) tags.push("解谜");
+  if (sourceText.includes("strategy") || sourceText.includes("turn-based")) tags.push("策略");
   if (sourceText.includes("jam")) tags.push("GameJam");
   if (sourceText.includes("interactive")) tags.push("互动叙事");
   if (sourceText.includes("experimental")) tags.push("实验游戏");
@@ -497,11 +616,14 @@ function inferGameUseCase(card: ItchGameCard, detail: ItchGameDetail) {
   const text = `${card.title} ${card.description} ${card.genre ?? ""} ${detail.description} ${detail.tags.join(" ")}`.toLowerCase();
 
   if (text.includes("neural") || text.includes("machine learning")) return "用神经网络或机器学习参与玩法";
+  if (/arcade|action|runner|shooter|bullet|dodge|dash/.test(text)) return "把 AI 主题做成轻量动作或街机玩法";
+  if (/platformer|jump/.test(text)) return "把 AI 主题做成平台跳跃小游戏";
+  if (/puzzle|maze|solve/.test(text)) return "把 AI 主题做成浏览器解谜体验";
+  if (/card|deck|chess|tic tac toe|turn-based|strategy/.test(text)) return "把 AI 概念做成人机博弈或策略玩法";
   if (text.includes("chatgpt") || text.includes("llm") || text.includes("narrator")) return "用 AI 对话或叙事驱动游戏";
   if (text.includes("generated") || text.includes("generative")) return "使用 AI 生成内容做关卡或谜题";
   if (text.includes("simulation")) return "把 AI 概念做成模拟经营或策略玩法";
   if (text.includes("interactive fiction") || text.includes("visual novel")) return "把 AI 主题做成交互叙事";
-  if (text.includes("puzzle")) return "把 AI 主题做成浏览器解谜体验";
   return "围绕 AI 主题做成可试玩的浏览器小游戏";
 }
 
@@ -514,6 +636,18 @@ function inferSpecificGameIntro(card: ItchGameCard, detail: ItchGameDetail) {
   }
   if (/air fight|flying|bullet|dodge|dash/.test(text)) {
     return `${title} 是一款浏览器动作小游戏，玩家围绕 AI 飞板进行躲避、冲刺和攻击，节奏更接近轻量街机玩法。`;
+  }
+  if (/arcade|action|runner|shooter|bullet|dodge|dash/.test(text)) {
+    return `${title} 是一款偏轻互动的浏览器小游戏，核心体验更接近街机动作、躲避或快速反应玩法。`;
+  }
+  if (/platformer|jump/.test(text)) {
+    return `${title} 把 AI 主题放进平台跳跃玩法里，玩家可以直接用键盘操作角色完成关卡挑战。`;
+  }
+  if (/puzzle|maze|solve|keyword|draw/.test(text)) {
+    return `${title} 把 AI 概念包装成轻量解谜，玩家通过观察线索、移动或选择来完成浏览器内挑战。`;
+  }
+  if (/card|deck|chess|tic tac toe|turn-based|strategy/.test(text)) {
+    return `${title} 把 AI 决策或人机博弈做成策略小游戏，适合短时间试玩和观察规则变化。`;
   }
   if (/chatgpt|narrator|ttrpg|npc|story|fiction|visual novel/.test(text)) {
     return `${title} 把 AI 对话或叙事系统放进浏览器游戏里，玩家通过选择、输入或角色互动推动故事发展。`;
