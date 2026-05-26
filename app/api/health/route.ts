@@ -64,6 +64,13 @@ export async function GET() {
           bilibiliRssHub: Boolean(process.env.RSSHUB_BASE_URL),
         },
       },
+      x: {
+        configured: Boolean(process.env.X_BEARER_TOKEN || process.env.TWITTER_BEARER_TOKEN),
+        sourceLimit: readNonNegativeNumber(process.env.X_SOURCE_LIMIT, 24),
+        itemLimit: readPositiveNumber(process.env.X_ITEMS_PER_SOURCE, 3),
+        keywordQueryLimit: readNonNegativeNumber(process.env.X_KEYWORD_QUERY_LIMIT, 0),
+        publishLimit: readNonNegativeNumber(process.env.X_PUBLISH_LIMIT, 12),
+      },
       works: {
         productHunt: {
           configured: Boolean(process.env.PRODUCT_HUNT_TOKEN || process.env.PRODUCTHUNT_TOKEN),

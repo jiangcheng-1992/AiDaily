@@ -69,6 +69,22 @@ async function handleIngestRequest(request: Request) {
     url.searchParams.get("submittedSourceLimit") ?? process.env.SUBMITTED_SOURCE_LIMIT,
     8,
   );
+  const xSourceLimit = readNonNegativeInt(
+    url.searchParams.get("xSourceLimit") ?? process.env.X_SOURCE_LIMIT,
+    24,
+  );
+  const xItemLimit = readPositiveInt(
+    url.searchParams.get("xItemLimit") ?? process.env.X_ITEMS_PER_SOURCE,
+    3,
+  );
+  const xKeywordLimit = readNonNegativeInt(
+    url.searchParams.get("xKeywordLimit") ?? process.env.X_KEYWORD_QUERY_LIMIT,
+    0,
+  );
+  const xPublishLimit = readNonNegativeInt(
+    url.searchParams.get("xPublishLimit") ?? process.env.X_PUBLISH_LIMIT,
+    12,
+  );
   const productHuntWeeklyLimit = readNonNegativeInt(
     url.searchParams.get("productHuntWeeklyLimit") ?? process.env.PRODUCT_HUNT_WEEKLY_LIMIT,
     50,
@@ -111,6 +127,10 @@ async function handleIngestRequest(request: Request) {
     backupVideoSourceLimit,
     backupVideoItemLimit,
     submittedSourceLimit,
+    xSourceLimit,
+    xItemLimit,
+    xKeywordLimit,
+    xPublishLimit,
   });
   const current = await readGeneratedFeed({ includeSkills: true, allowFallback: false });
   const hasIncomingFeed = run.posts.length > 0 || Object.keys(run.comments).length > 0;
@@ -252,6 +272,7 @@ async function handleIngestRequest(request: Request) {
         postCount: run.video.postCount,
         sources: run.video.sources,
       },
+      x: run.x,
       works: {
         productHunt: {
           ok: worksRun.ok,
@@ -286,7 +307,7 @@ async function handleIngestRequest(request: Request) {
         skippedPersistBecauseWorksWouldShrink: wouldShrinkExistingWorks,
       },
       message:
-        "已完成 AI 文章源、GitHub 热门 Skill、Product Hunt AI 作品、itch.io 浏览器小游戏抓取，并独立尝试抖音、YouTube、B站等视频源抓取。视频或作品源失败不会影响文章落地；公开来源使用真实互动指标，不提供互动指标的来源不会编造点赞数。",
+        "已完成 AI 文章源、X 权威账号雷达、GitHub 热门 Skill、Product Hunt AI 作品、itch.io 浏览器小游戏抓取，并独立尝试抖音、YouTube、B站等视频源抓取。视频、X 或作品源失败不会影响文章落地；公开来源使用真实互动指标，不提供互动指标的来源不会编造点赞数。",
       sources: run.sources,
       github: run.github,
     },

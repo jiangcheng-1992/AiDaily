@@ -135,6 +135,22 @@ function buildLocalIngestUrl() {
     url.searchParams.set("submittedSourceLimit", process.env.AUTO_INGEST_SUBMITTED_SOURCE_LIMIT);
   }
 
+  if (process.env.AUTO_INGEST_X_SOURCE_LIMIT) {
+    url.searchParams.set("xSourceLimit", process.env.AUTO_INGEST_X_SOURCE_LIMIT);
+  }
+
+  if (process.env.AUTO_INGEST_X_ITEM_LIMIT) {
+    url.searchParams.set("xItemLimit", process.env.AUTO_INGEST_X_ITEM_LIMIT);
+  }
+
+  if (process.env.AUTO_INGEST_X_KEYWORD_LIMIT) {
+    url.searchParams.set("xKeywordLimit", process.env.AUTO_INGEST_X_KEYWORD_LIMIT);
+  }
+
+  if (process.env.AUTO_INGEST_X_PUBLISH_LIMIT) {
+    url.searchParams.set("xPublishLimit", process.env.AUTO_INGEST_X_PUBLISH_LIMIT);
+  }
+
   if (process.env.AUTO_INGEST_PRODUCT_HUNT_WEEKLY_LIMIT) {
     url.searchParams.set(
       "productHuntWeeklyLimit",

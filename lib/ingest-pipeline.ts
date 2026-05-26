@@ -2,6 +2,7 @@ import { autoIngestSources, type AiSource } from "@/lib/ai-sources";
 import { generateProductionAiComments } from "@/lib/ai-comment-service";
 import { fetchBackupVideoItems } from "@/lib/backup-video-fetcher";
 import { fetchDouyinVideoItems, type DouyinVideoItem } from "@/lib/douyin-video-fetcher";
+import { fetchXFeedPosts } from "@/lib/x-feed-fetcher";
 import {
   fetchGithubRepoIssueComments,
   fetchHotGithubSkillRepos,
@@ -51,6 +52,15 @@ export type IngestRunResult = {
       error?: string;
     }>;
   };
+  x: {
+    ok: boolean;
+    configured: boolean;
+    count: number;
+    sourceCount: number;
+    keywordQueryCount: number;
+    error?: string;
+    diagnostics?: unknown;
+  };
 };
 
 export async function runIngestPipeline({
@@ -62,6 +72,10 @@ export async function runIngestPipeline({
   backupVideoSourceLimit = 6,
   backupVideoItemLimit = 2,
   submittedSourceLimit = 8,
+  xSourceLimit = 24,
+  xItemLimit = 3,
+  xKeywordLimit = 0,
+  xPublishLimit = 12,
   generateAiComments = true,
 }: {
   sourceLimit?: number;
@@ -72,6 +86,10 @@ export async function runIngestPipeline({
   backupVideoSourceLimit?: number;
   backupVideoItemLimit?: number;
   submittedSourceLimit?: number;
+  xSourceLimit?: number;
+  xItemLimit?: number;
+  xKeywordLimit?: number;
+  xPublishLimit?: number;
   generateAiComments?: boolean;
 }): Promise<IngestRunResult> {
   const sources = autoIngestSources.slice(0, sourceLimit);
@@ -87,6 +105,12 @@ export async function runIngestPipeline({
     backupVideoSourceLimit,
     backupVideoItemLimit,
   });
+  const xResult = await fetchXFeedPosts({
+    sourceLimit: xSourceLimit,
+    itemLimit: xItemLimit,
+    keywordLimit: xKeywordLimit,
+    publishLimit: xPublishLimit,
+  });
   const githubResult = await fetchGithubPosts(githubLimit);
   const githubAttempted = githubLimit > 0;
   const posts = [
@@ -94,6 +118,7 @@ export async function runIngestPipeline({
     ...sourcePosts,
     ...submittedResult.posts,
     ...videoResult.posts,
+    ...xResult.posts,
   ].sort(
     (a, b) => getPostPublishedSortTime(b) - getPostPublishedSortTime(a),
   );
@@ -156,6 +181,15 @@ export async function runIngestPipeline({
       error: githubResult.error,
     },
     video: videoResult,
+    x: {
+      ok: xResult.ok,
+      configured: xResult.diagnostics.configured,
+      count: xResult.count,
+      sourceCount: xResult.diagnostics.sourceCount,
+      keywordQueryCount: xResult.diagnostics.keywordQueryCount,
+      error: xResult.error,
+      diagnostics: xResult.diagnostics,
+    },
   };
 }
 
