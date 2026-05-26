@@ -38,7 +38,8 @@ import {
   formatVideoDuration,
 } from "@/lib/utils";
 
-const detailAdSlot = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_DETAIL_SLOT;
+const DEFAULT_DETAIL_AD_SLOT = "4648080221";
+const detailAdSlot = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_DETAIL_SLOT || DEFAULT_DETAIL_AD_SLOT;
 
 export function PostDetailClient({
   postId,
