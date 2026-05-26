@@ -149,6 +149,18 @@ function buildLocalIngestUrl() {
     );
   }
 
+  if (process.env.AUTO_INGEST_ITCHIO_SOURCE_LIMIT) {
+    url.searchParams.set("itchioSourceLimit", process.env.AUTO_INGEST_ITCHIO_SOURCE_LIMIT);
+  }
+
+  if (process.env.AUTO_INGEST_ITCHIO_REVIEW_LIMIT) {
+    url.searchParams.set("itchioReviewLimit", process.env.AUTO_INGEST_ITCHIO_REVIEW_LIMIT);
+  }
+
+  if (process.env.AUTO_INGEST_ITCHIO_PUBLISH_LIMIT) {
+    url.searchParams.set("itchioPublishLimit", process.env.AUTO_INGEST_ITCHIO_PUBLISH_LIMIT);
+  }
+
   return url;
 }
 

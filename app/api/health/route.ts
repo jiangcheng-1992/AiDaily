@@ -70,6 +70,12 @@ export async function GET() {
           weeklyLimit: readNonNegativeNumber(process.env.PRODUCT_HUNT_WEEKLY_LIMIT, 50),
           dailyLimit: readNonNegativeNumber(process.env.PRODUCT_HUNT_DAILY_LIMIT, 20),
         },
+        itchio: {
+          configured: true,
+          sourceLimit: readNonNegativeNumber(process.env.ITCHIO_SOURCE_LIMIT, 20),
+          reviewLimit: readNonNegativeNumber(process.env.ITCHIO_REVIEW_LIMIT, 10),
+          publishLimit: readNonNegativeNumber(process.env.ITCHIO_PUBLISH_LIMIT, 3),
+        },
       },
     },
     aiComments: {

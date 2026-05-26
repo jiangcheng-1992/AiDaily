@@ -102,7 +102,7 @@ export default async function InterestingDetailPage({
                     rel="noreferrer"
                     className={cn(buttonVariants({ variant: "gradient", size: "lg" }))}
                   >
-                    查看作品
+                    {work.source === "itchio" ? "直接试玩" : "查看作品"}
                     <ArrowUpRight className="h-4 w-4" />
                   </a>
                 ) : null}

@@ -11,6 +11,7 @@ export type WorkSource =
   | "user"
   | "editor"
   | "producthunt"
+  | "itchio"
   | "youtube"
   | "huggingface"
   | "github"
@@ -73,6 +74,7 @@ export const workSourceLabels: Record<WorkSource, string> = {
   user: "用户投稿",
   editor: "编辑精选",
   producthunt: "Product Hunt",
+  itchio: "itch.io",
   youtube: "YouTube",
   huggingface: "Hugging Face",
   github: "GitHub",

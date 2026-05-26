@@ -196,6 +196,11 @@ function InterestingWorkCard({
           </span>
           <span>{formatRelativeTime(work.publishedAt ?? work.createdAt)}</span>
         </div>
+        {work.source === "itchio" ? (
+          <div className="mt-3 inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-700">
+            无需下载 · 浏览器可玩
+          </div>
+        ) : null}
         <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
           <div className="flex gap-3 text-[11px] font-bold text-slate-400">
             <span className="inline-flex items-center gap-1">
@@ -234,7 +239,7 @@ function InterestingWorkCard({
           href={`/interesting/${work.id}`}
           className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-slate-950 px-4 py-2.5 text-xs font-black text-white transition-colors hover:bg-blue-700"
         >
-          查看作品
+          {work.source === "itchio" ? "直接试玩" : "查看作品"}
           <ArrowUpRight className="h-3.5 w-3.5" />
         </Link>
       </div>
