@@ -350,15 +350,15 @@ function normalizeUrl(value: string | undefined) {
 function normalizeChineseDate(value: string | undefined) {
   if (!value) return new Date().toISOString();
   const match = value.match(
-    /(?<year>\d{4})年(?<month>\d{1,2})月(?<day>\d{1,2})日\s*(?<hour>\d{1,2}):(?<minute>\d{2})/,
+    /(\d{4})年(\d{1,2})月(\d{1,2})日\s*(\d{1,2}):(\d{2})/,
   );
-  if (!match?.groups) return new Date().toISOString();
+  if (!match) return new Date().toISOString();
 
-  const year = Number(match.groups.year);
-  const month = Number(match.groups.month);
-  const day = Number(match.groups.day);
-  const hour = Number(match.groups.hour);
-  const minute = Number(match.groups.minute);
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
   return new Date(Date.UTC(year, month - 1, day, hour, minute)).toISOString();
 }
 
