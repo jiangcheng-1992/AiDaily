@@ -16,6 +16,7 @@ import { getWorkCategoryId, type WorkItem } from "@/lib/interesting-works";
 import type { Comment } from "@/lib/mock-data";
 import { runIngestPipeline } from "@/lib/ingest-pipeline";
 import { fetchItchioWorks } from "@/lib/itchio-fetcher";
+import { fetchLiblibWorks } from "@/lib/liblib-works-fetcher";
 import { fetchProductHuntWorks } from "@/lib/product-hunt-fetcher";
 import { fetchVimeoWorks } from "@/lib/vimeo-works-fetcher";
 import { fetchYoutubeWorks } from "@/lib/youtube-works-fetcher";
@@ -127,6 +128,14 @@ async function handleIngestRequest(request: Request) {
     url.searchParams.get("youtubeWorksPublishLimit") ?? process.env.YOUTUBE_WORKS_PUBLISH_LIMIT,
     10,
   );
+  const liblibWorksItemLimit = readNonNegativeInt(
+    url.searchParams.get("liblibWorksItemLimit") ?? process.env.LIBLIB_WORKS_ITEM_LIMIT,
+    24,
+  );
+  const liblibWorksPublishLimit = readNonNegativeInt(
+    url.searchParams.get("liblibWorksPublishLimit") ?? process.env.LIBLIB_WORKS_PUBLISH_LIMIT,
+    10,
+  );
   const vimeoWorksPageLimit = readNonNegativeInt(
     url.searchParams.get("vimeoWorksPageLimit") ?? process.env.VIMEO_WORKS_PAGE_LIMIT,
     2,
@@ -195,6 +204,7 @@ async function handleIngestRequest(request: Request) {
     effectiveItchioSettings.publishLimit > 0;
   const shouldFetchYoutubeWorks =
     youtubeWorksSourceLimit > 0 && youtubeWorksItemLimit > 0 && youtubeWorksPublishLimit > 0;
+  const shouldFetchLiblibWorks = liblibWorksItemLimit > 0 && liblibWorksPublishLimit > 0;
   const shouldFetchVimeoWorks =
     vimeoWorksPageLimit > 0 && vimeoWorksItemLimit > 0 && vimeoWorksPublishLimit > 0;
   const worksRun = shouldFetchProductHunt
@@ -233,6 +243,17 @@ async function handleIngestRequest(request: Request) {
         count: 0,
         works: [],
       };
+  const liblibWorksRun = shouldFetchLiblibWorks
+    ? await fetchLiblibWorks({
+        itemLimit: liblibWorksItemLimit,
+        publishLimit: liblibWorksPublishLimit,
+      })
+    : {
+        ok: true,
+        source: "liblib" as const,
+        count: 0,
+        works: [],
+      };
   const vimeoWorksRun = shouldFetchVimeoWorks
     ? await fetchVimeoWorks({
         pageLimit: vimeoWorksPageLimit,
@@ -249,6 +270,7 @@ async function handleIngestRequest(request: Request) {
     ...worksRun.works,
     ...itchioRun.works,
     ...youtubeWorksRun.works,
+    ...liblibWorksRun.works,
     ...vimeoWorksRun.works,
   ];
   const worksSourceStatus = {
@@ -292,6 +314,16 @@ async function handleIngestRequest(request: Request) {
           },
         }
       : {}),
+    ...(shouldFetchLiblibWorks
+      ? {
+          liblib: {
+            ok: liblibWorksRun.ok,
+            count: liblibWorksRun.count,
+            fetchedAt: run.fetchedAt,
+            error: liblibWorksRun.error,
+          },
+        }
+      : {}),
   };
   const nextWorks = mergeGeneratedWorks({
     current: currentWorks,
@@ -324,13 +356,18 @@ async function handleIngestRequest(request: Request) {
     run.video.successCount > 0 ||
     run.x.count > 0;
   const worksAttempted =
-    shouldFetchProductHunt || shouldFetchItchio || shouldFetchYoutubeWorks || shouldFetchVimeoWorks;
+    shouldFetchProductHunt ||
+    shouldFetchItchio ||
+    shouldFetchYoutubeWorks ||
+    shouldFetchLiblibWorks ||
+    shouldFetchVimeoWorks;
   const worksOk =
     !worksAttempted ||
     incomingWorks.length > 0 ||
     worksRun.ok ||
     itchioRun.ok ||
     youtubeWorksRun.ok ||
+    liblibWorksRun.ok ||
     vimeoWorksRun.ok;
   const ingestOk = feedOk && worksOk;
 
@@ -391,6 +428,15 @@ async function handleIngestRequest(request: Request) {
           publishLimit: youtubeWorksPublishLimit,
           skipped: !shouldFetchYoutubeWorks,
         },
+        liblib: {
+          ok: liblibWorksRun.ok,
+          count: liblibWorksRun.count,
+          error: liblibWorksRun.error,
+          diagnostics: liblibWorksRun.diagnostics,
+          itemLimit: liblibWorksItemLimit,
+          publishLimit: liblibWorksPublishLimit,
+          skipped: !shouldFetchLiblibWorks,
+        },
         vimeo: {
           ok: vimeoWorksRun.ok,
           count: vimeoWorksRun.count,
@@ -407,7 +453,7 @@ async function handleIngestRequest(request: Request) {
         skippedPersistBecauseWorksWouldShrink: wouldShrinkExistingWorks,
       },
       message:
-        "已完成 AI 文章源、X 权威账号雷达、GitHub 热门 Skill、Product Hunt AI 作品、itch.io 浏览器小游戏，以及 YouTube / Vimeo 视频作品抓取。视频、X 或作品源失败不会影响文章落地。",
+        "已完成 AI 文章源、X 权威账号雷达、GitHub 热门 Skill、Product Hunt AI 作品、itch.io 浏览器小游戏，以及 YouTube / Liblib / Vimeo 视频作品抓取。视频、X 或作品源失败不会影响文章落地。",
       sources: run.sources,
       github: run.github,
     },

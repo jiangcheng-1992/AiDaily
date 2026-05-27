@@ -14,6 +14,7 @@ export type WorkSource =
   | "itchio"
   | "youtube"
   | "vimeo"
+  | "liblib"
   | "huggingface"
   | "github"
   | "hackernews"
@@ -79,6 +80,7 @@ export const workSourceLabels: Record<WorkSource, string> = {
   itchio: "itch.io",
   youtube: "YouTube",
   vimeo: "Vimeo",
+  liblib: "Liblib",
   huggingface: "Hugging Face",
   github: "GitHub",
   hackernews: "Hacker News",

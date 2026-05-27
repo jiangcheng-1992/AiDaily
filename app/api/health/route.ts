@@ -95,6 +95,11 @@ export async function GET() {
           itemLimit: readNonNegativeNumber(process.env.YOUTUBE_WORKS_ITEM_LIMIT, 5),
           publishLimit: readNonNegativeNumber(process.env.YOUTUBE_WORKS_PUBLISH_LIMIT, 10),
         },
+        liblib: {
+          configured: true,
+          itemLimit: readNonNegativeNumber(process.env.LIBLIB_WORKS_ITEM_LIMIT, 24),
+          publishLimit: readNonNegativeNumber(process.env.LIBLIB_WORKS_PUBLISH_LIMIT, 10),
+        },
         vimeo: {
           configured: true,
           pageLimit: readNonNegativeNumber(process.env.VIMEO_WORKS_PAGE_LIMIT, 2),

@@ -1,4 +1,5 @@
 import { fetchItchioWorks } from "@/lib/itchio-fetcher";
+import { fetchLiblibWorks } from "@/lib/liblib-works-fetcher";
 import { fetchProductHuntWorks } from "@/lib/product-hunt-fetcher";
 import { fetchVimeoWorks } from "@/lib/vimeo-works-fetcher";
 import { fetchYoutubeWorks } from "@/lib/youtube-works-fetcher";
@@ -70,6 +71,17 @@ async function rebuildGeneratedWorks(reason: string) {
         count: 0,
         works: [],
       };
+  const liblibRun = shouldFetchLiblibWorks()
+    ? await fetchLiblibWorks({
+        itemLimit: readNonNegativeInt(process.env.LIBLIB_WORKS_ITEM_LIMIT, 24),
+        publishLimit: readNonNegativeInt(process.env.LIBLIB_WORKS_PUBLISH_LIMIT, 10),
+      })
+    : {
+        ok: true,
+        source: "liblib" as const,
+        count: 0,
+        works: [],
+      };
   const vimeoRun = shouldFetchVimeoWorks()
     ? await fetchVimeoWorks({
         pageLimit: readNonNegativeInt(process.env.VIMEO_WORKS_PAGE_LIMIT, 2),
@@ -82,7 +94,13 @@ async function rebuildGeneratedWorks(reason: string) {
         count: 0,
         works: [],
       };
-  const incomingWorks = [...productHuntRun.works, ...itchioRun.works, ...youtubeRun.works, ...vimeoRun.works];
+  const incomingWorks = [
+    ...productHuntRun.works,
+    ...itchioRun.works,
+    ...youtubeRun.works,
+    ...liblibRun.works,
+    ...vimeoRun.works,
+  ];
 
   if (incomingWorks.length === 0 && current.works.length === 0) {
     throw new Error("[works-rebuild] skipped persist because ingest returned no works");
@@ -110,6 +128,12 @@ async function rebuildGeneratedWorks(reason: string) {
         fetchedAt: new Date().toISOString(),
         error: youtubeRun.error,
       },
+      liblib: {
+        ok: liblibRun.ok,
+        count: liblibRun.count,
+        fetchedAt: new Date().toISOString(),
+        error: liblibRun.error,
+      },
       vimeo: {
         ok: vimeoRun.ok,
         count: vimeoRun.count,
@@ -128,6 +152,7 @@ async function rebuildGeneratedWorks(reason: string) {
     productHuntCount: productHuntRun.count,
     itchioCount: itchioRun.count,
     youtubeCount: youtubeRun.count,
+    liblibCount: liblibRun.count,
     vimeoCount: vimeoRun.count,
     totalWorkCount: nextWorks.works.length,
   });
@@ -154,6 +179,13 @@ function shouldFetchYoutubeWorks() {
     readNonNegativeInt(process.env.YOUTUBE_WORKS_SOURCE_LIMIT, 20) > 0 &&
     readNonNegativeInt(process.env.YOUTUBE_WORKS_ITEM_LIMIT, 3) > 0 &&
     readNonNegativeInt(process.env.YOUTUBE_WORKS_PUBLISH_LIMIT, 8) > 0
+  );
+}
+
+function shouldFetchLiblibWorks() {
+  return (
+    readNonNegativeInt(process.env.LIBLIB_WORKS_ITEM_LIMIT, 24) > 0 &&
+    readNonNegativeInt(process.env.LIBLIB_WORKS_PUBLISH_LIMIT, 10) > 0
   );
 }
 

@@ -272,7 +272,7 @@ const InterestingWorkCard = memo(function InterestingWorkCard({
             ? "查看 Skill"
             : work.source === "itchio"
             ? "直接试玩"
-            : work.source === "youtube" || work.source === "vimeo"
+            : work.source === "youtube" || work.source === "vimeo" || work.source === "liblib"
               ? "观看作品"
               : "查看作品"}
           <ArrowUpRight className="h-3.5 w-3.5" />
