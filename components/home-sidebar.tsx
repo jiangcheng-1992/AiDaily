@@ -352,5 +352,5 @@ function firstContentImage(post: Post) {
 }
 
 function pickReliableImage(...urls: Array<string | null | undefined>) {
-  return urls.find((url) => url && !isGeneratedPreviewImageUrl(url));
+  return urls.find((url) => url && !isGeneratedPreviewImageUrl(url)) ?? undefined;
 }
