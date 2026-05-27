@@ -44,6 +44,7 @@ export function HomeSidebar({
     works,
     skillWorks,
     periodDays: 7,
+    excludedPosterIds: new Set(todayPosters.map((item) => item.id)),
   });
 
   return (
@@ -138,42 +139,43 @@ function PosterSection({
           <Link
             key={item.id}
             href={item.href}
-            className="group block overflow-hidden rounded-[1.35rem] border border-slate-100 bg-white"
+            className="group block rounded-[1.1rem] border border-slate-100 bg-white px-3 py-2.5 transition-colors hover:border-slate-200 hover:bg-slate-50/70"
           >
-            <div className="relative h-[96px] overflow-hidden">
-              {item.coverUrl ? (
-                <img
-                  src={item.coverUrl}
-                  alt={item.title}
-                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-              ) : (
-                <div
-                  className={cn(
-                    "h-full w-full bg-gradient-to-br",
-                    item.accentClassName,
-                  )}
-                />
-              )}
-              <div className="absolute left-3 top-3 z-10">
-                <span
-                  className={cn(
-                    "inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-black shadow-sm backdrop-blur",
-                    getPosterKindClassName(item.kindLabel),
-                  )}
-                >
-                  {item.kindLabel}
-                </span>
+            <div className="grid grid-cols-[auto_64px_minmax(0,1fr)] items-center gap-2.5">
+              <span
+                className={cn(
+                  "inline-flex items-center justify-center rounded-full border px-2 py-1 text-[10px] font-black shadow-sm",
+                  getPosterKindClassName(item.kindLabel),
+                )}
+              >
+                {item.kindLabel}
+              </span>
+
+              <div className="relative h-12 overflow-hidden rounded-xl">
+                {item.coverUrl ? (
+                  <img
+                    src={item.coverUrl}
+                    alt={item.title}
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                ) : (
+                  <div
+                    className={cn(
+                      "h-full w-full bg-gradient-to-br",
+                      item.accentClassName,
+                    )}
+                  />
+                )}
               </div>
-              <div className="absolute inset-0 bg-gradient-to-r from-slate-950/82 via-slate-950/50 to-slate-950/15" />
-              <div className="absolute inset-x-0 bottom-0 p-3">
-                <div className="flex items-center justify-end gap-2">
-                  <span className="rounded-full bg-slate-950/70 px-2 py-1 text-[10px] font-bold text-white">
+
+              <div className="min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="line-clamp-2 text-[12px] font-black leading-4 text-slate-800 transition-colors group-hover:text-slate-950">
+                    {item.title}
+                  </div>
+                  <span className="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">
                     {item.meta}
                   </span>
-                </div>
-                <div className="mt-2 line-clamp-2 text-[13px] font-black leading-5 text-white">
-                  {item.title}
                 </div>
               </div>
             </div>
@@ -206,27 +208,35 @@ function buildSidebarPosterGroup({
   works,
   skillWorks,
   periodDays,
+  excludedPosterIds,
 }: {
   posts: Post[];
   works: WorkItem[];
   skillWorks: WorkItem[];
   periodDays: number;
+  excludedPosterIds?: Set<string>;
 }) {
   return [
-    pickLatestArticlePoster(posts, periodDays),
-    pickLatestWorkPoster(works, periodDays, "video"),
-    pickLatestWorkPoster(works, periodDays, "game"),
-    pickLatestWorkPoster(works, periodDays, "website"),
-    pickLatestSkillPoster(skillWorks, periodDays),
+    pickLatestArticlePoster(posts, periodDays, excludedPosterIds),
+    pickLatestWorkPoster(works, periodDays, "video", excludedPosterIds),
+    pickLatestWorkPoster(works, periodDays, "game", excludedPosterIds),
+    pickLatestWorkPoster(works, periodDays, "website", excludedPosterIds),
+    pickLatestSkillPoster(skillWorks, periodDays, excludedPosterIds),
   ].filter(Boolean) as SidebarPosterItem[];
 }
 
-function pickLatestArticlePoster(posts: Post[], periodDays: number): SidebarPosterItem | null {
+function pickLatestArticlePoster(
+  posts: Post[],
+  periodDays: number,
+  excludedPosterIds?: Set<string>,
+): SidebarPosterItem | null {
   const candidate = pickLatest(
     posts.filter((post) => post.type !== "skill" && post.type !== "video"),
     periodDays,
+    (post) => `article-${post.id}`,
     (post) => post.collectedAt || post.createdAt,
     (post) => post.likesCount + post.commentsCount * 2 + post.savesCount * 1.5,
+    excludedPosterIds,
   );
 
   if (!candidate) return null;
@@ -246,6 +256,7 @@ function pickLatestWorkPoster(
   works: WorkItem[],
   periodDays: number,
   target: "video" | "game" | "website",
+  excludedPosterIds?: Set<string>,
 ): SidebarPosterItem | null {
   const filtered = works.filter((work) => {
     const category = getWorkCategoryId(work);
@@ -257,8 +268,10 @@ function pickLatestWorkPoster(
   const candidate = pickLatest(
     filtered,
     periodDays,
+    (work) => `${target}-${work.id}`,
     (work) => work.publishedAt || work.createdAt,
     (work) => work.heatScore + work.likeCount * 0.2 + work.commentCount * 1.2,
+    excludedPosterIds,
   );
 
   if (!candidate) return null;
@@ -279,12 +292,18 @@ function pickLatestWorkPoster(
   };
 }
 
-function pickLatestSkillPoster(skillWorks: WorkItem[], periodDays: number): SidebarPosterItem | null {
+function pickLatestSkillPoster(
+  skillWorks: WorkItem[],
+  periodDays: number,
+  excludedPosterIds?: Set<string>,
+): SidebarPosterItem | null {
   const candidate = pickLatest(
     skillWorks,
     periodDays,
+    (work) => `skill-${work.id}`,
     (work) => work.publishedAt || work.createdAt,
     (work) => work.heatScore + work.favoriteCount * 0.5 + work.likeCount * 0.2,
+    excludedPosterIds,
   );
 
   if (!candidate) return null;
@@ -303,8 +322,10 @@ function pickLatestSkillPoster(skillWorks: WorkItem[], periodDays: number): Side
 function pickLatest<T>(
   items: T[],
   periodDays: number,
+  getId: (item: T) => string,
   getDate: (item: T) => string | undefined,
   getScore: (item: T) => number,
+  excludedPosterIds?: Set<string>,
 ) {
   const threshold = Date.now() - periodDays * 24 * 60 * 60 * 1000;
   const withinWindow = items.filter((item) => {
@@ -314,8 +335,12 @@ function pickLatest<T>(
     return Number.isFinite(time) && time >= threshold;
   });
   const source = withinWindow.length > 0 ? withinWindow : items;
+  const preferred = excludedPosterIds?.size
+    ? source.filter((item) => !excludedPosterIds.has(getId(item)))
+    : source;
+  const candidatePool = preferred.length > 0 ? preferred : source;
 
-  return [...source].sort((left, right) => {
+  return [...candidatePool].sort((left, right) => {
     const rightTime = new Date(getDate(right) ?? 0).getTime();
     const leftTime = new Date(getDate(left) ?? 0).getTime();
     return rightTime - leftTime || getScore(right) - getScore(left);
