@@ -98,6 +98,7 @@ export const interestingCategories: Array<{ id: WorkCategoryId; label: string }>
 export function getWorkCategoryId(work: WorkItem): Exclude<WorkCategoryId, "all"> {
   if (work.categoryHint) return work.categoryHint;
   if (work.source === "itchio") return "game";
+  if (work.source === "producthunt") return "website-agent";
   if (work.type === "image" || work.type === "video") return "media";
   return "website-agent";
 }
@@ -110,6 +111,9 @@ export function workMatchesInterestingCategory(work: WorkItem, category: WorkCat
 export function getWorkTypeLabel(work: WorkItem) {
   if (getWorkCategoryId(work) === "skill") return "Skill";
   if (getWorkCategoryId(work) === "game") return "游戏";
+  if (work.source === "producthunt" && (work.type === "image" || work.type === "video")) {
+    return "网站";
+  }
   return workTypeLabels[work.type];
 }
 

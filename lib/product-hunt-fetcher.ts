@@ -544,8 +544,6 @@ function inferWorkType(post: ProductHuntPost): WorkType {
   if (text.includes("prompt")) return "prompt";
   if (text.includes("workflow") || text.includes("automation")) return "workflow";
   if (text.includes("mobile") || text.includes("ios") || text.includes("android")) return "app";
-  if (text.includes("video")) return "video";
-  if (text.includes("image") || text.includes("design") || text.includes("poster")) return "image";
   return "website";
 }
 
