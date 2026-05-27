@@ -139,43 +139,42 @@ function PosterSection({
           <Link
             key={item.id}
             href={item.href}
-            className="group block rounded-[1.1rem] border border-slate-100 bg-white px-3 py-2.5 transition-colors hover:border-slate-200 hover:bg-slate-50/70"
+            className="group block overflow-hidden rounded-[1.35rem] border border-slate-100 bg-white"
           >
-            <div className="grid grid-cols-[auto_64px_minmax(0,1fr)] items-center gap-2.5">
-              <span
-                className={cn(
-                  "inline-flex items-center justify-center rounded-full border px-2 py-1 text-[10px] font-black shadow-sm",
-                  getPosterKindClassName(item.kindLabel),
-                )}
-              >
-                {item.kindLabel}
-              </span>
+            <div className="relative h-[96px] overflow-hidden">
+              {item.coverUrl ? (
+                <img
+                  src={item.coverUrl}
+                  alt={item.title}
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+              ) : (
+                <div
+                  className={cn(
+                    "h-full w-full bg-gradient-to-br",
+                    item.accentClassName,
+                  )}
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-950/84 via-slate-950/55 to-slate-950/20" />
 
-              <div className="relative h-12 overflow-hidden rounded-xl">
-                {item.coverUrl ? (
-                  <img
-                    src={item.coverUrl}
-                    alt={item.title}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                ) : (
-                  <div
-                    className={cn(
-                      "h-full w-full bg-gradient-to-br",
-                      item.accentClassName,
-                    )}
-                  />
-                )}
+              <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3">
+                <span
+                  className={cn(
+                    "inline-flex items-center justify-center rounded-full border px-2.5 py-1 text-[10px] font-black shadow-sm backdrop-blur",
+                    getPosterKindClassName(item.kindLabel),
+                  )}
+                >
+                  {item.kindLabel}
+                </span>
+                <span className="shrink-0 rounded-full bg-slate-950/70 px-2 py-1 text-[10px] font-bold text-white backdrop-blur">
+                  {item.meta}
+                </span>
               </div>
 
-              <div className="min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="line-clamp-2 text-[12px] font-black leading-4 text-slate-800 transition-colors group-hover:text-slate-950">
-                    {item.title}
-                  </div>
-                  <span className="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">
-                    {item.meta}
-                  </span>
+              <div className="absolute inset-x-0 bottom-0 p-3">
+                <div className="line-clamp-2 text-[13px] font-black leading-5 text-white">
+                  {item.title}
                 </div>
               </div>
             </div>
