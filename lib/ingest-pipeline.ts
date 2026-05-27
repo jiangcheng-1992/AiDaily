@@ -452,8 +452,9 @@ async function sourceItemToPost(item: SourceItem, source: AiSource): Promise<Pos
   const publishedAt = toIsoDate(item.publishedAt);
   const createdAt = publishedAt || collectedAt;
   const tags = uniqueTags([...item.tags, authorityLabel(source.authority)]).slice(0, 6);
-  const coverImageUrl = item.coverImageUrl || item.imageUrls?.[0] || firstContentBlockImage(item);
-  const imageUrls = item.imageUrls?.length ? item.imageUrls : coverImageUrl ? [coverImageUrl] : undefined;
+  const imageCandidates = collectArticleImageCandidates(item);
+  const coverImageUrl = await pickBestArticleCoverImage(imageCandidates);
+  const imageUrls = imageCandidates.length ? imageCandidates : coverImageUrl ? [coverImageUrl] : undefined;
   const copy = await buildProductionPostCopy({
     title: item.title,
     rawContent: item.content || item.summary,
@@ -491,8 +492,151 @@ async function sourceItemToPost(item: SourceItem, source: AiSource): Promise<Pos
   };
 }
 
-function firstContentBlockImage(item: SourceItem) {
-  return item.contentBlocks?.find((block) => block.type === "image")?.url;
+function collectArticleImageCandidates(item: SourceItem) {
+  return uniqueStrings([
+    item.coverImageUrl,
+    ...(item.imageUrls ?? []),
+    ...(item.contentBlocks
+      ?.filter((block) => block.type === "image")
+      .map((block) => block.url) ?? []),
+  ]);
+}
+
+async function pickBestArticleCoverImage(candidates: string[]) {
+  if (candidates.length <= 1) return candidates[0];
+
+  const scored = await Promise.all(
+    candidates.slice(0, 8).map(async (url, index) => {
+      const dimensions = await readRemoteImageDimensions(url);
+      return {
+        url,
+        score: scoreArticleCoverCandidate(dimensions, index),
+      };
+    }),
+  );
+
+  return scored.sort((left, right) => right.score - left.score)[0]?.url ?? candidates[0];
+}
+
+type ImageDimensions = {
+  width: number;
+  height: number;
+};
+
+function scoreArticleCoverCandidate(dimensions: ImageDimensions | null, index: number) {
+  const orderScore = Math.max(0, 18 - index * 2);
+  if (!dimensions) return orderScore;
+
+  const ratio = dimensions.width / dimensions.height;
+  let score = 40 + orderScore;
+
+  if (ratio >= 1.18 && ratio <= 2.05) score += 44;
+  else if (ratio >= 1.05 && ratio <= 2.2) score += 20;
+  else if (ratio > 2.6) score -= 62;
+  else if (ratio > 2.25) score -= 46;
+  else if (ratio < 0.8) score -= 36;
+
+  if (dimensions.height < 280) score -= 24;
+  if (dimensions.width < 360) score -= 18;
+  if (dimensions.width * dimensions.height > 180_000) score += 10;
+
+  return score;
+}
+
+async function readRemoteImageDimensions(url: string): Promise<ImageDimensions | null> {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "user-agent":
+          process.env.AIQ_USER_AGENT ??
+          "AIQ/1.0 (+https://github.com/jiangcheng-1992/-AIDaily)",
+        accept: "image/avif,image/webp,image/png,image/jpeg,image/*,*/*",
+        range: "bytes=0-65535",
+      },
+      cache: "no-store",
+    });
+
+    if (!response.ok && response.status !== 206) return null;
+    const buffer = Buffer.from(await response.arrayBuffer());
+    return readImageDimensions(buffer);
+  } catch {
+    return null;
+  }
+}
+
+function readImageDimensions(buffer: Buffer): ImageDimensions | null {
+  return readPngDimensions(buffer) || readJpegDimensions(buffer) || readWebpDimensions(buffer);
+}
+
+function readPngDimensions(buffer: Buffer): ImageDimensions | null {
+  if (buffer.length < 24) return null;
+  if (buffer.toString("ascii", 1, 4) !== "PNG") return null;
+  return {
+    width: buffer.readUInt32BE(16),
+    height: buffer.readUInt32BE(20),
+  };
+}
+
+function readJpegDimensions(buffer: Buffer): ImageDimensions | null {
+  if (buffer.length < 4 || buffer[0] !== 0xff || buffer[1] !== 0xd8) return null;
+
+  let offset = 2;
+  while (offset + 9 < buffer.length) {
+    if (buffer[offset] !== 0xff) {
+      offset += 1;
+      continue;
+    }
+
+    const marker = buffer[offset + 1];
+    const length = buffer.readUInt16BE(offset + 2);
+    if (length < 2) return null;
+
+    if (
+      (marker >= 0xc0 && marker <= 0xc3) ||
+      (marker >= 0xc5 && marker <= 0xc7) ||
+      (marker >= 0xc9 && marker <= 0xcb) ||
+      (marker >= 0xcd && marker <= 0xcf)
+    ) {
+      return {
+        height: buffer.readUInt16BE(offset + 5),
+        width: buffer.readUInt16BE(offset + 7),
+      };
+    }
+
+    offset += 2 + length;
+  }
+
+  return null;
+}
+
+function readWebpDimensions(buffer: Buffer): ImageDimensions | null {
+  if (buffer.length < 30) return null;
+  if (buffer.toString("ascii", 0, 4) !== "RIFF" || buffer.toString("ascii", 8, 12) !== "WEBP") {
+    return null;
+  }
+
+  const chunkType = buffer.toString("ascii", 12, 16);
+  if (chunkType === "VP8X" && buffer.length >= 30) {
+    return {
+      width: 1 + buffer.readUIntLE(24, 3),
+      height: 1 + buffer.readUIntLE(27, 3),
+    };
+  }
+  if (chunkType === "VP8 " && buffer.length >= 30) {
+    return {
+      width: buffer.readUInt16LE(26) & 0x3fff,
+      height: buffer.readUInt16LE(28) & 0x3fff,
+    };
+  }
+  if (chunkType === "VP8L" && buffer.length >= 25) {
+    const bits = buffer.readUInt32LE(21);
+    return {
+      width: (bits & 0x3fff) + 1,
+      height: ((bits >> 14) & 0x3fff) + 1,
+    };
+  }
+
+  return null;
 }
 
 async function douyinItemToPost(item: DouyinVideoItem): Promise<Post> {
@@ -699,6 +843,13 @@ function uniqueTags(tags: string[]) {
     .map((tag) => tag.trim())
     .filter(Boolean)
     .filter((tag, index, arr) => arr.indexOf(tag) === index);
+}
+
+function uniqueStrings(values: Array<string | undefined>) {
+  return values
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value))
+    .filter((value, index, arr) => arr.indexOf(value) === index);
 }
 
 function getPostPublishedSortTime(post: Post) {
