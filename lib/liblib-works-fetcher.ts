@@ -205,11 +205,8 @@ function liblibWorkToWorkItem({ item, score, kind, publishedAt }: ScoredLiblibWo
   const favoriteCount = Math.max(8, Math.round(likeCount * 0.42));
   const commentCount = Math.max(4, Math.round(likeCount * 0.14));
   const viewCount = Math.max(1800, likeCount * 18 + favoriteCount * 6);
-  const externalUrl =
-    item.templateUuid || item.id
-      ? `https://www.liblib.tv/canvas?templateUuid=${encodeURIComponent(item.templateUuid || item.id)}`
-      : LIBLIB_HOME_URL;
   const videoUrl = normalizeUrl(item.finalOutput);
+  const externalUrl = videoUrl || LIBLIB_HOME_URL;
   const coverUrl = normalizeUrl(item.coverUrl);
 
   return {

@@ -49,7 +49,10 @@ export default async function InterestingDetailPage({
   if (!work) notFound();
 
   const relatedWorks = getRelatedInterestingWorks(work, 3, allWorks);
-  const primaryUrl = work.externalUrl || work.videoUrl || work.githubUrl;
+  const primaryUrl =
+    work.source === "liblib"
+      ? work.videoUrl || work.externalUrl || work.githubUrl
+      : work.externalUrl || work.videoUrl || work.githubUrl;
 
   return (
     <div className="mx-auto max-w-6xl px-3 py-3 sm:px-6 sm:py-6 lg:px-8">
