@@ -89,6 +89,12 @@ export async function GET() {
           itemLimit: readNonNegativeNumber(process.env.YOUTUBE_WORKS_ITEM_LIMIT, 5),
           publishLimit: readNonNegativeNumber(process.env.YOUTUBE_WORKS_PUBLISH_LIMIT, 10),
         },
+        vimeo: {
+          configured: true,
+          pageLimit: readNonNegativeNumber(process.env.VIMEO_WORKS_PAGE_LIMIT, 2),
+          itemLimit: readNonNegativeNumber(process.env.VIMEO_WORKS_ITEM_LIMIT, 12),
+          publishLimit: readNonNegativeNumber(process.env.VIMEO_WORKS_PUBLISH_LIMIT, 8),
+        },
       },
     },
     aiComments: {

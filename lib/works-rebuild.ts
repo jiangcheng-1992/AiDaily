@@ -1,5 +1,6 @@
 import { fetchItchioWorks } from "@/lib/itchio-fetcher";
 import { fetchProductHuntWorks } from "@/lib/product-hunt-fetcher";
+import { fetchVimeoWorks } from "@/lib/vimeo-works-fetcher";
 import { fetchYoutubeWorks } from "@/lib/youtube-works-fetcher";
 import {
   mergeGeneratedWorks,
@@ -57,8 +58,20 @@ async function rebuildGeneratedWorks(reason: string) {
         count: 0,
         works: [],
       };
+  const vimeoRun = shouldFetchVimeoWorks()
+    ? await fetchVimeoWorks({
+        pageLimit: readNonNegativeInt(process.env.VIMEO_WORKS_PAGE_LIMIT, 2),
+        itemLimit: readNonNegativeInt(process.env.VIMEO_WORKS_ITEM_LIMIT, 12),
+        publishLimit: readNonNegativeInt(process.env.VIMEO_WORKS_PUBLISH_LIMIT, 8),
+      })
+    : {
+        ok: true,
+        source: "vimeo" as const,
+        count: 0,
+        works: [],
+      };
   const current = await readGeneratedWorks({ allowFallback: false });
-  const incomingWorks = [...productHuntRun.works, ...itchioRun.works, ...youtubeRun.works];
+  const incomingWorks = [...productHuntRun.works, ...itchioRun.works, ...youtubeRun.works, ...vimeoRun.works];
 
   if (incomingWorks.length === 0 && current.works.length === 0) {
     throw new Error("[works-rebuild] skipped persist because ingest returned no works");
@@ -86,6 +99,12 @@ async function rebuildGeneratedWorks(reason: string) {
         fetchedAt: new Date().toISOString(),
         error: youtubeRun.error,
       },
+      vimeo: {
+        ok: vimeoRun.ok,
+        count: vimeoRun.count,
+        fetchedAt: new Date().toISOString(),
+        error: vimeoRun.error,
+      },
     },
     limit: readPositiveInt(process.env.GENERATED_WORKS_LIMIT, 200),
   });
@@ -97,6 +116,7 @@ async function rebuildGeneratedWorks(reason: string) {
     productHuntCount: productHuntRun.count,
     itchioCount: itchioRun.count,
     youtubeCount: youtubeRun.count,
+    vimeoCount: vimeoRun.count,
     totalWorkCount: nextWorks.works.length,
   });
 }
@@ -121,6 +141,14 @@ function shouldFetchYoutubeWorks() {
     readNonNegativeInt(process.env.YOUTUBE_WORKS_SOURCE_LIMIT, 20) > 0 &&
     readNonNegativeInt(process.env.YOUTUBE_WORKS_ITEM_LIMIT, 3) > 0 &&
     readNonNegativeInt(process.env.YOUTUBE_WORKS_PUBLISH_LIMIT, 8) > 0
+  );
+}
+
+function shouldFetchVimeoWorks() {
+  return (
+    readNonNegativeInt(process.env.VIMEO_WORKS_PAGE_LIMIT, 2) > 0 &&
+    readNonNegativeInt(process.env.VIMEO_WORKS_ITEM_LIMIT, 12) > 0 &&
+    readNonNegativeInt(process.env.VIMEO_WORKS_PUBLISH_LIMIT, 8) > 0
   );
 }
 

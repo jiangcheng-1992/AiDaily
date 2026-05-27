@@ -10,12 +10,14 @@ import { GoogleAdSlot } from "@/components/google-ad-slot";
 import { PostScoreBadge } from "@/components/post-score-badge";
 import { PostTypeBadge } from "@/components/post-type-badge";
 import { Card } from "@/components/ui/card";
+import { shouldRenderGoogleAd } from "@/lib/google-ads";
 import type { Post } from "@/lib/mock-data";
 import { hotTags } from "@/lib/mock-data";
 import { formatCompactNumber } from "@/lib/utils";
 
 const DEFAULT_SIDEBAR_AD_SLOT = "4376617489";
 const sidebarAdSlot = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_SIDEBAR_SLOT || DEFAULT_SIDEBAR_AD_SLOT;
+const showSidebarAd = shouldRenderGoogleAd(sidebarAdSlot);
 
 export function HomeSidebar({
   posts,
@@ -81,21 +83,19 @@ export function HomeSidebar({
         </div>
       </Card>
 
-      <Card className="rounded-3xl p-4">
-        <div className="mb-2 flex items-center justify-between">
-          <span className="text-[11px] font-bold text-slate-400">广告</span>
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-400">
-            Google AdSense
-          </span>
-        </div>
-        <div className="overflow-hidden rounded-[1.2rem] border border-slate-100 bg-slate-50/70 h-[128px] max-h-[128px] sm:h-[144px] sm:max-h-[144px]">
-          <GoogleAdSlot
-            slot={sidebarAdSlot}
-            className="h-full w-full"
-            previewLabel="首页右侧热门标签下方广告位"
-          />
-        </div>
-      </Card>
+      {showSidebarAd ? (
+        <Card className="rounded-3xl p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-400">广告</span>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-400">
+              Google AdSense
+            </span>
+          </div>
+          <div className="h-[128px] max-h-[128px] overflow-hidden rounded-[1.2rem] border border-slate-100 bg-slate-50/70 sm:h-[144px] sm:max-h-[144px]">
+            <GoogleAdSlot slot={sidebarAdSlot} className="h-full w-full" />
+          </div>
+        </Card>
+      ) : null}
     </div>
   );
 }

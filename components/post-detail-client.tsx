@@ -30,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { useAiCircleStore } from "@/hooks/use-ai-circle-store";
 import { getDisplayImageUrl } from "@/lib/image-url";
+import { shouldRenderGoogleAd } from "@/lib/google-ads";
 import { getPostById, type Comment, type Post } from "@/lib/mock-data";
 import {
   cn,
@@ -40,6 +41,7 @@ import {
 
 const DEFAULT_DETAIL_AD_SLOT = "4648080221";
 const detailAdSlot = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_DETAIL_SLOT || DEFAULT_DETAIL_AD_SLOT;
+const showDetailAd = shouldRenderGoogleAd(detailAdSlot);
 
 export function PostDetailClient({
   postId,
@@ -822,21 +824,19 @@ export function PostDetailClient({
         </article>
       </Card>
 
-      <Card className="mt-6 rounded-[2rem] border-white/80 bg-white/95 p-3 sm:p-4">
-        <div className="mb-2 flex items-center justify-between">
-          <span className="text-[11px] font-bold text-slate-400">广告</span>
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-400">
-            Google AdSense
-          </span>
-        </div>
-        <div className="overflow-hidden rounded-[1.2rem] border border-slate-100 bg-slate-50/70 h-[72px] max-h-[72px] sm:h-[88px] sm:max-h-[88px]">
-          <GoogleAdSlot
-            slot={detailAdSlot}
-            className="h-full w-full"
-            previewLabel="详情页正文下方广告位"
-          />
-        </div>
-      </Card>
+      {showDetailAd ? (
+        <Card className="mt-6 rounded-[2rem] border-white/80 bg-white/95 p-3 sm:p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-400">广告</span>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-400">
+              Google AdSense
+            </span>
+          </div>
+          <div className="h-[72px] max-h-[72px] overflow-hidden rounded-[1.2rem] border border-slate-100 bg-slate-50/70 sm:h-[88px] sm:max-h-[88px]">
+            <GoogleAdSlot slot={detailAdSlot} className="h-full w-full" />
+          </div>
+        </Card>
+      ) : null}
 
       <Card id="comments" className="mt-6 rounded-[2rem] bg-white/95 p-5 sm:p-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

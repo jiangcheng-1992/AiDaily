@@ -13,6 +13,7 @@ export type WorkSource =
   | "producthunt"
   | "itchio"
   | "youtube"
+  | "vimeo"
   | "huggingface"
   | "github"
   | "hackernews"
@@ -23,7 +24,8 @@ export type WorkCategoryId =
   | "all"
   | "media"
   | "website-agent"
-  | "game";
+  | "game"
+  | "skill";
 
 export type WorkItem = {
   id: string;
@@ -57,6 +59,7 @@ export type WorkItem = {
   heatScore: number;
   createdAt: string;
   publishedAt?: string;
+  categoryHint?: Exclude<WorkCategoryId, "all">;
 };
 
 export const workTypeLabels: Record<WorkType, string> = {
@@ -75,6 +78,7 @@ export const workSourceLabels: Record<WorkSource, string> = {
   producthunt: "Product Hunt",
   itchio: "itch.io",
   youtube: "YouTube",
+  vimeo: "Vimeo",
   huggingface: "Hugging Face",
   github: "GitHub",
   hackernews: "Hacker News",
@@ -86,9 +90,11 @@ export const interestingCategories: Array<{ id: WorkCategoryId; label: string }>
   { id: "media", label: "图片/视频" },
   { id: "website-agent", label: "网站/agent" },
   { id: "game", label: "游戏" },
+  { id: "skill", label: "Skill" },
 ];
 
 export function getWorkCategoryId(work: WorkItem): Exclude<WorkCategoryId, "all"> {
+  if (work.categoryHint) return work.categoryHint;
   if (work.source === "itchio") return "game";
   if (work.type === "image" || work.type === "video") return "media";
   return "website-agent";
@@ -100,6 +106,7 @@ export function workMatchesInterestingCategory(work: WorkItem, category: WorkCat
 }
 
 export function getWorkTypeLabel(work: WorkItem) {
+  if (getWorkCategoryId(work) === "skill") return "Skill";
   if (getWorkCategoryId(work) === "game") return "游戏";
   return workTypeLabels[work.type];
 }

@@ -19,6 +19,9 @@ import {
   getRelatedInterestingWorks,
   workSourceLabels,
 } from "@/lib/interesting-works";
+import { buildInterestingSkillWorks } from "@/lib/interesting-skill-works";
+import { readGeneratedFeed } from "@/lib/generated-feed-store";
+import { mockPosts } from "@/lib/mock-data";
 import { readGeneratedWorks } from "@/lib/generated-works-store";
 import { triggerWorksRebuild } from "@/lib/works-rebuild";
 import { cn, formatCompactNumber, formatRelativeTime } from "@/lib/utils";
@@ -32,17 +35,20 @@ export default async function InterestingDetailPage({
 }) {
   const { id } = await params;
   let worksFeed = await readGeneratedWorks({ allowFallback: false });
+  const generatedFeed = await readGeneratedFeed({ includeSkills: true, allowFallback: false });
 
   if (worksFeed.works.length === 0) {
     await waitForWorksRebuild(`interesting-detail:${id}`);
     worksFeed = await readGeneratedWorks({ allowFallback: false });
   }
 
-  const work = worksFeed.works.find((item) => item.id === id);
+  const skillWorks = buildInterestingSkillWorks([...generatedFeed.posts, ...mockPosts]);
+  const allWorks = [...skillWorks, ...worksFeed.works];
+  const work = allWorks.find((item) => item.id === id);
 
   if (!work) notFound();
 
-  const relatedWorks = getRelatedInterestingWorks(work, 3, worksFeed.works);
+  const relatedWorks = getRelatedInterestingWorks(work, 3, allWorks);
   const primaryUrl = work.externalUrl || work.videoUrl || work.githubUrl;
 
   return (
@@ -121,7 +127,13 @@ export default async function InterestingDetailPage({
                     rel="noreferrer"
                     className={cn(buttonVariants({ variant: "gradient", size: "lg" }))}
                   >
-                    {work.source === "itchio" ? "直接试玩" : work.source === "youtube" ? "观看作品" : "查看作品"}
+                    {work.categoryHint === "skill"
+                      ? "查看 Skill"
+                      : work.source === "itchio"
+                      ? "直接试玩"
+                      : work.source === "youtube" || work.source === "vimeo"
+                        ? "观看作品"
+                        : "查看作品"}
                     <ArrowUpRight className="h-4 w-4" />
                   </a>
                 ) : null}
@@ -153,7 +165,7 @@ export default async function InterestingDetailPage({
           <Card className="rounded-[2rem] p-5 sm:p-7">
             <div className="flex items-center gap-2 text-lg font-black text-slate-950">
               <Star className="h-5 w-5 text-amber-500" />
-              为什么有意思
+              {work.categoryHint === "skill" ? "这个 Skill 是做什么的" : "为什么有意思"}
             </div>
             <p className="mt-3 text-sm leading-7 text-slate-600 sm:text-base">
               {work.whyInteresting}
@@ -191,7 +203,9 @@ export default async function InterestingDetailPage({
 
         <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
           <Card className="rounded-[2rem] p-5">
-            <h2 className="text-lg font-black text-slate-950">作品信息</h2>
+            <h2 className="text-lg font-black text-slate-950">
+              {work.categoryHint === "skill" ? "Skill 信息" : "作品信息"}
+            </h2>
             <div className="mt-4 grid gap-3 text-sm">
               <InfoRow label="作者" value={work.authorName ?? "匿名作者"} />
               <InfoRow label="来源" value={workSourceLabels[work.source]} />

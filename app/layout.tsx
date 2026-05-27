@@ -3,11 +3,10 @@ import Script from "next/script";
 
 import { MobileTabbar } from "@/components/mobile-tabbar";
 import { SiteHeader } from "@/components/site-header";
+import { ADSENSE_CLIENT, GOOGLE_ADSENSE_ENABLED } from "@/lib/google-ads";
 import "./globals.css";
 
 const GA_MEASUREMENT_ID = "G-0W61YMLPCN";
-const DEFAULT_ADSENSE_CLIENT = "ca-pub-6821198896914466";
-const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_CLIENT || DEFAULT_ADSENSE_CLIENT;
 
 export const metadata: Metadata = {
   title: "AI圈 | 每天 5 分钟，刷完 AI 圈新动态",
@@ -30,7 +29,7 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <head>
-        {ADSENSE_CLIENT ? (
+        {GOOGLE_ADSENSE_ENABLED && ADSENSE_CLIENT ? (
           <script
             async
             crossOrigin="anonymous"

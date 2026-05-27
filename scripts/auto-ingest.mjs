@@ -70,7 +70,9 @@ async function runAutoIngest(reason) {
         worksPayload?.works?.totalWorkCount ?? "?"
       } (${worksPayload?.works?.itchio?.count ?? "?"} games, ${
         worksPayload?.works?.youtube?.count ?? "?"
-      } videos), feed new=${feedPayload?.newPostCount ?? "?"}, total=${
+      } youtube, ${worksPayload?.works?.vimeo?.count ?? "?"} vimeo), feed new=${
+        feedPayload?.newPostCount ?? "?"
+      }, total=${
         feedPayload?.totalPostCount ?? "?"
       }, video=${feedPayload?.video?.postCount ?? "?"} posts/${
         feedPayload?.video?.failureCount ?? "?"
@@ -124,6 +126,9 @@ function buildLocalIngestUrl(mode) {
     url.searchParams.set("youtubeWorksSourceLimit", "0");
     url.searchParams.set("youtubeWorksItemLimit", "0");
     url.searchParams.set("youtubeWorksPublishLimit", "0");
+    url.searchParams.set("vimeoWorksPageLimit", "0");
+    url.searchParams.set("vimeoWorksItemLimit", "0");
+    url.searchParams.set("vimeoWorksPublishLimit", "0");
   }
 
   if (mode !== "works" && process.env.AUTO_INGEST_SOURCE_LIMIT) {
@@ -224,6 +229,21 @@ function buildLocalIngestUrl(mode) {
     url.searchParams.set(
       "youtubeWorksPublishLimit",
       process.env.AUTO_INGEST_YOUTUBE_WORKS_PUBLISH_LIMIT,
+    );
+  }
+
+  if (mode !== "feed" && process.env.AUTO_INGEST_VIMEO_WORKS_PAGE_LIMIT) {
+    url.searchParams.set("vimeoWorksPageLimit", process.env.AUTO_INGEST_VIMEO_WORKS_PAGE_LIMIT);
+  }
+
+  if (mode !== "feed" && process.env.AUTO_INGEST_VIMEO_WORKS_ITEM_LIMIT) {
+    url.searchParams.set("vimeoWorksItemLimit", process.env.AUTO_INGEST_VIMEO_WORKS_ITEM_LIMIT);
+  }
+
+  if (mode !== "feed" && process.env.AUTO_INGEST_VIMEO_WORKS_PUBLISH_LIMIT) {
+    url.searchParams.set(
+      "vimeoWorksPublishLimit",
+      process.env.AUTO_INGEST_VIMEO_WORKS_PUBLISH_LIMIT,
     );
   }
 

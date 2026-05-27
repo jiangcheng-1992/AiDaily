@@ -1,11 +1,5 @@
-import { SkillsClient } from "@/components/skills-client";
-import { readGeneratedFeed } from "@/lib/generated-feed-store";
-import { mockPosts } from "@/lib/mock-data";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-export default async function SkillsPage() {
-  const generatedFeed = await readGeneratedFeed({ includeSkills: true });
-
-  return <SkillsClient initialPosts={[...generatedFeed.posts, ...mockPosts]} />;
+export default function SkillsPage() {
+  redirect("/interesting?tab=skill");
 }

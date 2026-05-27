@@ -13,11 +13,12 @@ import {
   homeChannels,
   type HomeChannelId,
 } from "@/lib/feed-view";
+import { shouldRenderGoogleAd } from "@/lib/google-ads";
 import type { Post } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
-const adsenseClient = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_CLIENT;
 const feedAdSlot = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_FEED_SLOT;
+const showFeedAd = shouldRenderGoogleAd(feedAdSlot);
 const INITIAL_VISIBLE_POST_COUNT = 10;
 const LOAD_MORE_POST_COUNT = 8;
 
@@ -168,7 +169,7 @@ export function HomeClient({ initialPosts = [] }: { initialPosts?: Post[] }) {
 
           {displayedPosts.map((post, index) => (
             <div key={post.id} className="space-y-4 sm:space-y-5">
-              {adsenseClient && feedAdSlot && index === 5 ? (
+              {showFeedAd && index === 5 ? (
                 <div className="rounded-[1.6rem] border border-slate-100 bg-white/95 p-4 shadow-soft">
                   <div className="mb-2 text-[11px] font-bold text-slate-400">广告</div>
                   <GoogleAdSlot slot={feedAdSlot} className="min-h-[120px]" />

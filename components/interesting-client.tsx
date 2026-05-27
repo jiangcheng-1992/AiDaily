@@ -21,8 +21,14 @@ import {
 } from "@/lib/interesting-works";
 import { cn, formatCompactNumber, formatRelativeTime, formatVideoDuration } from "@/lib/utils";
 
-export function InterestingClient({ initialWorks }: { initialWorks: WorkItem[] }) {
-  const [category, setCategory] = useState<WorkCategoryId>("all");
+export function InterestingClient({
+  initialWorks,
+  initialCategory = "all",
+}: {
+  initialWorks: WorkItem[];
+  initialCategory?: WorkCategoryId;
+}) {
+  const [category, setCategory] = useState<WorkCategoryId>(initialCategory);
   const [likedIds, setLikedIds] = useState<Set<string>>(() => new Set());
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(() => new Set());
   const [isPending, startTransition] = useTransition();
@@ -213,6 +219,12 @@ const InterestingWorkCard = memo(function InterestingWorkCard({
         <div className="mt-3 text-[11px] font-semibold text-slate-400">
           {formatRelativeTime(work.publishedAt ?? work.createdAt)}
         </div>
+        {work.categoryHint === "skill" ? (
+          <div className="mt-3 rounded-2xl bg-blue-50 px-3 py-2 text-[12px] leading-5 text-slate-600">
+            <span className="font-black text-blue-700">做什么：</span>
+            {work.description}
+          </div>
+        ) : null}
         {work.source === "itchio" ? (
           <div className="mt-3 inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-700">
             无需下载 · 浏览器可玩
@@ -256,7 +268,13 @@ const InterestingWorkCard = memo(function InterestingWorkCard({
           href={`/interesting/${work.id}`}
           className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-slate-950 px-4 py-2.5 text-xs font-black text-white transition-colors hover:bg-blue-700"
         >
-          {work.source === "itchio" ? "直接试玩" : work.source === "youtube" ? "观看作品" : "查看作品"}
+          {work.categoryHint === "skill"
+            ? "查看 Skill"
+            : work.source === "itchio"
+            ? "直接试玩"
+            : work.source === "youtube" || work.source === "vimeo"
+              ? "观看作品"
+              : "查看作品"}
           <ArrowUpRight className="h-3.5 w-3.5" />
         </Link>
       </div>
