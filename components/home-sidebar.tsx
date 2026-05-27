@@ -156,7 +156,8 @@ function PosterSection({
                   )}
                 />
               )}
-              <div className="absolute inset-0 bg-gradient-to-r from-slate-950/84 via-slate-950/55 to-slate-950/20" />
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-950/78 via-slate-950/40 to-slate-950/18" />
+              <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-slate-950/92 via-slate-950/55 to-transparent" />
 
               <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3">
                 <span
@@ -173,8 +174,10 @@ function PosterSection({
               </div>
 
               <div className="absolute inset-x-0 bottom-0 p-3">
-                <div className="line-clamp-2 text-[13px] font-black leading-5 text-white">
-                  {item.title}
+                <div className="rounded-xl bg-slate-950/28 px-2.5 py-2 backdrop-blur-[2px]">
+                  <div className="line-clamp-2 text-[13px] font-black leading-5 text-white">
+                    {item.title}
+                  </div>
                 </div>
               </div>
             </div>

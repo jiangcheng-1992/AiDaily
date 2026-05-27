@@ -51,7 +51,7 @@ export default async function InterestingDetailPage({
   const relatedWorks = getRelatedInterestingWorks(work, 3, allWorks);
   const primaryUrl =
     work.source === "liblib"
-      ? work.videoUrl || work.externalUrl || work.githubUrl
+      ? work.externalUrl || work.videoUrl || work.githubUrl
       : work.externalUrl || work.videoUrl || work.githubUrl;
 
   return (

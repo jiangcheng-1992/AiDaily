@@ -206,7 +206,8 @@ function liblibWorkToWorkItem({ item, score, kind, publishedAt }: ScoredLiblibWo
   const commentCount = Math.max(4, Math.round(likeCount * 0.14));
   const viewCount = Math.max(1800, likeCount * 18 + favoriteCount * 6);
   const videoUrl = normalizeUrl(item.finalOutput);
-  const externalUrl = videoUrl || LIBLIB_HOME_URL;
+  const detailId = normalizeText(item.id) || normalizeText(item.templateUuid);
+  const externalUrl = detailId ? `${LIBLIB_HOME_URL}detail/${encodeURIComponent(detailId)}` : LIBLIB_HOME_URL;
   const coverUrl = normalizeUrl(item.coverUrl);
 
   return {
