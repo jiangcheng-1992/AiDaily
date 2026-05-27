@@ -14,6 +14,7 @@ import {
   getWorkCategoryId,
   type WorkItem,
 } from "@/lib/interesting-works";
+import { isGeneratedPreviewImageUrl } from "@/lib/image-url";
 import type { Post } from "@/lib/mock-data";
 import { hotTags } from "@/lib/mock-data";
 import { cn, formatRelativeTime } from "@/lib/utils";
@@ -240,7 +241,11 @@ function pickLatestArticlePoster(
     id: `article-${candidate.id}`,
     title: candidate.title,
     href: `/post/${candidate.id}`,
-    coverUrl: candidate.coverImageUrl || candidate.imageUrls?.[0] || firstContentImage(candidate),
+    coverUrl: pickReliableImage(
+      candidate.coverImageUrl,
+      candidate.imageUrls?.[0],
+      firstContentImage(candidate),
+    ),
     kindLabel: "文章",
     meta: formatRelativeTime(candidate.collectedAt || candidate.createdAt),
     accentClassName: "from-blue-500 via-cyan-500 to-indigo-600",
@@ -344,4 +349,8 @@ function pickLatest<T>(
 
 function firstContentImage(post: Post) {
   return post.contentBlocks?.find((block) => block.type === "image")?.url;
+}
+
+function pickReliableImage(...urls: Array<string | null | undefined>) {
+  return urls.find((url) => url && !isGeneratedPreviewImageUrl(url));
 }

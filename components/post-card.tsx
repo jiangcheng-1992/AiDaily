@@ -16,7 +16,7 @@ import { InteractionButton } from "@/components/interaction-button";
 import { PostScoreBadge } from "@/components/post-score-badge";
 import { PostTypeBadge } from "@/components/post-type-badge";
 import { Card } from "@/components/ui/card";
-import { getDisplayImageUrl } from "@/lib/image-url";
+import { getDisplayImageUrl, isGeneratedPreviewImageUrl } from "@/lib/image-url";
 import type { Post } from "@/lib/mock-data";
 import { cn, formatRelativeTime, formatVideoDuration } from "@/lib/utils";
 
@@ -46,7 +46,7 @@ export function PostCard({
   shared?: boolean;
 }) {
   const router = useRouter();
-  const articlePreviewImage = post.coverImageUrl ?? post.imageUrls?.[0];
+  const articlePreviewImage = pickReliableImage(post.coverImageUrl, post.imageUrls?.[0]);
   const displayArticlePreviewImage = getDisplayImageUrl(articlePreviewImage, post.sourceUrl);
   const displayVideoCoverImage = getDisplayImageUrl(post.coverImageUrl, post.sourceUrl);
 
@@ -219,4 +219,8 @@ export function PostCard({
       />
     </Card>
   );
+}
+
+function pickReliableImage(...urls: Array<string | null | undefined>) {
+  return urls.find((url) => url && !isGeneratedPreviewImageUrl(url));
 }

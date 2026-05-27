@@ -452,8 +452,7 @@ async function sourceItemToPost(item: SourceItem, source: AiSource): Promise<Pos
   const publishedAt = toIsoDate(item.publishedAt);
   const createdAt = publishedAt || collectedAt;
   const tags = uniqueTags([...item.tags, authorityLabel(source.authority)]).slice(0, 6);
-  const fallbackCoverImageUrl = buildArticleFallbackCoverUrl(item, tags);
-  const coverImageUrl = item.coverImageUrl || item.imageUrls?.[0] || firstContentBlockImage(item) || fallbackCoverImageUrl;
+  const coverImageUrl = item.coverImageUrl || item.imageUrls?.[0] || firstContentBlockImage(item);
   const imageUrls = item.imageUrls?.length ? item.imageUrls : coverImageUrl ? [coverImageUrl] : undefined;
   const copy = await buildProductionPostCopy({
     title: item.title,
@@ -494,25 +493,6 @@ async function sourceItemToPost(item: SourceItem, source: AiSource): Promise<Pos
 
 function firstContentBlockImage(item: SourceItem) {
   return item.contentBlocks?.find((block) => block.type === "image")?.url;
-}
-
-function buildArticleFallbackCoverUrl(item: SourceItem, tags: string[]) {
-  const topic = clipPromptText(`${item.title} ${tags.slice(0, 4).join(" ")}`, 120);
-  const prompt = [
-    "realistic editorial news illustration for a Chinese AI technology website",
-    `topic: ${topic}`,
-    `source: ${clipPromptText(item.sourceName, 32)}`,
-    "a concrete scene with analysts in a modern office, laptop screens showing AI data dashboards, server racks and semiconductor chips in the background, documentary photography style, rich foreground and background details, clean professional magazine cover composition, natural lighting, no readable text, no watermark, not a blank screen, not a plain gradient background",
-  ].join(", ");
-
-  return `https://copilot-cn.bytedance.net/api/ide/v1/text_to_image?prompt=${encodeURIComponent(
-    prompt,
-  )}&image_size=landscape_16_9`;
-}
-
-function clipPromptText(value: string, maxLength: number) {
-  const normalized = value.replace(/\s+/g, " ").trim();
-  return normalized.length > maxLength ? `${normalized.slice(0, maxLength - 1)}...` : normalized;
 }
 
 async function douyinItemToPost(item: DouyinVideoItem): Promise<Post> {

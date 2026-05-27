@@ -1,5 +1,9 @@
 const referrerProtectedImageHosts = new Set(["i.qbitai.com", "www.qbitai.com"]);
 
+export function isGeneratedPreviewImageUrl(src?: string | null) {
+  return Boolean(src?.includes("copilot-cn.bytedance.net/api/ide/v1/text_to_image"));
+}
+
 export function getDisplayImageUrl(src?: string | null, referrerUrl?: string | null) {
   if (!src) return "";
 

@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { mockComments, mockPosts } from "@/lib/mock-data";
 import type { Comment, Post } from "@/lib/mock-data";
 import { getPostPublishedSortTime } from "@/lib/feed-view";
+import { isGeneratedPreviewImageUrl } from "@/lib/image-url";
 import { buildIdentityKeyFromPost } from "@/lib/post-identity";
 
 export type GeneratedFeed = {
@@ -217,7 +218,7 @@ function sanitizeGeneratedFeed(
   options: ReadGeneratedFeedOptions = {},
 ): GeneratedFeed {
   const posts = dedupePostsByIdentity(
-    feed.posts.filter((post) => shouldKeepGeneratedPost(post, options)),
+    feed.posts.filter((post) => shouldKeepGeneratedPost(post, options)).map(stripGeneratedPreviewImages),
   );
   const postIds = new Set(posts.map((post) => post.id));
 
@@ -247,6 +248,20 @@ function dedupePostsByIdentity(posts: Post[]) {
 function shouldKeepGeneratedPost(post: Post, options: ReadGeneratedFeedOptions) {
   if (post.type === "skill") return options.includeSkills === true;
   return true;
+}
+
+function stripGeneratedPreviewImages(post: Post): Post {
+  const imageUrls = post.imageUrls?.filter((url) => !isGeneratedPreviewImageUrl(url));
+  const contentBlocks = post.contentBlocks?.filter(
+    (block) => block.type !== "image" || !isGeneratedPreviewImageUrl(block.url),
+  );
+
+  return {
+    ...post,
+    coverImageUrl: isGeneratedPreviewImageUrl(post.coverImageUrl) ? undefined : post.coverImageUrl,
+    imageUrls,
+    contentBlocks,
+  };
 }
 
 function buildFallbackFeed(options: ReadGeneratedFeedOptions = {}) {
