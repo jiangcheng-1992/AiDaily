@@ -244,9 +244,28 @@ async function handleIngestRequest(request: Request) {
     await writeGeneratedWorks(nextWorks);
   }
 
-  const attemptedCount =
-    sourceLimit + (githubLimit > 0 ? 1 : 0);
-  const ingestOk = attemptedCount === 0 || run.primarySuccessCount > 0 || run.posts.length > 0;
+  const feedAttempted =
+    sourceLimit > 0 ||
+    githubLimit > 0 ||
+    douyinSourceLimit > 0 ||
+    backupVideoSourceLimit > 0 ||
+    submittedSourceLimit > 0 ||
+    xSourceLimit > 0 ||
+    xKeywordLimit > 0;
+  const feedOk =
+    !feedAttempted ||
+    run.primarySuccessCount > 0 ||
+    run.posts.length > 0 ||
+    run.video.successCount > 0 ||
+    run.x.count > 0;
+  const worksAttempted = shouldFetchProductHunt || shouldFetchItchio || shouldFetchYoutubeWorks;
+  const worksOk =
+    !worksAttempted ||
+    incomingWorks.length > 0 ||
+    worksRun.ok ||
+    itchioRun.ok ||
+    youtubeWorksRun.ok;
+  const ingestOk = feedOk && worksOk;
 
   return Response.json(
     {
