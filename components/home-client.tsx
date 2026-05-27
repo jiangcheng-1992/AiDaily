@@ -14,6 +14,7 @@ import {
   type HomeChannelId,
 } from "@/lib/feed-view";
 import { shouldRenderGoogleAd } from "@/lib/google-ads";
+import type { WorkItem } from "@/lib/interesting-works";
 import type { Post } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +23,15 @@ const showFeedAd = shouldRenderGoogleAd(feedAdSlot);
 const INITIAL_VISIBLE_POST_COUNT = 10;
 const LOAD_MORE_POST_COUNT = 8;
 
-export function HomeClient({ initialPosts = [] }: { initialPosts?: Post[] }) {
+export function HomeClient({
+  initialPosts = [],
+  initialWorks = [],
+  initialSkillWorks = [],
+}: {
+  initialPosts?: Post[];
+  initialWorks?: WorkItem[];
+  initialSkillWorks?: WorkItem[];
+}) {
   const { allPosts, hydrated, getPostStats, toggleLike, toggleSave } = useAiCircleStore();
   const [sharedPostId, setSharedPostId] = useState<string | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -228,11 +237,21 @@ export function HomeClient({ initialPosts = [] }: { initialPosts?: Post[] }) {
         </div>
 
         <aside className="hidden max-h-[calc(100vh-5rem)] overflow-y-auto overscroll-contain pr-1 scroll-pb-8 [scrollbar-gutter:stable] [scrollbar-width:thin] lg:sticky lg:top-20 lg:block lg:self-start">
-          <HomeSidebar posts={sourcePosts} onTagClick={setSelectedTag} />
+          <HomeSidebar
+            posts={sourcePosts}
+            works={initialWorks}
+            skillWorks={initialSkillWorks}
+            onTagClick={setSelectedTag}
+          />
         </aside>
 
         <div className="hidden pb-2 sm:block lg:hidden">
-          <HomeSidebar posts={sourcePosts} onTagClick={setSelectedTag} />
+          <HomeSidebar
+            posts={sourcePosts}
+            works={initialWorks}
+            skillWorks={initialSkillWorks}
+            onTagClick={setSelectedTag}
+          />
         </div>
       </section>
     </div>
