@@ -499,10 +499,10 @@ function firstContentBlockImage(item: SourceItem) {
 function buildArticleFallbackCoverUrl(item: SourceItem, tags: string[]) {
   const topic = clipPromptText(`${item.title} ${tags.slice(0, 4).join(" ")}`, 120);
   const prompt = [
-    "realistic editorial hero image for a Chinese AI news website",
+    "realistic editorial news illustration for a Chinese AI technology website",
     `topic: ${topic}`,
     `source: ${clipPromptText(item.sourceName, 32)}`,
-    "modern AI technology newsroom, abstract neural network visualization, laptop and data dashboard, blue violet gradient lighting, clean professional magazine style, no readable text, no watermark",
+    "a concrete scene with analysts in a modern office, laptop screens showing AI data dashboards, server racks and semiconductor chips in the background, documentary photography style, rich foreground and background details, clean professional magazine cover composition, natural lighting, no readable text, no watermark, not a blank screen, not a plain gradient background",
   ].join(", ");
 
   return `https://copilot-cn.bytedance.net/api/ide/v1/text_to_image?prompt=${encodeURIComponent(
