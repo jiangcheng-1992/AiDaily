@@ -141,20 +141,6 @@ function PosterSection({
             href={item.href}
             className="group block rounded-[1.35rem] border border-slate-100 bg-white p-3"
           >
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <span
-                className={cn(
-                  "inline-flex items-center justify-center rounded-full border px-2.5 py-1 text-[10px] font-black shadow-sm",
-                  getPosterKindClassName(item.kindLabel),
-                )}
-              >
-                {item.kindLabel}
-              </span>
-              <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">
-                {item.meta}
-              </span>
-            </div>
-
             <div className="relative h-[78px] overflow-hidden rounded-[1rem]">
               {item.coverUrl ? (
                 <img
@@ -170,6 +156,18 @@ function PosterSection({
                   )}
                 />
               )}
+              <div className="absolute inset-0 bg-gradient-to-b from-slate-950/10 via-transparent to-slate-950/20" />
+              <span
+                className={cn(
+                  "absolute left-2.5 top-2.5 inline-flex items-center justify-center rounded-full border px-2.5 py-1 text-[10px] font-black shadow-sm backdrop-blur",
+                  getPosterKindClassName(item.kindLabel),
+                )}
+              >
+                {item.kindLabel}
+              </span>
+              <span className="absolute bottom-2.5 right-2.5 shrink-0 rounded-full bg-slate-950/72 px-2.5 py-1 text-[10px] font-bold text-white shadow-sm backdrop-blur">
+                {item.meta}
+              </span>
             </div>
             <div className="pt-2.5">
               <div className="line-clamp-2 text-[13px] font-black leading-5 text-slate-900 transition-colors group-hover:text-blue-700">

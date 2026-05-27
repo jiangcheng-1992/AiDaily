@@ -452,6 +452,9 @@ async function sourceItemToPost(item: SourceItem, source: AiSource): Promise<Pos
   const publishedAt = toIsoDate(item.publishedAt);
   const createdAt = publishedAt || collectedAt;
   const tags = uniqueTags([...item.tags, authorityLabel(source.authority)]).slice(0, 6);
+  const fallbackCoverImageUrl = buildArticleFallbackCoverUrl(item, tags);
+  const coverImageUrl = item.coverImageUrl || item.imageUrls?.[0] || firstContentBlockImage(item) || fallbackCoverImageUrl;
+  const imageUrls = item.imageUrls?.length ? item.imageUrls : coverImageUrl ? [coverImageUrl] : undefined;
   const copy = await buildProductionPostCopy({
     title: item.title,
     rawContent: item.content || item.summary,
@@ -477,8 +480,8 @@ async function sourceItemToPost(item: SourceItem, source: AiSource): Promise<Pos
     editorComment: copy.editorComment,
     sourceName: item.sourceName,
     sourceUrl: item.url,
-    coverImageUrl: item.coverImageUrl,
-    imageUrls: item.imageUrls,
+    coverImageUrl,
+    imageUrls,
     contentBlocks: item.contentBlocks,
     tags,
     createdAt,
@@ -487,6 +490,29 @@ async function sourceItemToPost(item: SourceItem, source: AiSource): Promise<Pos
     commentsCount: 0,
     savesCount: 0,
   };
+}
+
+function firstContentBlockImage(item: SourceItem) {
+  return item.contentBlocks?.find((block) => block.type === "image")?.url;
+}
+
+function buildArticleFallbackCoverUrl(item: SourceItem, tags: string[]) {
+  const topic = clipPromptText(`${item.title} ${tags.slice(0, 4).join(" ")}`, 120);
+  const prompt = [
+    "realistic editorial hero image for a Chinese AI news website",
+    `topic: ${topic}`,
+    `source: ${clipPromptText(item.sourceName, 32)}`,
+    "modern AI technology newsroom, abstract neural network visualization, laptop and data dashboard, blue violet gradient lighting, clean professional magazine style, no readable text, no watermark",
+  ].join(", ");
+
+  return `https://copilot-cn.bytedance.net/api/ide/v1/text_to_image?prompt=${encodeURIComponent(
+    prompt,
+  )}&image_size=landscape_16_9`;
+}
+
+function clipPromptText(value: string, maxLength: number) {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  return normalized.length > maxLength ? `${normalized.slice(0, maxLength - 1)}...` : normalized;
 }
 
 async function douyinItemToPost(item: DouyinVideoItem): Promise<Post> {

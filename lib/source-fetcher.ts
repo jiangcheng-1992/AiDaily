@@ -422,24 +422,33 @@ function extractHtmlImageUrl(html: string, pageUrl?: string) {
 
 function extractHtmlImageUrls(html: string, pageUrl?: string) {
   const candidates = [
-    ...extractImageUrlsFromHtml(html),
     readMetaContent(html, "property", "og:image"),
     readMetaContent(html, "name", "twitter:image"),
     readMetaContent(html, "property", "twitter:image"),
+    ...extractImageUrlsFromHtml(html),
   ].map((url) => absolutizeUrl(url, pageUrl));
 
   return uniqueImageUrls(candidates);
 }
 
 function readMetaContent(html: string, attrName: "name" | "property", attrValue: string) {
-  const match = html.match(
-    new RegExp(
-      `<meta[^>]+${attrName}=["']${escapeRegExp(attrValue)}["'][^>]+content=["']([^"']+)["'][^>]*>`,
-      "i",
-    ),
+  const metaTagPattern = /<meta\b[^>]*>/gi;
+  const attrPattern = new RegExp(
+    `${attrName}=["']${escapeRegExp(attrValue)}["']|content=["']([^"']+)["']`,
+    "gi",
   );
 
-  return stripHtmlToText(match?.[1] ?? "");
+  for (const tagMatch of html.matchAll(metaTagPattern)) {
+    const tag = tagMatch[0];
+    if (!new RegExp(`${attrName}=["']${escapeRegExp(attrValue)}["']`, "i").test(tag)) continue;
+
+    attrPattern.lastIndex = 0;
+    for (const attrMatch of tag.matchAll(attrPattern)) {
+      if (attrMatch[1]) return stripHtmlToText(attrMatch[1]);
+    }
+  }
+
+  return "";
 }
 
 function readMediaUrl(value: unknown): string | undefined {
