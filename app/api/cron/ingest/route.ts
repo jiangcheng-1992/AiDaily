@@ -12,6 +12,7 @@ import {
 } from "@/lib/generated-works-store";
 import { validateIngestRequest } from "@/lib/ingest-request-auth";
 import type { GeneratedFeed } from "@/lib/generated-feed-store";
+import { getWorkCategoryId, type WorkItem } from "@/lib/interesting-works";
 import type { Comment } from "@/lib/mock-data";
 import { runIngestPipeline } from "@/lib/ingest-pipeline";
 import { fetchItchioWorks } from "@/lib/itchio-fetcher";
@@ -98,6 +99,10 @@ async function handleIngestRequest(request: Request) {
     url.searchParams.get("itchioSourceLimit") ?? process.env.ITCHIO_SOURCE_LIMIT,
     24,
   );
+  const itchioPageLimit = readNonNegativeInt(
+    url.searchParams.get("itchioPageLimit") ?? process.env.ITCHIO_PAGE_LIMIT,
+    2,
+  );
   const itchioReviewLimit = readNonNegativeInt(
     url.searchParams.get("itchioReviewLimit") ?? process.env.ITCHIO_REVIEW_LIMIT,
     70,
@@ -105,6 +110,10 @@ async function handleIngestRequest(request: Request) {
   const itchioPublishLimit = readNonNegativeInt(
     url.searchParams.get("itchioPublishLimit") ?? process.env.ITCHIO_PUBLISH_LIMIT,
     10,
+  );
+  const itchioTargetCount = readNonNegativeInt(
+    url.searchParams.get("itchioTargetCount") ?? process.env.ITCHIO_TARGET_COUNT,
+    100,
   );
   const youtubeWorksSourceLimit = readNonNegativeInt(
     url.searchParams.get("youtubeWorksSourceLimit") ?? process.env.YOUTUBE_WORKS_SOURCE_LIMIT,
@@ -168,9 +177,22 @@ async function handleIngestRequest(request: Request) {
   if (!dryRun && !wouldClearExistingFeed) {
     await writeGeneratedFeed(nextFeed);
   }
+  const currentWorks = await readGeneratedWorks({ allowFallback: false });
+  const currentGameCount = countGameWorks(currentWorks.works);
+  const effectiveItchioSettings = computeItchioFillSettings({
+    currentGameCount,
+    targetGameCount: itchioTargetCount,
+    sourceLimit: itchioSourceLimit,
+    pageLimit: itchioPageLimit,
+    reviewLimit: itchioReviewLimit,
+    publishLimit: itchioPublishLimit,
+  });
   const shouldFetchProductHunt = productHuntWeeklyLimit > 0 || productHuntDailyLimit > 0;
   const shouldFetchItchio =
-    itchioSourceLimit > 0 && itchioReviewLimit > 0 && itchioPublishLimit > 0;
+    effectiveItchioSettings.sourceLimit > 0 &&
+    effectiveItchioSettings.pageLimit > 0 &&
+    effectiveItchioSettings.reviewLimit > 0 &&
+    effectiveItchioSettings.publishLimit > 0;
   const shouldFetchYoutubeWorks =
     youtubeWorksSourceLimit > 0 && youtubeWorksItemLimit > 0 && youtubeWorksPublishLimit > 0;
   const shouldFetchVimeoWorks =
@@ -188,9 +210,10 @@ async function handleIngestRequest(request: Request) {
       };
   const itchioRun = shouldFetchItchio
     ? await fetchItchioWorks({
-        sourceLimit: itchioSourceLimit,
-        reviewLimit: itchioReviewLimit,
-        publishLimit: itchioPublishLimit,
+        sourceLimit: effectiveItchioSettings.sourceLimit,
+        pageLimit: effectiveItchioSettings.pageLimit,
+        reviewLimit: effectiveItchioSettings.reviewLimit,
+        publishLimit: effectiveItchioSettings.publishLimit,
       })
     : {
         ok: true,
@@ -222,7 +245,6 @@ async function handleIngestRequest(request: Request) {
         count: 0,
         works: [],
       };
-  const currentWorks = await readGeneratedWorks({ allowFallback: false });
   const incomingWorks = [
     ...worksRun.works,
     ...itchioRun.works,
@@ -281,6 +303,7 @@ async function handleIngestRequest(request: Request) {
     !replaceWorks &&
     currentWorks.works.length > 0 &&
     nextWorks.works.length < currentWorks.works.length;
+  const nextGameCount = countGameWorks(nextWorks.works);
 
   if (!dryRun && incomingWorks.length > 0 && !wouldShrinkExistingWorks) {
     await writeGeneratedWorks(nextWorks);
@@ -349,9 +372,13 @@ async function handleIngestRequest(request: Request) {
           count: itchioRun.count,
           error: itchioRun.error,
           diagnostics: itchioRun.diagnostics,
-          sourceLimit: itchioSourceLimit,
-          reviewLimit: itchioReviewLimit,
-          publishLimit: itchioPublishLimit,
+          sourceLimit: effectiveItchioSettings.sourceLimit,
+          pageLimit: effectiveItchioSettings.pageLimit,
+          reviewLimit: effectiveItchioSettings.reviewLimit,
+          publishLimit: effectiveItchioSettings.publishLimit,
+          targetCount: itchioTargetCount,
+          currentGameCount,
+          nextGameCount,
           skipped: !shouldFetchItchio,
         },
         youtube: {
@@ -391,6 +418,44 @@ async function handleIngestRequest(request: Request) {
       },
     },
   );
+}
+
+function countGameWorks(works: WorkItem[]) {
+  return works.filter((work) => getWorkCategoryId(work) === "game").length;
+}
+
+function computeItchioFillSettings({
+  currentGameCount,
+  targetGameCount,
+  sourceLimit,
+  pageLimit,
+  reviewLimit,
+  publishLimit,
+}: {
+  currentGameCount: number;
+  targetGameCount: number;
+  sourceLimit: number;
+  pageLimit: number;
+  reviewLimit: number;
+  publishLimit: number;
+}) {
+  const deficit = Math.max(0, targetGameCount - currentGameCount);
+
+  if (deficit === 0) {
+    return {
+      sourceLimit,
+      pageLimit,
+      reviewLimit,
+      publishLimit,
+    };
+  }
+
+  return {
+    sourceLimit: Math.max(sourceLimit, 24),
+    pageLimit: Math.max(pageLimit, Math.min(3, 1 + Math.ceil(deficit / 40))),
+    reviewLimit: Math.max(reviewLimit, Math.min(150, Math.max(90, deficit * 2))),
+    publishLimit: Math.max(publishLimit, Math.min(36, Math.max(18, deficit))),
+  };
 }
 
 async function rebuildFeedAiComments(

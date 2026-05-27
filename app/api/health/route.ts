@@ -3,8 +3,9 @@ import {
   readGeneratedFeed,
   readGeneratedFeedStatus,
 } from "@/lib/generated-feed-store";
-import { readGeneratedWorksStatus } from "@/lib/generated-works-store";
+import { readGeneratedWorks, readGeneratedWorksStatus } from "@/lib/generated-works-store";
 import { getAdminAuthStatus, getAuthPersistenceInfo } from "@/lib/auth-store";
+import { getWorkCategoryId } from "@/lib/interesting-works";
 import { getMiniMaxTextStatus } from "@/lib/minimax-text";
 
 export const runtime = "nodejs";
@@ -13,7 +14,9 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const feed = await readGeneratedFeed({ allowFallback: false });
   const feedStatus = await readGeneratedFeedStatus();
+  const works = await readGeneratedWorks({ allowFallback: false });
   const worksStatus = await readGeneratedWorksStatus();
+  const currentGameCount = works.works.filter((work) => getWorkCategoryId(work) === "game").length;
   const authPersistence = getAuthPersistenceInfo();
   const textAi = getMiniMaxTextStatus();
 
@@ -25,6 +28,7 @@ export async function GET() {
     postCount: feed.posts.length,
     feedStorage: feedStatus,
     worksStorage: worksStatus,
+    gameCount: currentGameCount,
     feedPolicyVersion: GENERATED_FEED_POLICY_VERSION,
     autoIngest: {
       enabled: !["0", "false", "no", "off"].includes(
@@ -80,8 +84,10 @@ export async function GET() {
         itchio: {
           configured: true,
           sourceLimit: readNonNegativeNumber(process.env.ITCHIO_SOURCE_LIMIT, 24),
+          pageLimit: readNonNegativeNumber(process.env.ITCHIO_PAGE_LIMIT, 2),
           reviewLimit: readNonNegativeNumber(process.env.ITCHIO_REVIEW_LIMIT, 70),
           publishLimit: readNonNegativeNumber(process.env.ITCHIO_PUBLISH_LIMIT, 10),
+          targetCount: readNonNegativeNumber(process.env.ITCHIO_TARGET_COUNT, 100),
         },
         youtube: {
           configured: true,

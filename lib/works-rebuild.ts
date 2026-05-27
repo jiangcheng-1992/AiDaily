@@ -7,6 +7,7 @@ import {
   readGeneratedWorks,
   writeGeneratedWorks,
 } from "@/lib/generated-works-store";
+import { getWorkCategoryId, type WorkItem } from "@/lib/interesting-works";
 
 let rebuildPromise: Promise<void> | null = null;
 
@@ -22,6 +23,16 @@ export function triggerWorksRebuild(reason: string) {
 
 async function rebuildGeneratedWorks(reason: string) {
   console.info("[works-rebuild] started", { reason });
+  const current = await readGeneratedWorks({ allowFallback: false });
+  const currentGameCount = countGameWorks(current.works);
+  const effectiveItchioSettings = computeItchioFillSettings({
+    currentGameCount,
+    targetGameCount: readNonNegativeInt(process.env.ITCHIO_TARGET_COUNT, 100),
+    sourceLimit: readNonNegativeInt(process.env.ITCHIO_SOURCE_LIMIT, 20),
+    pageLimit: readNonNegativeInt(process.env.ITCHIO_PAGE_LIMIT, 2),
+    reviewLimit: readNonNegativeInt(process.env.ITCHIO_REVIEW_LIMIT, 60),
+    publishLimit: readNonNegativeInt(process.env.ITCHIO_PUBLISH_LIMIT, 10),
+  });
 
   const productHuntRun = shouldFetchProductHunt()
     ? await fetchProductHuntWorks({
@@ -36,9 +47,10 @@ async function rebuildGeneratedWorks(reason: string) {
       };
   const itchioRun = shouldFetchItchio()
     ? await fetchItchioWorks({
-        sourceLimit: readNonNegativeInt(process.env.ITCHIO_SOURCE_LIMIT, 20),
-        reviewLimit: readNonNegativeInt(process.env.ITCHIO_REVIEW_LIMIT, 60),
-        publishLimit: readNonNegativeInt(process.env.ITCHIO_PUBLISH_LIMIT, 10),
+        sourceLimit: effectiveItchioSettings.sourceLimit,
+        pageLimit: effectiveItchioSettings.pageLimit,
+        reviewLimit: effectiveItchioSettings.reviewLimit,
+        publishLimit: effectiveItchioSettings.publishLimit,
       })
     : {
         ok: true,
@@ -70,7 +82,6 @@ async function rebuildGeneratedWorks(reason: string) {
         count: 0,
         works: [],
       };
-  const current = await readGeneratedWorks({ allowFallback: false });
   const incomingWorks = [...productHuntRun.works, ...itchioRun.works, ...youtubeRun.works, ...vimeoRun.works];
 
   if (incomingWorks.length === 0 && current.works.length === 0) {
@@ -113,6 +124,7 @@ async function rebuildGeneratedWorks(reason: string) {
 
   console.info("[works-rebuild] completed", {
     reason,
+    currentGameCount,
     productHuntCount: productHuntRun.count,
     itchioCount: itchioRun.count,
     youtubeCount: youtubeRun.count,
@@ -131,6 +143,7 @@ function shouldFetchProductHunt() {
 function shouldFetchItchio() {
   return (
     readNonNegativeInt(process.env.ITCHIO_SOURCE_LIMIT, 20) > 0 &&
+    readNonNegativeInt(process.env.ITCHIO_PAGE_LIMIT, 2) > 0 &&
     readNonNegativeInt(process.env.ITCHIO_REVIEW_LIMIT, 60) > 0 &&
     readNonNegativeInt(process.env.ITCHIO_PUBLISH_LIMIT, 10) > 0
   );
@@ -160,4 +173,42 @@ function readPositiveInt(value: string | undefined, fallback: number) {
 function readNonNegativeInt(value: string | undefined, fallback: number) {
   const parsed = Number.parseInt(value ?? "", 10);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function countGameWorks(works: WorkItem[]) {
+  return works.filter((work) => getWorkCategoryId(work) === "game").length;
+}
+
+function computeItchioFillSettings({
+  currentGameCount,
+  targetGameCount,
+  sourceLimit,
+  pageLimit,
+  reviewLimit,
+  publishLimit,
+}: {
+  currentGameCount: number;
+  targetGameCount: number;
+  sourceLimit: number;
+  pageLimit: number;
+  reviewLimit: number;
+  publishLimit: number;
+}) {
+  const deficit = Math.max(0, targetGameCount - currentGameCount);
+
+  if (deficit === 0) {
+    return {
+      sourceLimit,
+      pageLimit,
+      reviewLimit,
+      publishLimit,
+    };
+  }
+
+  return {
+    sourceLimit: Math.max(sourceLimit, 24),
+    pageLimit: Math.max(pageLimit, Math.min(3, 1 + Math.ceil(deficit / 40))),
+    reviewLimit: Math.max(reviewLimit, Math.min(150, Math.max(90, deficit * 2))),
+    publishLimit: Math.max(publishLimit, Math.min(36, Math.max(18, deficit))),
+  };
 }

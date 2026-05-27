@@ -53,6 +53,7 @@ export type ItchioFetchResult = {
 const ITCHIO_SOURCE: WorkSource = "itchio";
 const ITCHIO_BASE_URL = "https://itch.io";
 const DEFAULT_SOURCE_LIMIT = 24;
+const DEFAULT_PAGE_LIMIT = 2;
 const DEFAULT_REVIEW_LIMIT = 70;
 const DEFAULT_PUBLISH_LIMIT = 10;
 const itchioSourcePages = [
@@ -216,18 +217,24 @@ const rejectKeywords = [
 
 export async function fetchItchioWorks({
   sourceLimit = DEFAULT_SOURCE_LIMIT,
+  pageLimit = DEFAULT_PAGE_LIMIT,
   reviewLimit = DEFAULT_REVIEW_LIMIT,
   publishLimit = DEFAULT_PUBLISH_LIMIT,
 }: {
   sourceLimit?: number;
+  pageLimit?: number;
   reviewLimit?: number;
   publishLimit?: number;
 } = {}): Promise<ItchioFetchResult> {
   try {
     const sourceLimitPerPage = Math.max(1, Math.min(sourceLimit, 24));
-    const reviewCount = Math.max(1, Math.min(reviewLimit, 90));
+    const safePageLimit = Math.max(1, Math.min(pageLimit, 3));
+    const reviewCount = Math.max(1, Math.min(reviewLimit, 150));
     const publishCount = Math.max(1, Math.min(publishLimit, reviewCount));
-    const { cards, sourceCounts, sourceErrors } = await fetchItchioGameCards(sourceLimitPerPage);
+    const { cards, sourceCounts, sourceErrors } = await fetchItchioGameCards(
+      sourceLimitPerPage,
+      safePageLimit,
+    );
     const uniqueCards = selectReviewCards(cards, reviewCount);
     let passedHardFilterCount = 0;
     let detailFailureCount = 0;
@@ -286,36 +293,47 @@ export async function fetchItchioWorks({
   }
 }
 
-async function fetchItchioGameCards(sourceLimit: number) {
+async function fetchItchioGameCards(sourceLimit: number, pageLimit: number) {
   const cardGroups: Array<{ label: string; cards: ItchGameCard[] }> = [];
   const sourceErrors: Record<string, string> = {};
 
   for (const [index, source] of itchioSourcePages.entries()) {
     if (index > 0) await sleep(1_500);
 
-    try {
-      const response = await fetchWithTimeout(source.url, {
-        headers: {
-          accept: "text/html,application/xhtml+xml",
-          "user-agent": process.env.AIQ_USER_AGENT ?? "AIQ/1.0 itch.io ingest",
-        },
-      });
+    const aggregatedCards: ItchGameCard[] = [];
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+    try {
+      for (let page = 1; page <= pageLimit; page += 1) {
+        if (page > 1) await sleep(1_100);
+
+        const pageUrl = buildItchioListPageUrl(source.url, page);
+        const response = await fetchWithTimeout(pageUrl, {
+          headers: {
+            accept: "text/html,application/xhtml+xml",
+            "user-agent": process.env.AIQ_USER_AGENT ?? "AIQ/1.0 itch.io ingest",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const html = await response.text();
+        const cards = extractGameCards(html, pageUrl, source.label).slice(0, sourceLimit);
+        aggregatedCards.push(...cards);
+
+        if (cards.length < sourceLimit) break;
       }
 
-      const html = await response.text();
-      const cards = extractGameCards(html, source.url, source.label).slice(0, sourceLimit);
       cardGroups.push({
         label: source.label,
-        cards,
+        cards: dedupeCards(aggregatedCards),
       });
     } catch (error) {
       sourceErrors[source.label] = error instanceof Error ? error.message : "source fetch failed";
       cardGroups.push({
         label: source.label,
-        cards: [],
+        cards: dedupeCards(aggregatedCards),
       });
     }
   }
@@ -376,6 +394,14 @@ function normalizeGameCard(
     sourceUrl,
     sourceLabel,
   };
+}
+
+function buildItchioListPageUrl(sourceUrl: string, page: number) {
+  if (page <= 1) return sourceUrl;
+
+  const url = new URL(sourceUrl);
+  url.searchParams.set("page", String(page));
+  return url.toString();
 }
 
 async function fetchItchioGameDetail(url: string): Promise<ItchGameDetail> {

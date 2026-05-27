@@ -121,8 +121,10 @@ function buildLocalIngestUrl(mode) {
     url.searchParams.set("productHuntDailyLimit", "0");
     url.searchParams.set("productHuntWeeklyLimit", "0");
     url.searchParams.set("itchioSourceLimit", "0");
+    url.searchParams.set("itchioPageLimit", "0");
     url.searchParams.set("itchioReviewLimit", "0");
     url.searchParams.set("itchioPublishLimit", "0");
+    url.searchParams.set("itchioTargetCount", "0");
     url.searchParams.set("youtubeWorksSourceLimit", "0");
     url.searchParams.set("youtubeWorksItemLimit", "0");
     url.searchParams.set("youtubeWorksPublishLimit", "0");
@@ -203,12 +205,20 @@ function buildLocalIngestUrl(mode) {
     url.searchParams.set("itchioSourceLimit", process.env.AUTO_INGEST_ITCHIO_SOURCE_LIMIT);
   }
 
+  if (mode !== "feed" && process.env.AUTO_INGEST_ITCHIO_PAGE_LIMIT) {
+    url.searchParams.set("itchioPageLimit", process.env.AUTO_INGEST_ITCHIO_PAGE_LIMIT);
+  }
+
   if (mode !== "feed" && process.env.AUTO_INGEST_ITCHIO_REVIEW_LIMIT) {
     url.searchParams.set("itchioReviewLimit", process.env.AUTO_INGEST_ITCHIO_REVIEW_LIMIT);
   }
 
   if (mode !== "feed" && process.env.AUTO_INGEST_ITCHIO_PUBLISH_LIMIT) {
     url.searchParams.set("itchioPublishLimit", process.env.AUTO_INGEST_ITCHIO_PUBLISH_LIMIT);
+  }
+
+  if (mode !== "feed" && process.env.AUTO_INGEST_ITCHIO_TARGET_COUNT) {
+    url.searchParams.set("itchioTargetCount", process.env.AUTO_INGEST_ITCHIO_TARGET_COUNT);
   }
 
   if (mode !== "feed" && process.env.AUTO_INGEST_YOUTUBE_WORKS_SOURCE_LIMIT) {
