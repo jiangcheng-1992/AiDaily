@@ -155,12 +155,19 @@ function PosterSection({
                   )}
                 />
               )}
+              <div className="absolute left-3 top-3 z-10">
+                <span
+                  className={cn(
+                    "inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-black shadow-sm backdrop-blur",
+                    getPosterKindClassName(item.kindLabel),
+                  )}
+                >
+                  {item.kindLabel}
+                </span>
+              </div>
               <div className="absolute inset-0 bg-gradient-to-r from-slate-950/82 via-slate-950/50 to-slate-950/15" />
               <div className="absolute inset-x-0 bottom-0 p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="rounded-full bg-white/92 px-2.5 py-1 text-[10px] font-black text-slate-800">
-                    {item.kindLabel}
-                  </span>
+                <div className="flex items-center justify-end gap-2">
                   <span className="rounded-full bg-slate-950/70 px-2 py-1 text-[10px] font-bold text-white">
                     {item.meta}
                   </span>
@@ -175,6 +182,23 @@ function PosterSection({
       </div>
     </Card>
   );
+}
+
+function getPosterKindClassName(kindLabel: string) {
+  switch (kindLabel) {
+    case "文章":
+      return "border-blue-200 bg-blue-50/95 text-blue-700";
+    case "视频":
+      return "border-fuchsia-200 bg-fuchsia-50/95 text-fuchsia-700";
+    case "游戏":
+      return "border-emerald-200 bg-emerald-50/95 text-emerald-700";
+    case "网站":
+      return "border-amber-200 bg-amber-50/95 text-amber-700";
+    case "Skill":
+      return "border-violet-200 bg-violet-50/95 text-violet-700";
+    default:
+      return "border-slate-200 bg-white/95 text-slate-800";
+  }
 }
 
 function buildSidebarPosterGroup({
