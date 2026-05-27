@@ -335,7 +335,7 @@ function hasSelectedSignals(item: LiblibListingItem) {
 }
 
 function decodeEscapedJsonFragment(value: string) {
-  return JSON.parse(`"${value.replace(/"/g, '\\"').replace(/\r/g, "\\r").replace(/\n/g, "\\n")}"`) as string;
+  return JSON.parse(`"${value.replace(/\r/g, "\\r").replace(/\n/g, "\\n")}"`) as string;
 }
 
 function normalizeText(value: string | undefined) {
