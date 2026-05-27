@@ -139,9 +139,23 @@ function PosterSection({
           <Link
             key={item.id}
             href={item.href}
-            className="group block overflow-hidden rounded-[1.35rem] border border-slate-100 bg-white"
+            className="group block rounded-[1.35rem] border border-slate-100 bg-white p-3"
           >
-            <div className="relative h-[84px] overflow-hidden">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span
+                className={cn(
+                  "inline-flex items-center justify-center rounded-full border px-2.5 py-1 text-[10px] font-black shadow-sm",
+                  getPosterKindClassName(item.kindLabel),
+                )}
+              >
+                {item.kindLabel}
+              </span>
+              <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">
+                {item.meta}
+              </span>
+            </div>
+
+            <div className="relative h-[78px] overflow-hidden rounded-[1rem]">
               {item.coverUrl ? (
                 <img
                   src={item.coverUrl}
@@ -156,23 +170,8 @@ function PosterSection({
                   )}
                 />
               )}
-              <div className="absolute inset-0 bg-gradient-to-b from-slate-950/25 via-transparent to-slate-950/18" />
-
-              <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3">
-                <span
-                  className={cn(
-                    "inline-flex items-center justify-center rounded-full border px-2.5 py-1 text-[10px] font-black shadow-sm backdrop-blur",
-                    getPosterKindClassName(item.kindLabel),
-                  )}
-                >
-                  {item.kindLabel}
-                </span>
-                <span className="shrink-0 rounded-full bg-slate-950/70 px-2 py-1 text-[10px] font-bold text-white backdrop-blur">
-                  {item.meta}
-                </span>
-              </div>
             </div>
-            <div className="px-3.5 py-3">
+            <div className="pt-2.5">
               <div className="line-clamp-2 text-[13px] font-black leading-5 text-slate-900 transition-colors group-hover:text-blue-700">
                 {item.title}
               </div>
