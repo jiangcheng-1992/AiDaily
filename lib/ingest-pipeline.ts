@@ -453,7 +453,7 @@ async function sourceItemToPost(item: SourceItem, source: AiSource): Promise<Pos
   const createdAt = publishedAt || collectedAt;
   const tags = uniqueTags([...item.tags, authorityLabel(source.authority)]).slice(0, 6);
   const imageCandidates = collectArticleImageCandidates(item);
-  const coverImageUrl = await pickBestArticleCoverImage(imageCandidates);
+  const coverImageUrl = await pickBestArticleCoverImage(imageCandidates, item.url);
   const imageUrls = imageCandidates.length ? imageCandidates : coverImageUrl ? [coverImageUrl] : undefined;
   const copy = await buildProductionPostCopy({
     title: item.title,
@@ -502,12 +502,12 @@ function collectArticleImageCandidates(item: SourceItem) {
   ]);
 }
 
-async function pickBestArticleCoverImage(candidates: string[]) {
+async function pickBestArticleCoverImage(candidates: string[], referrerUrl?: string) {
   if (candidates.length <= 1) return candidates[0];
 
   const scored = await Promise.all(
     candidates.slice(0, 8).map(async (url, index) => {
-      const dimensions = await readRemoteImageDimensions(url);
+      const dimensions = await readRemoteImageDimensions(url, referrerUrl);
       return {
         url,
         score: scoreArticleCoverCandidate(dimensions, index),
@@ -543,8 +543,12 @@ function scoreArticleCoverCandidate(dimensions: ImageDimensions | null, index: n
   return score;
 }
 
-async function readRemoteImageDimensions(url: string): Promise<ImageDimensions | null> {
+async function readRemoteImageDimensions(
+  url: string,
+  referrerUrl?: string,
+): Promise<ImageDimensions | null> {
   try {
+    const referrer = buildImageDimensionReferrer(url, referrerUrl);
     const response = await fetch(url, {
       headers: {
         "user-agent":
@@ -552,6 +556,7 @@ async function readRemoteImageDimensions(url: string): Promise<ImageDimensions |
           "AIQ/1.0 (+https://github.com/jiangcheng-1992/-AIDaily)",
         accept: "image/avif,image/webp,image/png,image/jpeg,image/*,*/*",
         range: "bytes=0-65535",
+        ...(referrer ? { referer: referrer } : {}),
       },
       cache: "no-store",
     });
@@ -561,6 +566,18 @@ async function readRemoteImageDimensions(url: string): Promise<ImageDimensions |
     return readImageDimensions(buffer);
   } catch {
     return null;
+  }
+}
+
+function buildImageDimensionReferrer(imageUrl: string, referrerUrl?: string) {
+  if (referrerUrl) return referrerUrl;
+
+  try {
+    const url = new URL(imageUrl);
+    if (/qbitai\.com$/i.test(url.hostname)) return "https://www.qbitai.com/";
+    return url.origin;
+  } catch {
+    return undefined;
   }
 }
 
