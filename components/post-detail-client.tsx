@@ -97,7 +97,7 @@ export function PostDetailClient({
     post?.type === "video" &&
     isLikelyDouyinVideoPost(post.sourceId, post.sourceUrl, post.profileUrl);
   const videoEmbedUrl =
-    post?.type === "video" ? post.videoEmbedUrl ?? buildDouyinEmbedUrl(post.sourceUrl) : undefined;
+    post?.type === "video" ? post.videoEmbedUrl ?? buildVideoEmbedUrl(post.sourceUrl) : undefined;
   const activeVideoUrl = isDouyinVideoPost ? resolvedVideoUrl : resolvedVideoUrl ?? post?.videoUrl;
   const activeVideoEmbedUrl = isDouyinVideoPost ? undefined : resolvedVideoEmbedUrl ?? videoEmbedUrl;
   const hasPlayableVideo =
@@ -690,33 +690,98 @@ export function PostDetailClient({
           ) : null}
 
           {post.type === "video" ? (
-            <div className="mx-auto mt-6 max-w-[300px] overflow-hidden rounded-[1.75rem] border border-slate-100 bg-slate-950 shadow-lift sm:max-w-[320px]">
+            <div className="mx-auto mt-6 w-full max-w-[360px] overflow-hidden rounded-[1.75rem] border border-slate-100 bg-slate-950 shadow-lift sm:max-w-[420px]">
               <div className="relative bg-black">
-                {post.coverImageUrl ? (
-                  <>
-                    <div
-                      className="absolute inset-0 bg-cover bg-center opacity-25 blur-xl"
-                      style={{ backgroundImage: `url(${post.coverImageUrl})` }}
-                    />
-                    <img
-                      src={post.coverImageUrl}
-                      alt={post.title}
-                      className="relative aspect-[9/16] w-full object-contain"
-                    />
-                  </>
+                {videoStarted && videoPlaybackMode === "direct" && activeVideoUrl ? (
+                  <video
+                    ref={videoElementRef}
+                    src={activeVideoUrl}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    poster={post.coverImageUrl}
+                    onCanPlay={markVideoReady}
+                    onWaiting={handleVideoBuffering}
+                    onProgress={updateVideoBufferedProgress}
+                    onError={markVideoFailed}
+                    className="aspect-[9/16] w-full bg-black object-contain"
+                  />
+                ) : videoStarted && activeVideoEmbedUrl ? (
+                  <iframe
+                    src={activeVideoEmbedUrl}
+                    title={post.title}
+                    allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+                    allowFullScreen
+                    loading="lazy"
+                    className="aspect-video w-full border-0 bg-black"
+                  />
                 ) : (
-                  <div className="aspect-[9/16] w-full bg-black" />
+                  <>
+                    {post.coverImageUrl ? (
+                      <>
+                        <div
+                          className="absolute inset-0 bg-cover bg-center opacity-25 blur-xl"
+                          style={{ backgroundImage: `url(${post.coverImageUrl})` }}
+                        />
+                        <img
+                          src={post.coverImageUrl}
+                          alt={post.title}
+                          className="relative aspect-[9/16] w-full object-contain"
+                        />
+                      </>
+                    ) : (
+                      <div className="aspect-[9/16] w-full bg-black" />
+                    )}
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/55 to-transparent px-5 pb-6 pt-20">
+                      <button
+                        type="button"
+                        onClick={startVideoPlayback}
+                        className="mx-auto inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-4 py-3 text-sm font-black text-slate-950 transition-colors hover:bg-fuchsia-100"
+                      >
+                        App 内播放
+                        <Play className="h-4 w-4 fill-current" />
+                      </button>
+                    </div>
+                  </>
                 )}
-                {post.sourceUrl ? (
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/55 to-transparent px-5 pb-6 pt-20">
-                    <a
-                      href={post.sourceUrl}
-                      className="mx-auto inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-4 py-3 text-sm font-black text-slate-950 transition-colors hover:bg-fuchsia-100"
-                    >
-                      去看原视频
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
+              </div>
+              <div className="space-y-2 bg-slate-950 px-4 py-3 text-white">
+                {videoLoading ? (
+                  <div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-white/15">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-blue-400 to-fuchsia-400 transition-all"
+                        style={{ width: `${videoLoadProgress}%` }}
+                      />
+                    </div>
+                    <p className="mt-2 text-xs font-semibold text-white/70">
+                      {videoSlow ? "视频加载较慢，正在继续尝试..." : "正在加载视频..."}
+                    </p>
                   </div>
+                ) : null}
+                {videoNeedsManualPlay ? (
+                  <p className="text-xs font-semibold text-white/70">
+                    浏览器阻止了自动播放，请点击播放器中的播放按钮。
+                  </p>
+                ) : null}
+                {videoSourceLimited ? (
+                  <p className="text-xs font-semibold text-amber-200">
+                    原平台限制了直接播放，建议稍后重试或打开原视频页面。
+                  </p>
+                ) : null}
+                {videoFailed ? (
+                  <p className="text-xs font-semibold text-rose-200">
+                    当前视频暂时无法在 App 内播放。
+                  </p>
+                ) : null}
+                {post.sourceUrl ? (
+                  <a
+                    href={post.sourceUrl}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-white/70 hover:text-white"
+                  >
+                    查看原视频页面
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
                 ) : null}
               </div>
             </div>
@@ -953,6 +1018,41 @@ function buildDouyinEmbedUrl(sourceUrl?: string) {
 
   const videoId = sourceUrl.match(/\/video\/(\d+)/)?.[1] ?? sourceUrl.match(/\/share\/video\/(\d+)/)?.[1];
   return videoId ? `https://m.douyin.com/share/video/${videoId}` : undefined;
+}
+
+function buildVideoEmbedUrl(sourceUrl?: string) {
+  if (!sourceUrl) return undefined;
+
+  const douyinUrl = buildDouyinEmbedUrl(sourceUrl);
+  if (douyinUrl) return douyinUrl;
+
+  const youtubeId =
+    sourceUrl.match(/[?&]v=([A-Za-z0-9_-]{6,})/)?.[1] ??
+    sourceUrl.match(/youtu\.be\/([A-Za-z0-9_-]{6,})/)?.[1] ??
+    sourceUrl.match(/youtube\.com\/shorts\/([A-Za-z0-9_-]{6,})/)?.[1] ??
+    sourceUrl.match(/youtube\.com\/embed\/([A-Za-z0-9_-]{6,})/)?.[1];
+  if (youtubeId) return `https://www.youtube.com/embed/${youtubeId}`;
+
+  const vimeoId = sourceUrl.match(/vimeo\.com\/(?:video\/)?(\d+)/)?.[1];
+  if (vimeoId) return `https://player.vimeo.com/video/${vimeoId}`;
+
+  const bilibiliBvid =
+    sourceUrl.match(/\/video\/(BV[A-Za-z0-9]+)/)?.[1] ??
+    sourceUrl.match(/[?&]bvid=(BV[A-Za-z0-9]+)/)?.[1];
+  if (bilibiliBvid) {
+    return `https://player.bilibili.com/player.html?bvid=${encodeURIComponent(
+      bilibiliBvid,
+    )}&autoplay=0`;
+  }
+
+  const bilibiliAid = sourceUrl.match(/\/video\/av(\d+)/i)?.[1] ?? sourceUrl.match(/[?&]aid=(\d+)/)?.[1];
+  if (bilibiliAid) {
+    return `https://player.bilibili.com/player.html?aid=${encodeURIComponent(
+      bilibiliAid,
+    )}&autoplay=0`;
+  }
+
+  return undefined;
 }
 
 function isLikelyDouyinVideoPost(sourceId?: string, sourceUrl?: string, profileUrl?: string) {
