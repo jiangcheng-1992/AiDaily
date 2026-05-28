@@ -50,7 +50,9 @@ export default async function InterestingDetailPage({
 
   const relatedWorks = getRelatedInterestingWorks(work, 3, allWorks);
   const primaryUrl =
-    work.source === "liblib"
+    work.source === "itchio"
+      ? `/interesting/${work.id}/play`
+      : work.source === "liblib"
       ? work.externalUrl || work.videoUrl || work.githubUrl
       : work.externalUrl || work.videoUrl || work.githubUrl;
 

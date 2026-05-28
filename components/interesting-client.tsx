@@ -265,7 +265,7 @@ const InterestingWorkCard = memo(function InterestingWorkCard({
           </div>
         </div>
         <Link
-          href={`/interesting/${work.id}`}
+          href={work.source === "itchio" ? `/interesting/${work.id}/play` : `/interesting/${work.id}`}
           className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-slate-950 px-4 py-2.5 text-xs font-black text-white transition-colors hover:bg-blue-700"
         >
           {work.categoryHint === "skill"
