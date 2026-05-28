@@ -78,8 +78,6 @@ export default async function InterestingDetailPage({
                   {primaryUrl ? (
                     <a
                       href={primaryUrl}
-                      target="_blank"
-                      rel="noreferrer"
                       aria-label="观看作品"
                       className="flex h-16 w-16 items-center justify-center rounded-full bg-white/90 text-blue-700 shadow-lift transition-transform hover:scale-105"
                     >
@@ -126,8 +124,6 @@ export default async function InterestingDetailPage({
                 {primaryUrl ? (
                   <a
                     href={primaryUrl}
-                    target="_blank"
-                    rel="noreferrer"
                     className={cn(buttonVariants({ variant: "gradient", size: "lg" }))}
                   >
                     {work.categoryHint === "skill"
@@ -143,8 +139,6 @@ export default async function InterestingDetailPage({
                 {work.githubUrl ? (
                   <a
                     href={work.githubUrl}
-                    target="_blank"
-                    rel="noreferrer"
                     className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
                   >
                     <Github className="h-4 w-4" />
@@ -154,8 +148,6 @@ export default async function InterestingDetailPage({
                 {work.apkUrl ? (
                   <a
                     href={work.apkUrl}
-                    target="_blank"
-                    rel="noreferrer"
                     className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
                   >
                     下载 APK

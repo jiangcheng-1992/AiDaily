@@ -626,8 +626,6 @@ export function PostDetailClient({
             {post.type === "video" && post.profileUrl ? (
               <a
                 href={post.profileUrl}
-                target="_blank"
-                rel="noreferrer"
                 className="inline-flex items-center gap-1 text-fuchsia-700 hover:underline"
               >
                 查看作者主页
@@ -640,8 +638,6 @@ export function PostDetailClient({
             <div className="mt-5">
               <a
                 href={post.sourceUrl}
-                target="_blank"
-                rel="noreferrer"
                 className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2.5 text-sm font-black text-white shadow-soft transition-colors hover:bg-blue-700"
               >
                 {originalSourceLabel}
@@ -715,8 +711,6 @@ export function PostDetailClient({
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/55 to-transparent px-5 pb-6 pt-20">
                     <a
                       href={post.sourceUrl}
-                      target="_blank"
-                      rel="noreferrer"
                       className="mx-auto inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-4 py-3 text-sm font-black text-slate-950 transition-colors hover:bg-fuchsia-100"
                     >
                       去看原视频

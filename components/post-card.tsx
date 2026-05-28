@@ -144,8 +144,6 @@ export function PostCard({
         {post.type === "skill" && post.sourceUrl ? (
           <a
             href={post.sourceUrl}
-            target="_blank"
-            rel="noreferrer"
             onClick={(event) => event.stopPropagation()}
             className="mt-3 inline-flex items-center gap-2 rounded-full bg-slate-950 px-3.5 py-2 text-xs font-bold text-white transition-colors hover:bg-blue-700"
           >

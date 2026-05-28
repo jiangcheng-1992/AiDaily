@@ -8,6 +8,7 @@ const config: CapacitorConfig = {
     url: "https://aidaily-production.up.railway.app",
     cleartext: false,
     androidScheme: "https",
+    allowNavigation: ["*"],
   },
   android: {
     backgroundColor: "#f8fafc",

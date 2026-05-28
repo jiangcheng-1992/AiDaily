@@ -2,8 +2,9 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 
 import { MobileTabbar } from "@/components/mobile-tabbar";
+import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { ADSENSE_CLIENT, GOOGLE_ADSENSE_ENABLED } from "@/lib/google-ads";
+import { ADSENSE_CLIENT } from "@/lib/google-ads";
 import "./globals.css";
 
 const GA_MEASUREMENT_ID = "G-0W61YMLPCN";
@@ -29,7 +30,7 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <head>
-        {GOOGLE_ADSENSE_ENABLED && ADSENSE_CLIENT ? (
+        {ADSENSE_CLIENT ? (
           <script
             async
             crossOrigin="anonymous"
@@ -52,6 +53,7 @@ export default function RootLayout({
         </Script>
         <SiteHeader />
         <main className="pb-[calc(8.5rem+env(safe-area-inset-bottom))] md:pb-12">{children}</main>
+        <SiteFooter />
         <MobileTabbar />
       </body>
     </html>
