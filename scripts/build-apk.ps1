@@ -9,7 +9,30 @@ $root = Split-Path -Parent $PSScriptRoot
 $androidDir = Join-Path $root "android"
 
 if (-not (Get-Command java -ErrorAction SilentlyContinue)) {
-  throw "Java/JDK is not installed or not in PATH. Install JDK 17+ first, then rerun this script."
+  throw "Java/JDK is not installed or not in PATH. Install JDK 21+ first, then rerun this script."
+}
+
+function Get-JavaMajorVersion {
+  $javaVersionOutput = & cmd.exe /c "java -version 2>&1" | Out-String
+
+  if ($javaVersionOutput -match 'version "(\d+)') {
+    return [int]$Matches[1]
+  }
+
+  if ($javaVersionOutput -match 'version "1\.(\d+)') {
+    return [int]$Matches[1]
+  }
+
+  return $null
+}
+
+function Assert-JavaVersion {
+  $majorVersion = Get-JavaMajorVersion
+  if (-not $majorVersion -or $majorVersion -lt 21) {
+    throw "JDK 21+ is required by Capacitor Android. Install Temurin 21 JDK, reopen PowerShell, verify 'java -version' shows 21.x, then rerun this script."
+  }
+
+  Write-Host "Java version: $majorVersion"
 }
 
 function Resolve-AndroidSdkPath {
@@ -45,6 +68,8 @@ function Ensure-AndroidLocalProperties {
 
 Push-Location $root
 try {
+  Assert-JavaVersion
+
   npm run apk:sync
   if ($LASTEXITCODE -ne 0) {
     throw "Capacitor sync failed with exit code $LASTEXITCODE."
