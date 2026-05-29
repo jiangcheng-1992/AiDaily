@@ -176,26 +176,29 @@ function RankingItem({ post, index, metric }: { post: Post; index: number; metri
         <span className="absolute left-2 top-2 flex h-6 min-w-6 items-center justify-center rounded-full bg-white/92 px-1.5 text-xs font-black text-blue-700 shadow-soft">
           {index + 1}
         </span>
+        <span className="absolute inset-x-1.5 bottom-1.5 flex items-center justify-between gap-1">
+          <PostTypeBadge type={post.type} className="bg-white/92 px-2 py-0.5 shadow-soft" />
+          <span className="inline-flex min-w-0 items-center gap-1 rounded-full bg-slate-950/72 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur">
+            <CalendarClock className="h-3 w-3 shrink-0" />
+            <span className="truncate">{formatRelativeTime(post.collectedAt ?? post.createdAt)}</span>
+          </span>
+        </span>
       </span>
 
       <span className="min-w-0 py-0.5">
-        <span className="flex flex-wrap items-center gap-1.5">
-          <PostTypeBadge type={post.type} className="px-2 py-0.5" />
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400">
-            <CalendarClock className="h-3.5 w-3.5" />
-            {formatRelativeTime(post.collectedAt ?? post.createdAt)}
+        <span className="flex items-start justify-between gap-3">
+          <span className="line-clamp-2 min-w-0 text-[13px] font-black leading-5 text-slate-950 group-hover:text-blue-700 sm:text-sm sm:leading-6">
+            {post.title}
+          </span>
+          <span className="flex shrink-0 items-center gap-1.5">
+            <PostScoreBadge post={post} size="compact" />
+            <span className="rounded-full bg-blue-50 px-2 py-1 text-[11px] font-black text-blue-700">
+              {metric}
+            </span>
           </span>
         </span>
-        <span className="mt-1.5 block line-clamp-2 text-[13px] font-black leading-5 text-slate-950 group-hover:text-blue-700 sm:text-sm sm:leading-6">
-          {post.title}
-        </span>
-        <span className="mt-1 hidden line-clamp-2 text-xs leading-5 text-slate-500 sm:block">
+        <span className="mt-1.5 block line-clamp-1 text-xs leading-5 text-slate-500">
           {post.summary}
-        </span>
-        <span className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-slate-400">
-          <PostScoreBadge post={post} size="compact" />
-          <span>{metric}</span>
-          <span className="max-w-[9rem] truncate">{post.sourceName}</span>
         </span>
       </span>
     </Link>
