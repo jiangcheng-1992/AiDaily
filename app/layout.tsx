@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 
 import { MobileTabbar } from "@/components/mobile-tabbar";
+import { PrivacyConsentDialog } from "@/components/privacy-consent-dialog";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { ADSENSE_CLIENT } from "@/lib/google-ads";
@@ -55,6 +56,7 @@ export default function RootLayout({
         <main className="pb-[calc(8.5rem+env(safe-area-inset-bottom))] md:pb-12">{children}</main>
         <SiteFooter />
         <MobileTabbar />
+        <PrivacyConsentDialog />
       </body>
     </html>
   );
