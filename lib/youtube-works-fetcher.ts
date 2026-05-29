@@ -10,6 +10,7 @@ type YoutubeWorksSource = {
   name: string;
   tier: YoutubeWorksSourceTier;
   profileUrls: string[];
+  channelId?: string;
   searchQuery: string;
   aliases: string[];
 };
@@ -187,31 +188,31 @@ const ipRiskKeywords = [
 ];
 
 const youtubeWorksSources: YoutubeWorksSource[] = [
-  source("ai-director-dave-clark", "AI Director Dave Clark", "S", ["https://www.youtube.com/@AIDirectorDaveClark", "https://www.youtube.com/@DaveClarkAI"]),
-  source("kavan-the-kid", "Kavan the Kid", "S", ["https://www.youtube.com/@KavantheKid", "https://www.youtube.com/@KavanCardoza"]),
-  source("heydin", "Heydin", "S", ["https://www.youtube.com/@Heydin"]),
-  source("pj-ace", "PJ Ace", "S", ["https://www.youtube.com/@PJAce"]),
-  source("the-reel-robot", "Dale Williams / The Reel Robot", "S", ["https://www.youtube.com/@TheReelRobot"]),
-  source("brad-clark-ai-storyteller", "Brad Clark | AI Storyteller", "S", ["https://www.youtube.com/@BradClarkAIStoryteller", "https://www.youtube.com/@AIStorytellerBradClark"]),
-  source("gabe-michael", "Gabe Michael", "A", ["https://www.youtube.com/@GabeMichael"]),
-  source("evan-ezquer", "Evan Ezquer | AI Filmmaker", "A", ["https://www.youtube.com/@EvanEzquer"]),
-  source("roxanne-ducharme", "Roxanne Ducharme", "A", ["https://www.youtube.com/@RoxanneDucharme"]),
-  source("tamara-llorens", "Tamara Llorens", "A", ["https://www.youtube.com/@TamaraLlorens"]),
-  source("uncanny-harry-ai-productions", "Uncanny Harry AI Productions", "B", ["https://www.youtube.com/@UncannyHarryAIProductions", "https://www.youtube.com/@UncannyHarry"]),
-  source("eike-ai", "eike-ai", "B", ["https://www.youtube.com/@eike-ai", "https://www.youtube.com/@eikeai"]),
-  source("eighth-d", "Eighth.D", "B", ["https://www.youtube.com/@EighthD", "https://www.youtube.com/@Eighth.D"]),
-  source("giovanni-abitante", "Giovanni Abitante", "B", ["https://www.youtube.com/@GiovanniAbitante"]),
-  source("iyaken", "iyaKen", "B", ["https://www.youtube.com/@iyaKen"]),
-  source("the-ai-skizo", "The AI Skizo", "B", ["https://www.youtube.com/@TheAISkizo"]),
-  source("complex-c-ai", "Complex C AI", "B", ["https://www.youtube.com/@ComplexCAI"]),
-  source("surreal-ai", "Surreal AI", "B", ["https://www.youtube.com/@SurrealAI"]),
-  source("eddie-visuals", "Eddie Visuals", "B", ["https://www.youtube.com/@EddieVisuals"]),
-  source("ai-video-school", "AI Video School", "B", ["https://www.youtube.com/@AIVideoSchool"]),
-  source("ai-filmmaker", "AI FILMMAKER", "B", ["https://www.youtube.com/@Aifilmmaker"]),
-  source("dr-dids-tv", "Dr Dids TV", "B", ["https://www.youtube.com/@DrDidsTV"]),
-  source("films-by-sav", "S.A.V / FilmsBySav", "B", ["https://www.youtube.com/@FilmsBySav"]),
-  source("queen-one-studios", "Queen One Studios", "B", ["https://www.youtube.com/@QueenOneStudios"]),
-  source("mr-pixel-wizard", "MrPixelWizard / Kevin Friel", "B", ["https://www.youtube.com/@MrPixelWizard", "https://www.youtube.com/@KevinFriel"]),
+  source("ai-director-dave-clark", "AI Director Dave Clark", "S", ["https://www.youtube.com/channel/UCqrWkLKwRKNZRbbJXVEvAjw", "https://www.youtube.com/@AIDirectorDaveClark", "https://www.youtube.com/@DaveClarkAI"], "UCqrWkLKwRKNZRbbJXVEvAjw"),
+  source("kavan-the-kid", "Kavan the Kid", "S", ["https://www.youtube.com/channel/UCMOiV-agwdaNxJENLQ_Sudg", "https://www.youtube.com/@KavantheKid", "https://www.youtube.com/@KavanCardoza"], "UCMOiV-agwdaNxJENLQ_Sudg"),
+  source("heydin", "Heydin", "S", ["https://www.youtube.com/channel/UCUrZUhoN2nwwN8G0wq5uriQ", "https://www.youtube.com/@Heydin"], "UCUrZUhoN2nwwN8G0wq5uriQ"),
+  source("pj-ace", "PJ Ace", "S", ["https://www.youtube.com/channel/UCM0oWxrFse4sFbPrz2ObL-w", "https://www.youtube.com/@PJAce"], "UCM0oWxrFse4sFbPrz2ObL-w"),
+  source("the-reel-robot", "Dale Williams / The Reel Robot", "S", ["https://www.youtube.com/channel/UC_3t5WerQttfnOzm5y3pbnw", "https://www.youtube.com/@TheReelRobot"], "UC_3t5WerQttfnOzm5y3pbnw"),
+  source("brad-clark-ai-storyteller", "Brad Clark | AI Storyteller", "S", ["https://www.youtube.com/channel/UCSwpkjLGTAefEjlrIN2ppIQ", "https://www.youtube.com/@BradClarkAIStoryteller", "https://www.youtube.com/@AIStorytellerBradClark"], "UCSwpkjLGTAefEjlrIN2ppIQ"),
+  source("gabe-michael", "Gabe Michael", "A", ["https://www.youtube.com/channel/UC_v04kWzTA7dtpEnVjg9N5g", "https://www.youtube.com/@GabeMichael"], "UC_v04kWzTA7dtpEnVjg9N5g"),
+  source("evan-ezquer", "Evan Ezquer | AI Filmmaker", "A", ["https://www.youtube.com/channel/UC6YSzBbZ1AVi2qmOgj_UQCw", "https://www.youtube.com/@EvanEzquer"], "UC6YSzBbZ1AVi2qmOgj_UQCw"),
+  source("roxanne-ducharme", "Roxanne Ducharme", "A", ["https://www.youtube.com/channel/UCX_1zIfktowphLJd1zF8qTw", "https://www.youtube.com/@RoxanneDucharme"], "UCX_1zIfktowphLJd1zF8qTw"),
+  source("tamara-llorens", "Tamara Llorens", "A", ["https://www.youtube.com/channel/UCYrqRaLC8A8_E020ippZKpw", "https://www.youtube.com/@TamaraLlorens"], "UCYrqRaLC8A8_E020ippZKpw"),
+  source("uncanny-harry-ai-productions", "Uncanny Harry AI Productions", "B", ["https://www.youtube.com/channel/UCvrjK0vYHo2ekP1cqPTKtaQ", "https://www.youtube.com/@UncannyHarryAIProductions", "https://www.youtube.com/@UncannyHarry"], "UCvrjK0vYHo2ekP1cqPTKtaQ"),
+  source("eike-ai", "eike-ai", "B", ["https://www.youtube.com/channel/UCyhYdBksjA607dEbywl2w_Q", "https://www.youtube.com/@eike-ai", "https://www.youtube.com/@eikeai"], "UCyhYdBksjA607dEbywl2w_Q"),
+  source("eighth-d", "Eighth.D", "B", ["https://www.youtube.com/channel/UCufY76WEmQ7jZRYZxt60L5w", "https://www.youtube.com/@EighthD", "https://www.youtube.com/@Eighth.D"], "UCufY76WEmQ7jZRYZxt60L5w"),
+  source("giovanni-abitante", "Giovanni Abitante", "B", ["https://www.youtube.com/channel/UCGY5TYvdte0vJllSVlBFXsA", "https://www.youtube.com/@GiovanniAbitante"], "UCGY5TYvdte0vJllSVlBFXsA"),
+  source("iyaken", "iyaKen", "B", ["https://www.youtube.com/channel/UCMtjSOBHMIl00UFmnG9xZOg", "https://www.youtube.com/@iyaKen"], "UCMtjSOBHMIl00UFmnG9xZOg"),
+  source("the-ai-skizo", "The AI Skizo", "B", ["https://www.youtube.com/channel/UCCN5VHYLU5pn-8RymozG4vw", "https://www.youtube.com/@TheAISkizo"], "UCCN5VHYLU5pn-8RymozG4vw"),
+  source("complex-c-ai", "Complex C AI", "B", ["https://www.youtube.com/channel/UCFv18tAWFB37QHWK2U8Tj5w", "https://www.youtube.com/@ComplexCAI"], "UCFv18tAWFB37QHWK2U8Tj5w"),
+  source("surreal-ai", "Surreal AI", "B", ["https://www.youtube.com/channel/UC0XY8icjw2QUPccMxEVKBDQ", "https://www.youtube.com/@SurrealAI"], "UC0XY8icjw2QUPccMxEVKBDQ"),
+  source("eddie-visuals", "Eddie Visuals", "B", ["https://www.youtube.com/channel/UCpnabDnV2S1NmGkKbB7js9w", "https://www.youtube.com/@EddieVisuals"], "UCpnabDnV2S1NmGkKbB7js9w"),
+  source("ai-video-school", "AI Video School", "B", ["https://www.youtube.com/channel/UCUb7KwmlVSSCnPu5KEhym8A", "https://www.youtube.com/@AIVideoSchool"], "UCUb7KwmlVSSCnPu5KEhym8A"),
+  source("ai-filmmaker", "AI FILMMAKER", "B", ["https://www.youtube.com/channel/UCePFxvPfhN9JGsECGR-rNbA", "https://www.youtube.com/@Aifilmmaker"], "UCePFxvPfhN9JGsECGR-rNbA"),
+  source("dr-dids-tv", "Dr Dids TV", "B", ["https://www.youtube.com/channel/UCDpbSIkl9m3H4dg2XPkO9Pw", "https://www.youtube.com/@DrDidsTV"], "UCDpbSIkl9m3H4dg2XPkO9Pw"),
+  source("films-by-sav", "S.A.V / FilmsBySav", "B", ["https://www.youtube.com/channel/UC6JRqLH8tmhRoWB3Sl7ArVg", "https://www.youtube.com/@FilmsBySav"], "UC6JRqLH8tmhRoWB3Sl7ArVg"),
+  source("queen-one-studios", "Queen One Studios", "B", ["https://www.youtube.com/channel/UCR753GeTB6j6yvIMM83R-og", "https://www.youtube.com/@QueenOneStudios"], "UCR753GeTB6j6yvIMM83R-og"),
+  source("mr-pixel-wizard", "MrPixelWizard / Kevin Friel", "B", ["https://www.youtube.com/channel/UCTMySf7JbGMGUPt5-YQim8Q", "https://www.youtube.com/@MrPixelWizard", "https://www.youtube.com/@KevinFriel"], "UCTMySf7JbGMGUPt5-YQim8Q"),
 ];
 
 export async function fetchYoutubeWorks({
@@ -324,25 +325,38 @@ export async function fetchYoutubeWorks({
 async function fetchSourceCandidates(sourceConfig: YoutubeWorksSource, limit: number) {
   const channelId = await resolveChannelId(sourceConfig);
   const feedUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
-  const response = await fetchWithTimeout(feedUrl, {
-    accept: "application/rss+xml, application/atom+xml, application/xml, text/xml",
-  });
+  let rssError = "";
 
-  if (!response.ok) throw new Error(`RSS returned HTTP ${response.status}`);
+  try {
+    const response = await fetchWithTimeout(feedUrl, {
+      accept: "application/rss+xml, application/atom+xml, application/xml, text/xml",
+    });
 
-  const rawItems = extractRawItems(parser.parse(await response.text())).slice(0, Math.max(limit * 5, limit));
-  const normalizedItems = rawItems
-    .map((item) => normalizeYoutubeItem(sourceConfig, item))
-    .filter((item): item is YoutubeVideoCandidate => Boolean(item));
+    if (!response.ok) throw new Error(`RSS returned HTTP ${response.status}`);
 
-  return {
-    rawCount: rawItems.length,
-    normalizedCount: normalizedItems.length,
-    items: normalizedItems.slice(0, limit),
-  };
+    const rawItems = extractRawItems(parser.parse(await response.text())).slice(0, Math.max(limit * 5, limit));
+    const normalizedItems = rawItems
+      .map((item) => normalizeYoutubeItem(sourceConfig, item))
+      .filter((item): item is YoutubeVideoCandidate => Boolean(item));
+
+    return {
+      rawCount: rawItems.length,
+      normalizedCount: normalizedItems.length,
+      items: normalizedItems.slice(0, limit),
+    };
+  } catch (error) {
+    rssError = error instanceof Error ? error.message : "RSS fetch failed";
+  }
+
+  const fallback = await fetchChannelVideosPageCandidates(sourceConfig, channelId, limit);
+  if (fallback.items.length > 0) return fallback;
+
+  throw new Error(`${rssError}; channel videos fallback returned no items`);
 }
 
 async function resolveChannelId(sourceConfig: YoutubeWorksSource) {
+  if (sourceConfig.channelId) return sourceConfig.channelId;
+
   for (const profileUrl of sourceConfig.profileUrls) {
     const channelId = await fetchChannelIdFromUrl(profileUrl).catch(() => "");
     if (channelId) return channelId;
@@ -363,7 +377,10 @@ async function fetchChannelIdFromUrl(url: string, aliases: string[] = []) {
 
   const html = await response.text();
   const direct =
-    html.match(/"channelId":"(UC[^"]+)"/)?.[1] ||
+    html.match(/"channelId":"(UC[a-zA-Z0-9_-]{22})"/)?.[1] ||
+    html.match(/"browseId":"(UC[a-zA-Z0-9_-]{22})"/)?.[1] ||
+    html.match(/"externalId":"(UC[a-zA-Z0-9_-]{22})"/)?.[1] ||
+    html.match(/\/channel\/(UC[a-zA-Z0-9_-]{22})/)?.[1] ||
     html.match(/<meta[^>]+itemprop=["']channelId["'][^>]+content=["'](UC[^"']+)["']/i)?.[1] ||
     html.match(/\/feeds\/videos\.xml\?channel_id=(UC[a-zA-Z0-9_-]+)/)?.[1];
 
@@ -380,6 +397,113 @@ async function fetchChannelIdFromUrl(url: string, aliases: string[] = []) {
   }
 
   return direct || "";
+}
+
+async function fetchChannelVideosPageCandidates(sourceConfig: YoutubeWorksSource, channelId: string, limit: number) {
+  const videosUrl = `https://www.youtube.com/channel/${channelId}/videos`;
+  const response = await fetchWithTimeout(videosUrl, {
+    accept: "text/html,application/xhtml+xml",
+  });
+
+  if (!response.ok) throw new Error(`channel videos returned HTTP ${response.status}`);
+
+  const rawItems = extractLockupViewModels(extractYoutubeInitialData(await response.text())).slice(0, Math.max(limit * 5, limit));
+  const normalizedItems = rawItems
+    .map((item) => normalizeYoutubeLockupItem(sourceConfig, item))
+    .filter((item): item is YoutubeVideoCandidate => Boolean(item));
+
+  return {
+    rawCount: rawItems.length,
+    normalizedCount: normalizedItems.length,
+    items: normalizedItems.slice(0, limit),
+  };
+}
+
+function extractYoutubeInitialData(html: string): unknown {
+  const marker = "var ytInitialData = ";
+  const startIndex = html.indexOf(marker);
+  if (startIndex < 0) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escaping = false;
+  const jsonStart = startIndex + marker.length;
+
+  for (let index = jsonStart; index < html.length; index += 1) {
+    const char = html[index];
+
+    if (inString) {
+      if (escaping) {
+        escaping = false;
+      } else if (char === "\\") {
+        escaping = true;
+      } else if (char === "\"") {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === "\"") {
+      inString = true;
+      continue;
+    }
+
+    if (char === "{") depth += 1;
+    if (char === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        try {
+          return JSON.parse(html.slice(jsonStart, index + 1));
+        } catch {
+          return null;
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+function extractLockupViewModels(value: unknown): RawYoutubeItem[] {
+  const lockups: RawYoutubeItem[] = [];
+  walkYoutubeData(value, (item) => {
+    const lockup = item.lockupViewModel;
+    if (lockup && typeof lockup === "object") lockups.push(lockup as RawYoutubeItem);
+  });
+  return lockups;
+}
+
+function normalizeYoutubeLockupItem(sourceConfig: YoutubeWorksSource, item: RawYoutubeItem): YoutubeVideoCandidate | null {
+  const metadata = item.metadata as Record<string, unknown> | undefined;
+  const metadataView = (metadata?.lockupMetadataViewModel as Record<string, unknown> | undefined) ?? {};
+  const rows = toArray(
+    ((metadataView.metadata as Record<string, unknown> | undefined)?.contentMetadataViewModel as Record<string, unknown> | undefined)?.metadataRows,
+  );
+  const id = asText(item.contentId) || findFirstTextValue(item, "videoId");
+  const title = normalizeText(asText((metadataView.title as Record<string, unknown> | undefined)?.content));
+  const url = id ? `https://www.youtube.com/watch?v=${id}` : "";
+  const coverUrl = readLargestThumbnailUrl(item) || (id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : "");
+  const rowTexts = rows.flatMap((row) =>
+    toArray((row as Record<string, unknown> | undefined)?.metadataParts).map((part) =>
+      asText(((part as Record<string, unknown> | undefined)?.text as Record<string, unknown> | undefined)?.content),
+    ),
+  );
+  const viewCount = readYoutubeViewCount(rowTexts.find((text) => /view|視聴|观看|觀看|次/.test(text)) ?? "");
+  const durationMs = parseVideoDurationMs(findThumbnailBadgeText(item));
+
+  if (!id || !title || !url || !coverUrl) return null;
+
+  return {
+    source: sourceConfig,
+    id,
+    title,
+    description: title,
+    url,
+    coverUrl,
+    publishedAt: readYoutubeRelativeDate(rowTexts.find((text) => /ago|前/.test(text)) ?? ""),
+    durationMs,
+    viewCount,
+  };
 }
 
 function normalizeYoutubeItem(sourceConfig: YoutubeWorksSource, item: RawYoutubeItem): YoutubeVideoCandidate | null {
@@ -437,7 +561,6 @@ function getPublishingRejectionReasons(candidate: YoutubeVideoCandidate, score: 
 }
 
 function scoreCandidate(candidate: YoutubeVideoCandidate) {
-  const title = candidate.title.toLowerCase();
   const text = `${candidate.title} ${candidate.description}`.toLowerCase();
   const tierScore = candidate.source.tier === "S" ? 20 : candidate.source.tier === "A" ? 14 : 8;
   const includeScore = includeKeywords.reduce((total, keyword) => total + (text.includes(keyword) ? 6 : 0), 0);
@@ -537,12 +660,14 @@ function source(
   name: string,
   tier: YoutubeWorksSourceTier,
   profileUrls: string[],
+  channelId?: string,
 ): YoutubeWorksSource {
   return {
     id,
     name,
     tier,
     profileUrls,
+    channelId,
     searchQuery: `${name} YouTube AI filmmaker`,
     aliases: name
       .split(/[|/]/)
@@ -631,6 +756,99 @@ function readNumber(root: unknown, childKey: string, attrKey: string) {
   if (!child || typeof child !== "object") return 0;
   const parsed = Number((child as Record<string, unknown>)[attrKey]);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function readLargestThumbnailUrl(value: unknown) {
+  const candidates: Array<{ url: string; width: number }> = [];
+  walkYoutubeData(value, (item) => {
+    const url = asText(item.url);
+    if (url.includes("i.ytimg.com/vi/")) {
+      candidates.push({
+        url: url.replace(/\\u0026/g, "&"),
+        width: Number(item.width) || 0,
+      });
+    }
+  });
+
+  return candidates.sort((left, right) => right.width - left.width)[0]?.url;
+}
+
+function findThumbnailBadgeText(value: unknown) {
+  let badgeText = "";
+  walkYoutubeData(value, (item) => {
+    if (!badgeText && typeof item.text === "string" && /^\d{1,2}:\d{2}(?::\d{2})?$/.test(item.text)) {
+      badgeText = item.text;
+    }
+  });
+  return badgeText;
+}
+
+function findFirstTextValue(value: unknown, key: string): string {
+  let found = "";
+  walkYoutubeData(value, (item) => {
+    if (!found) found = asText(item[key]);
+  });
+  return found;
+}
+
+function readYoutubeViewCount(value: string) {
+  const normalized = value
+    .replace(/,/g, "")
+    .replace(/\s+/g, "")
+    .replace(/次观看|次觀看|回視聴|views?|观看|觀看/gi, "")
+    .trim();
+  const match = normalized.match(/(\d+(?:\.\d+)?)(万|萬|億|亿|K|M|B)?/i);
+  if (!match) return 0;
+
+  const base = Number(match[1]);
+  if (!Number.isFinite(base)) return 0;
+
+  const unit = match[2]?.toLowerCase();
+  if (unit === "万" || unit === "萬") return Math.round(base * 10_000);
+  if (unit === "亿" || unit === "億") return Math.round(base * 100_000_000);
+  if (unit === "k") return Math.round(base * 1_000);
+  if (unit === "m") return Math.round(base * 1_000_000);
+  if (unit === "b") return Math.round(base * 1_000_000_000);
+  return Math.round(base);
+}
+
+function readYoutubeRelativeDate(value: string) {
+  const normalized = value.trim().toLowerCase();
+  const match = normalized.match(/(\d+)\s*(second|minute|hour|day|week|month|year|秒|分钟|分鐘|分|小时|小時|時間|天|日|週|周|週間|个月|個月|月|年)/i);
+  if (!match) return undefined;
+
+  const amount = Number(match[1]);
+  if (!Number.isFinite(amount)) return undefined;
+
+  const unit = match[2];
+  const unitMs = unit.startsWith("second") || unit === "秒"
+    ? 1_000
+    : unit.startsWith("minute") || ["分钟", "分鐘", "分"].includes(unit)
+      ? 60_000
+      : unit.startsWith("hour") || ["小时", "小時", "時間"].includes(unit)
+        ? 60 * 60_000
+        : unit.startsWith("day") || ["天", "日"].includes(unit)
+          ? 24 * 60 * 60_000
+          : unit.startsWith("week") || ["週", "周", "週間"].includes(unit)
+            ? 7 * 24 * 60 * 60_000
+            : unit.startsWith("month") || ["个月", "個月", "月"].includes(unit)
+              ? 30 * 24 * 60 * 60_000
+              : 365 * 24 * 60 * 60_000;
+
+  return new Date(Date.now() - amount * unitMs).toISOString();
+}
+
+function walkYoutubeData(value: unknown, visit: (item: Record<string, unknown>) => void) {
+  if (!value || typeof value !== "object") return;
+
+  if (Array.isArray(value)) {
+    for (const item of value) walkYoutubeData(item, visit);
+    return;
+  }
+
+  const record = value as Record<string, unknown>;
+  visit(record);
+  for (const item of Object.values(record)) walkYoutubeData(item, visit);
 }
 
 function extractLink(item: RawYoutubeItem) {
