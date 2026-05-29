@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -23,10 +24,69 @@ import { buildInterestingSkillWorks } from "@/lib/interesting-skill-works";
 import { readGeneratedFeed } from "@/lib/generated-feed-store";
 import { mockPosts } from "@/lib/mock-data";
 import { readGeneratedWorks } from "@/lib/generated-works-store";
+import {
+  absoluteUrl,
+  buildWorkJsonLd,
+  clipSeoText,
+  JsonLdScript,
+  seoTitle,
+} from "@/lib/seo";
 import { triggerWorksRebuild } from "@/lib/works-rebuild";
 import { cn, formatCompactNumber, formatRelativeTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const work = await findInterestingWork(id);
+
+  if (!work) {
+    return {
+      title: seoTitle("作品未找到"),
+      robots: {
+        index: false,
+        follow: false,
+      },
+    };
+  }
+
+  const description = clipSeoText(work.description || work.whyInteresting);
+  const url = absoluteUrl(`/interesting/${work.id}`);
+
+  return {
+    title: seoTitle(work.title),
+    description,
+    alternates: {
+      canonical: url,
+    },
+    keywords: work.tags,
+    openGraph: {
+      type: "article",
+      url,
+      title: work.title,
+      description,
+      siteName: "AI圈",
+      publishedTime: work.publishedAt || work.createdAt,
+      modifiedTime: work.publishedAt || work.createdAt,
+      images: [
+        {
+          url: absoluteUrl(work.coverUrl),
+          alt: work.title,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: work.title,
+      description,
+      images: [absoluteUrl(work.coverUrl)],
+    },
+  };
+}
 
 export default async function InterestingDetailPage({
   params,
@@ -58,6 +118,7 @@ export default async function InterestingDetailPage({
 
   return (
     <div className="mx-auto max-w-6xl px-3 py-3 sm:px-6 sm:py-6 lg:px-8">
+      <JsonLdScript data={buildWorkJsonLd(work)} />
       <Link
         href="/interesting"
         className="mb-3 inline-flex items-center gap-2 rounded-full bg-white px-3.5 py-2 text-xs font-bold text-slate-500 shadow-soft transition-colors hover:text-blue-700"
@@ -267,6 +328,15 @@ export default async function InterestingDetailPage({
       ) : null}
     </div>
   );
+}
+
+async function findInterestingWork(id: string) {
+  const [worksFeed, generatedFeed] = await Promise.all([
+    readGeneratedWorks({ allowFallback: true }),
+    readGeneratedFeed({ includeSkills: true, allowFallback: true }),
+  ]);
+  const skillWorks = buildInterestingSkillWorks([...generatedFeed.posts, ...mockPosts]);
+  return [...skillWorks, ...worksFeed.works].find((item) => item.id === id);
 }
 
 async function waitForWorksRebuild(reason: string) {
