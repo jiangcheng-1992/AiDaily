@@ -7,7 +7,7 @@ import {
   Trophy,
 } from "lucide-react";
 
-import { AiFortuneEntry } from "@/components/ai-fortune-experience";
+import { AiFortuneExperience } from "@/components/ai-fortune";
 import { GoogleAdSlot } from "@/components/google-ad-slot";
 import { Card } from "@/components/ui/card";
 import { shouldRenderGoogleAd } from "@/lib/google-ads";
@@ -51,7 +51,7 @@ export function HomeSidebar({
 
   return (
     <div className="space-y-4 pb-10">
-      <AiFortuneEntry />
+      <AiFortuneExperience />
 
       <PosterSection
         title="今日热门"
