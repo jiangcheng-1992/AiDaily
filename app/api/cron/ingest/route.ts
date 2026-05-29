@@ -50,7 +50,7 @@ async function handleIngestRequest(request: Request) {
   );
   const githubLimit = readNonNegativeInt(
     url.searchParams.get("githubLimit") ?? process.env.GITHUB_SKILL_LIMIT,
-    8,
+    14,
   );
   const douyinSourceLimit = readNonNegativeInt(
     url.searchParams.get("douyinSourceLimit") ?? process.env.DOUYIN_SOURCE_LIMIT,
@@ -90,11 +90,11 @@ async function handleIngestRequest(request: Request) {
   );
   const productHuntWeeklyLimit = readNonNegativeInt(
     url.searchParams.get("productHuntWeeklyLimit") ?? process.env.PRODUCT_HUNT_WEEKLY_LIMIT,
-    50,
+    80,
   );
   const productHuntDailyLimit = readNonNegativeInt(
     url.searchParams.get("productHuntDailyLimit") ?? process.env.PRODUCT_HUNT_DAILY_LIMIT,
-    20,
+    40,
   );
   const itchioSourceLimit = readNonNegativeInt(
     url.searchParams.get("itchioSourceLimit") ?? process.env.ITCHIO_SOURCE_LIMIT,
@@ -106,19 +106,19 @@ async function handleIngestRequest(request: Request) {
   );
   const itchioReviewLimit = readNonNegativeInt(
     url.searchParams.get("itchioReviewLimit") ?? process.env.ITCHIO_REVIEW_LIMIT,
-    70,
+    90,
   );
   const itchioPublishLimit = readNonNegativeInt(
     url.searchParams.get("itchioPublishLimit") ?? process.env.ITCHIO_PUBLISH_LIMIT,
-    10,
+    24,
   );
   const itchioTargetCount = readNonNegativeInt(
     url.searchParams.get("itchioTargetCount") ?? process.env.ITCHIO_TARGET_COUNT,
-    100,
+    160,
   );
   const youtubeWorksSourceLimit = readNonNegativeInt(
     url.searchParams.get("youtubeWorksSourceLimit") ?? process.env.YOUTUBE_WORKS_SOURCE_LIMIT,
-    20,
+    25,
   );
   const youtubeWorksItemLimit = readNonNegativeInt(
     url.searchParams.get("youtubeWorksItemLimit") ?? process.env.YOUTUBE_WORKS_ITEM_LIMIT,
@@ -126,19 +126,19 @@ async function handleIngestRequest(request: Request) {
   );
   const youtubeWorksPublishLimit = readNonNegativeInt(
     url.searchParams.get("youtubeWorksPublishLimit") ?? process.env.YOUTUBE_WORKS_PUBLISH_LIMIT,
-    10,
+    16,
   );
   const liblibWorksItemLimit = readNonNegativeInt(
     url.searchParams.get("liblibWorksItemLimit") ?? process.env.LIBLIB_WORKS_ITEM_LIMIT,
-    24,
+    36,
   );
   const liblibWorksPublishLimit = readNonNegativeInt(
     url.searchParams.get("liblibWorksPublishLimit") ?? process.env.LIBLIB_WORKS_PUBLISH_LIMIT,
-    10,
+    16,
   );
   const vimeoWorksPageLimit = readNonNegativeInt(
     url.searchParams.get("vimeoWorksPageLimit") ?? process.env.VIMEO_WORKS_PAGE_LIMIT,
-    2,
+    3,
   );
   const vimeoWorksItemLimit = readNonNegativeInt(
     url.searchParams.get("vimeoWorksItemLimit") ?? process.env.VIMEO_WORKS_ITEM_LIMIT,
@@ -146,7 +146,7 @@ async function handleIngestRequest(request: Request) {
   );
   const vimeoWorksPublishLimit = readNonNegativeInt(
     url.searchParams.get("vimeoWorksPublishLimit") ?? process.env.VIMEO_WORKS_PUBLISH_LIMIT,
-    8,
+    14,
   );
   const replaceWorks = url.searchParams.get("replaceWorks") === "1";
   const run = await runIngestPipeline({
@@ -207,65 +207,76 @@ async function handleIngestRequest(request: Request) {
   const shouldFetchLiblibWorks = liblibWorksItemLimit > 0 && liblibWorksPublishLimit > 0;
   const shouldFetchVimeoWorks =
     vimeoWorksPageLimit > 0 && vimeoWorksItemLimit > 0 && vimeoWorksPublishLimit > 0;
-  const worksRun = shouldFetchProductHunt
-    ? await fetchProductHuntWorks({
-        weeklyLimit: productHuntWeeklyLimit,
-        dailyLimit: productHuntDailyLimit,
-      })
-    : {
-        ok: true,
-        source: "producthunt" as const,
-        count: 0,
-        works: [],
-      };
-  const itchioRun = shouldFetchItchio
-    ? await fetchItchioWorks({
-        sourceLimit: effectiveItchioSettings.sourceLimit,
-        pageLimit: effectiveItchioSettings.pageLimit,
-        reviewLimit: effectiveItchioSettings.reviewLimit,
-        publishLimit: effectiveItchioSettings.publishLimit,
-      })
-    : {
-        ok: true,
-        source: "itchio" as const,
-        count: 0,
-        works: [],
-      };
-  const youtubeWorksRun = shouldFetchYoutubeWorks
-    ? await fetchYoutubeWorks({
-        sourceLimit: youtubeWorksSourceLimit,
-        itemLimit: youtubeWorksItemLimit,
-        publishLimit: youtubeWorksPublishLimit,
-      })
-    : {
-        ok: true,
-        source: "youtube" as const,
-        count: 0,
-        works: [],
-      };
-  const liblibWorksRun = shouldFetchLiblibWorks
-    ? await fetchLiblibWorks({
-        itemLimit: liblibWorksItemLimit,
-        publishLimit: liblibWorksPublishLimit,
-      })
-    : {
-        ok: true,
-        source: "liblib" as const,
-        count: 0,
-        works: [],
-      };
-  const vimeoWorksRun = shouldFetchVimeoWorks
-    ? await fetchVimeoWorks({
-        pageLimit: vimeoWorksPageLimit,
-        itemLimit: vimeoWorksItemLimit,
-        publishLimit: vimeoWorksPublishLimit,
-      })
-    : {
-        ok: true,
-        source: "vimeo" as const,
-        count: 0,
-        works: [],
-      };
+  const [worksRun, itchioRun, youtubeWorksRun, liblibWorksRun, vimeoWorksRun] = await Promise.all([
+    shouldFetchProductHunt
+      ? fetchProductHuntWorks({
+          weeklyLimit: productHuntWeeklyLimit,
+          dailyLimit: productHuntDailyLimit,
+        })
+      : Promise.resolve({
+          ok: true,
+          source: "producthunt" as const,
+          count: 0,
+          works: [],
+          error: undefined,
+        }),
+    shouldFetchItchio
+      ? fetchItchioWorks({
+          sourceLimit: effectiveItchioSettings.sourceLimit,
+          pageLimit: effectiveItchioSettings.pageLimit,
+          reviewLimit: effectiveItchioSettings.reviewLimit,
+          publishLimit: effectiveItchioSettings.publishLimit,
+        })
+      : Promise.resolve({
+          ok: true,
+          source: "itchio" as const,
+          count: 0,
+          works: [],
+          error: undefined,
+          diagnostics: undefined,
+        }),
+    shouldFetchYoutubeWorks
+      ? fetchYoutubeWorks({
+          sourceLimit: youtubeWorksSourceLimit,
+          itemLimit: youtubeWorksItemLimit,
+          publishLimit: youtubeWorksPublishLimit,
+        })
+      : Promise.resolve({
+          ok: true,
+          source: "youtube" as const,
+          count: 0,
+          works: [],
+          error: undefined,
+          diagnostics: undefined,
+        }),
+    shouldFetchLiblibWorks
+      ? fetchLiblibWorks({
+          itemLimit: liblibWorksItemLimit,
+          publishLimit: liblibWorksPublishLimit,
+        })
+      : Promise.resolve({
+          ok: true,
+          source: "liblib" as const,
+          count: 0,
+          works: [],
+          error: undefined,
+          diagnostics: undefined,
+        }),
+    shouldFetchVimeoWorks
+      ? fetchVimeoWorks({
+          pageLimit: vimeoWorksPageLimit,
+          itemLimit: vimeoWorksItemLimit,
+          publishLimit: vimeoWorksPublishLimit,
+        })
+      : Promise.resolve({
+          ok: true,
+          source: "vimeo" as const,
+          count: 0,
+          works: [],
+          error: undefined,
+          diagnostics: undefined,
+        }),
+  ]);
   const incomingWorks = [
     ...worksRun.works,
     ...itchioRun.works,
@@ -329,7 +340,7 @@ async function handleIngestRequest(request: Request) {
     current: currentWorks,
     incomingWorks,
     sourceStatus: worksSourceStatus,
-    limit: readPositiveInt(process.env.GENERATED_WORKS_LIMIT, 200),
+    limit: readPositiveInt(process.env.GENERATED_WORKS_LIMIT, 320),
   });
   const wouldShrinkExistingWorks =
     !replaceWorks &&
@@ -500,7 +511,7 @@ function computeItchioFillSettings({
     sourceLimit: Math.max(sourceLimit, 24),
     pageLimit: Math.max(pageLimit, Math.min(3, 1 + Math.ceil(deficit / 40))),
     reviewLimit: Math.max(reviewLimit, Math.min(150, Math.max(90, deficit * 2))),
-    publishLimit: Math.max(publishLimit, Math.min(36, Math.max(18, deficit))),
+    publishLimit: Math.max(publishLimit, Math.min(48, Math.max(24, deficit))),
   };
 }
 

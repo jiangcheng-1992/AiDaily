@@ -28,72 +28,79 @@ async function rebuildGeneratedWorks(reason: string) {
   const currentGameCount = countGameWorks(current.works);
   const effectiveItchioSettings = computeItchioFillSettings({
     currentGameCount,
-    targetGameCount: readNonNegativeInt(process.env.ITCHIO_TARGET_COUNT, 100),
-    sourceLimit: readNonNegativeInt(process.env.ITCHIO_SOURCE_LIMIT, 20),
+    targetGameCount: readNonNegativeInt(process.env.ITCHIO_TARGET_COUNT, 160),
+    sourceLimit: readNonNegativeInt(process.env.ITCHIO_SOURCE_LIMIT, 24),
     pageLimit: readNonNegativeInt(process.env.ITCHIO_PAGE_LIMIT, 2),
-    reviewLimit: readNonNegativeInt(process.env.ITCHIO_REVIEW_LIMIT, 60),
-    publishLimit: readNonNegativeInt(process.env.ITCHIO_PUBLISH_LIMIT, 10),
+    reviewLimit: readNonNegativeInt(process.env.ITCHIO_REVIEW_LIMIT, 90),
+    publishLimit: readNonNegativeInt(process.env.ITCHIO_PUBLISH_LIMIT, 24),
   });
 
-  const productHuntRun = shouldFetchProductHunt()
-    ? await fetchProductHuntWorks({
-        weeklyLimit: readNonNegativeInt(process.env.PRODUCT_HUNT_WEEKLY_LIMIT, 50),
-        dailyLimit: readNonNegativeInt(process.env.PRODUCT_HUNT_DAILY_LIMIT, 20),
-      })
-    : {
-        ok: true,
-        source: "producthunt" as const,
-        count: 0,
-        works: [],
-      };
-  const itchioRun = shouldFetchItchio()
-    ? await fetchItchioWorks({
-        sourceLimit: effectiveItchioSettings.sourceLimit,
-        pageLimit: effectiveItchioSettings.pageLimit,
-        reviewLimit: effectiveItchioSettings.reviewLimit,
-        publishLimit: effectiveItchioSettings.publishLimit,
-      })
-    : {
-        ok: true,
-        source: "itchio" as const,
-        count: 0,
-        works: [],
-      };
-  const youtubeRun = shouldFetchYoutubeWorks()
-    ? await fetchYoutubeWorks({
-        sourceLimit: readNonNegativeInt(process.env.YOUTUBE_WORKS_SOURCE_LIMIT, 20),
-        itemLimit: readNonNegativeInt(process.env.YOUTUBE_WORKS_ITEM_LIMIT, 3),
-        publishLimit: readNonNegativeInt(process.env.YOUTUBE_WORKS_PUBLISH_LIMIT, 8),
-      })
-    : {
-        ok: true,
-        source: "youtube" as const,
-        count: 0,
-        works: [],
-      };
-  const liblibRun = shouldFetchLiblibWorks()
-    ? await fetchLiblibWorks({
-        itemLimit: readNonNegativeInt(process.env.LIBLIB_WORKS_ITEM_LIMIT, 24),
-        publishLimit: readNonNegativeInt(process.env.LIBLIB_WORKS_PUBLISH_LIMIT, 10),
-      })
-    : {
-        ok: true,
-        source: "liblib" as const,
-        count: 0,
-        works: [],
-      };
-  const vimeoRun = shouldFetchVimeoWorks()
-    ? await fetchVimeoWorks({
-        pageLimit: readNonNegativeInt(process.env.VIMEO_WORKS_PAGE_LIMIT, 2),
-        itemLimit: readNonNegativeInt(process.env.VIMEO_WORKS_ITEM_LIMIT, 12),
-        publishLimit: readNonNegativeInt(process.env.VIMEO_WORKS_PUBLISH_LIMIT, 8),
-      })
-    : {
-        ok: true,
-        source: "vimeo" as const,
-        count: 0,
-        works: [],
-      };
+  const [productHuntRun, itchioRun, youtubeRun, liblibRun, vimeoRun] = await Promise.all([
+    shouldFetchProductHunt()
+      ? fetchProductHuntWorks({
+          weeklyLimit: readNonNegativeInt(process.env.PRODUCT_HUNT_WEEKLY_LIMIT, 80),
+          dailyLimit: readNonNegativeInt(process.env.PRODUCT_HUNT_DAILY_LIMIT, 40),
+        })
+      : Promise.resolve({
+          ok: true,
+          source: "producthunt" as const,
+          count: 0,
+          works: [],
+          error: undefined,
+        }),
+    shouldFetchItchio()
+      ? fetchItchioWorks({
+          sourceLimit: effectiveItchioSettings.sourceLimit,
+          pageLimit: effectiveItchioSettings.pageLimit,
+          reviewLimit: effectiveItchioSettings.reviewLimit,
+          publishLimit: effectiveItchioSettings.publishLimit,
+        })
+      : Promise.resolve({
+          ok: true,
+          source: "itchio" as const,
+          count: 0,
+          works: [],
+          error: undefined,
+        }),
+    shouldFetchYoutubeWorks()
+      ? fetchYoutubeWorks({
+          sourceLimit: readNonNegativeInt(process.env.YOUTUBE_WORKS_SOURCE_LIMIT, 25),
+          itemLimit: readNonNegativeInt(process.env.YOUTUBE_WORKS_ITEM_LIMIT, 5),
+          publishLimit: readNonNegativeInt(process.env.YOUTUBE_WORKS_PUBLISH_LIMIT, 16),
+        })
+      : Promise.resolve({
+          ok: true,
+          source: "youtube" as const,
+          count: 0,
+          works: [],
+          error: undefined,
+        }),
+    shouldFetchLiblibWorks()
+      ? fetchLiblibWorks({
+          itemLimit: readNonNegativeInt(process.env.LIBLIB_WORKS_ITEM_LIMIT, 36),
+          publishLimit: readNonNegativeInt(process.env.LIBLIB_WORKS_PUBLISH_LIMIT, 16),
+        })
+      : Promise.resolve({
+          ok: true,
+          source: "liblib" as const,
+          count: 0,
+          works: [],
+          error: undefined,
+        }),
+    shouldFetchVimeoWorks()
+      ? fetchVimeoWorks({
+          pageLimit: readNonNegativeInt(process.env.VIMEO_WORKS_PAGE_LIMIT, 3),
+          itemLimit: readNonNegativeInt(process.env.VIMEO_WORKS_ITEM_LIMIT, 12),
+          publishLimit: readNonNegativeInt(process.env.VIMEO_WORKS_PUBLISH_LIMIT, 14),
+        })
+      : Promise.resolve({
+          ok: true,
+          source: "vimeo" as const,
+          count: 0,
+          works: [],
+          error: undefined,
+        }),
+  ]);
   const incomingWorks = [
     ...productHuntRun.works,
     ...itchioRun.works,
@@ -141,7 +148,7 @@ async function rebuildGeneratedWorks(reason: string) {
         error: vimeoRun.error,
       },
     },
-    limit: readPositiveInt(process.env.GENERATED_WORKS_LIMIT, 200),
+    limit: readPositiveInt(process.env.GENERATED_WORKS_LIMIT, 320),
   });
 
   await writeGeneratedWorks(nextWorks);
@@ -159,41 +166,41 @@ async function rebuildGeneratedWorks(reason: string) {
 }
 
 function shouldFetchProductHunt() {
-  const weeklyLimit = readNonNegativeInt(process.env.PRODUCT_HUNT_WEEKLY_LIMIT, 50);
-  const dailyLimit = readNonNegativeInt(process.env.PRODUCT_HUNT_DAILY_LIMIT, 20);
+  const weeklyLimit = readNonNegativeInt(process.env.PRODUCT_HUNT_WEEKLY_LIMIT, 80);
+  const dailyLimit = readNonNegativeInt(process.env.PRODUCT_HUNT_DAILY_LIMIT, 40);
 
   return weeklyLimit > 0 || dailyLimit > 0;
 }
 
 function shouldFetchItchio() {
   return (
-    readNonNegativeInt(process.env.ITCHIO_SOURCE_LIMIT, 20) > 0 &&
+    readNonNegativeInt(process.env.ITCHIO_SOURCE_LIMIT, 24) > 0 &&
     readNonNegativeInt(process.env.ITCHIO_PAGE_LIMIT, 2) > 0 &&
-    readNonNegativeInt(process.env.ITCHIO_REVIEW_LIMIT, 60) > 0 &&
-    readNonNegativeInt(process.env.ITCHIO_PUBLISH_LIMIT, 10) > 0
+    readNonNegativeInt(process.env.ITCHIO_REVIEW_LIMIT, 90) > 0 &&
+    readNonNegativeInt(process.env.ITCHIO_PUBLISH_LIMIT, 24) > 0
   );
 }
 
 function shouldFetchYoutubeWorks() {
   return (
-    readNonNegativeInt(process.env.YOUTUBE_WORKS_SOURCE_LIMIT, 20) > 0 &&
-    readNonNegativeInt(process.env.YOUTUBE_WORKS_ITEM_LIMIT, 3) > 0 &&
-    readNonNegativeInt(process.env.YOUTUBE_WORKS_PUBLISH_LIMIT, 8) > 0
+    readNonNegativeInt(process.env.YOUTUBE_WORKS_SOURCE_LIMIT, 25) > 0 &&
+    readNonNegativeInt(process.env.YOUTUBE_WORKS_ITEM_LIMIT, 5) > 0 &&
+    readNonNegativeInt(process.env.YOUTUBE_WORKS_PUBLISH_LIMIT, 16) > 0
   );
 }
 
 function shouldFetchLiblibWorks() {
   return (
-    readNonNegativeInt(process.env.LIBLIB_WORKS_ITEM_LIMIT, 24) > 0 &&
-    readNonNegativeInt(process.env.LIBLIB_WORKS_PUBLISH_LIMIT, 10) > 0
+    readNonNegativeInt(process.env.LIBLIB_WORKS_ITEM_LIMIT, 36) > 0 &&
+    readNonNegativeInt(process.env.LIBLIB_WORKS_PUBLISH_LIMIT, 16) > 0
   );
 }
 
 function shouldFetchVimeoWorks() {
   return (
-    readNonNegativeInt(process.env.VIMEO_WORKS_PAGE_LIMIT, 2) > 0 &&
+    readNonNegativeInt(process.env.VIMEO_WORKS_PAGE_LIMIT, 3) > 0 &&
     readNonNegativeInt(process.env.VIMEO_WORKS_ITEM_LIMIT, 12) > 0 &&
-    readNonNegativeInt(process.env.VIMEO_WORKS_PUBLISH_LIMIT, 8) > 0
+    readNonNegativeInt(process.env.VIMEO_WORKS_PUBLISH_LIMIT, 14) > 0
   );
 }
 
@@ -241,6 +248,6 @@ function computeItchioFillSettings({
     sourceLimit: Math.max(sourceLimit, 24),
     pageLimit: Math.max(pageLimit, Math.min(3, 1 + Math.ceil(deficit / 40))),
     reviewLimit: Math.max(reviewLimit, Math.min(150, Math.max(90, deficit * 2))),
-    publishLimit: Math.max(publishLimit, Math.min(36, Math.max(18, deficit))),
+    publishLimit: Math.max(publishLimit, Math.min(48, Math.max(24, deficit))),
   };
 }

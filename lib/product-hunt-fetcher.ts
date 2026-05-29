@@ -41,7 +41,12 @@ type ProductHuntApiResponse = {
     posts?: {
       edges?: Array<{
         node?: ProductHuntPost;
+        cursor?: string;
       }>;
+      pageInfo?: {
+        endCursor?: string;
+        hasNextPage?: boolean;
+      };
     };
   };
   errors?: Array<{
@@ -176,9 +181,10 @@ async function fetchProductHuntPosts({
   const safeFirst = Math.min(Math.max(first, 1), PRODUCT_HUNT_MAX_QUERY_LIMIT);
   const fieldInfo = await fetchProductHuntPostFieldInfo(token);
   const optionalFields = buildOptionalPostFields(fieldInfo);
-  const orderedPosts = await tryFetchProductHuntPosts({
+  const orderedPosts = await fetchProductHuntPostsByPages({
     token,
-    safeFirst,
+    targetCount: first,
+    pageSize: safeFirst,
     postedAfter,
     optionalFields,
     useVotesOrder: true,
@@ -187,14 +193,56 @@ async function fetchProductHuntPosts({
   if (orderedPosts) return orderedPosts;
 
   return (
-    (await tryFetchProductHuntPosts({
+    (await fetchProductHuntPostsByPages({
       token,
-      safeFirst,
+      targetCount: first,
+      pageSize: safeFirst,
       postedAfter,
       optionalFields,
       useVotesOrder: false,
     })) ?? []
   );
+}
+
+async function fetchProductHuntPostsByPages({
+  token,
+  targetCount,
+  pageSize,
+  postedAfter,
+  optionalFields,
+  useVotesOrder,
+}: {
+  token: string;
+  targetCount: number;
+  pageSize: number;
+  postedAfter: Date;
+  optionalFields: string;
+  useVotesOrder: boolean;
+}) {
+  const posts: ProductHuntPost[] = [];
+  let after: string | null = null;
+  const maxPages = Math.max(1, Math.ceil(Math.min(targetCount, 100) / pageSize));
+
+  for (let page = 0; page < maxPages && posts.length < targetCount; page += 1) {
+    if (page > 0) await sleep(350);
+
+    const result = await tryFetchProductHuntPosts({
+      token,
+      safeFirst: Math.min(pageSize, targetCount - posts.length),
+      postedAfter,
+      optionalFields,
+      useVotesOrder,
+      after,
+    });
+
+    if (!result) return null;
+
+    posts.push(...result.posts);
+    after = result.pageInfo.endCursor ?? null;
+    if (!result.pageInfo.hasNextPage || !after || result.posts.length === 0) break;
+  }
+
+  return posts;
 }
 
 async function tryFetchProductHuntPosts({
@@ -203,12 +251,14 @@ async function tryFetchProductHuntPosts({
   postedAfter,
   optionalFields,
   useVotesOrder,
+  after,
 }: {
   token: string;
   safeFirst: number;
   postedAfter: Date;
   optionalFields: string;
   useVotesOrder: boolean;
+  after?: string | null;
 }) {
   const response = await fetch(PRODUCT_HUNT_API_URL, {
     method: "POST",
@@ -220,9 +270,10 @@ async function tryFetchProductHuntPosts({
     },
     body: JSON.stringify({
       query: `
-        query ProductHuntAiWorks($first: Int!, $postedAfter: DateTime!) {
-          posts(first: $first, ${useVotesOrder ? "order: VOTES, " : ""}postedAfter: $postedAfter) {
+        query ProductHuntAiWorks($first: Int!, $postedAfter: DateTime!, $after: String) {
+          posts(first: $first, after: $after, ${useVotesOrder ? "order: VOTES, " : ""}postedAfter: $postedAfter) {
             edges {
+              cursor
               node {
                 id
                 name
@@ -237,12 +288,17 @@ async function tryFetchProductHuntPosts({
                 thumbnail { url }
               }
             }
+            pageInfo {
+              endCursor
+              hasNextPage
+            }
           }
         }
       `,
       variables: {
         first: safeFirst,
         postedAfter: postedAfter.toISOString(),
+        after,
       },
     }),
     cache: "no-store",
@@ -263,7 +319,13 @@ async function tryFetchProductHuntPosts({
     throw new Error(apiError);
   }
 
-  return payload.data?.posts?.edges?.map((edge) => edge.node).filter(isProductHuntPost) ?? [];
+  return {
+    posts: payload.data?.posts?.edges?.map((edge) => edge.node).filter(isProductHuntPost) ?? [],
+    pageInfo: {
+      endCursor: payload.data?.posts?.pageInfo?.endCursor,
+      hasNextPage: Boolean(payload.data?.posts?.pageInfo?.hasNextPage),
+    },
+  };
 }
 
 async function fetchProductHuntPostFieldInfo(token: string): Promise<ProductHuntPostFieldInfo> {
@@ -910,6 +972,10 @@ function typeLabel(type: WorkType) {
 function clip(value: string, maxLength: number) {
   if (value.length <= maxLength) return value;
   return `${value.slice(0, maxLength - 1)}…`;
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function mapWithConcurrency<TItem, TResult>(
