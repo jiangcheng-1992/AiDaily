@@ -23,6 +23,7 @@ import { cn, formatRelativeTime } from "@/lib/utils";
 const DEFAULT_SIDEBAR_AD_SLOT = "4376617489";
 const sidebarAdSlot = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_SIDEBAR_SLOT || DEFAULT_SIDEBAR_AD_SLOT;
 const showSidebarAd = shouldRenderGoogleAd(sidebarAdSlot);
+const showAiFortuneEntry = process.env.NODE_ENV !== "production";
 
 export function HomeSidebar({
   posts,
@@ -51,7 +52,7 @@ export function HomeSidebar({
 
   return (
     <div className="space-y-4 pb-10">
-      <AiFortuneExperience />
+      {showAiFortuneEntry ? <AiFortuneExperience /> : null}
 
       <PosterSection
         title="今日热门"
