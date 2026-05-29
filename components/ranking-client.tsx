@@ -72,9 +72,6 @@ export function RankingClient() {
         <h1 className="mt-4 text-3xl font-black tracking-normal text-slate-950 sm:text-5xl">
           今天 AI 圈都在看什么
         </h1>
-        <p className="mt-3 max-w-2xl text-base leading-8 text-slate-500">
-          今日榜单优先展示今天收录或近 24 小时更新的内容，避免历史累计热度继续挤占今天的优先位。
-        </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -162,15 +159,15 @@ function RankingItem({ post, index, metric }: { post: Post; index: number; metri
   return (
     <Link
       href={`/post/${post.id}`}
-      className="group grid grid-cols-[92px_1fr] gap-3 rounded-3xl border border-transparent bg-white p-2.5 transition-all hover:border-blue-100 hover:bg-blue-50/50 hover:shadow-soft sm:grid-cols-[116px_1fr] sm:gap-4"
+      className="group grid grid-cols-[88px_1fr] gap-3 rounded-3xl border border-transparent bg-white p-2.5 transition-all hover:border-blue-100 hover:bg-blue-50/50 hover:shadow-soft sm:grid-cols-[108px_1fr] sm:gap-4"
     >
-      <span className="relative block overflow-hidden rounded-2xl bg-gradient-to-br from-blue-100 via-violet-100 to-slate-100">
+      <span className="relative block h-16 overflow-hidden rounded-2xl bg-gradient-to-br from-blue-100 via-violet-100 to-slate-100 sm:h-[72px]">
         {imageUrl ? (
           <ExternalImage
             src={imageUrl}
             alt={post.title}
             loading="lazy"
-            className="h-[78px] w-full object-cover transition-transform duration-300 group-hover:scale-105 sm:h-[92px]"
+            className="h-16 w-full object-cover object-top transition-transform duration-300 group-hover:scale-105 sm:h-[72px]"
             fallback={<RankingImageFallback post={post} />}
           />
         ) : (
@@ -207,7 +204,7 @@ function RankingItem({ post, index, metric }: { post: Post; index: number; metri
 
 function RankingImageFallback({ post }: { post: Post }) {
   return (
-    <span className="flex h-[78px] w-full flex-col justify-end bg-gradient-to-br from-blue-600 via-violet-600 to-slate-900 p-3 text-white sm:h-[92px]">
+    <span className="flex h-16 w-full flex-col justify-end bg-gradient-to-br from-blue-600 via-violet-600 to-slate-900 p-3 text-white sm:h-[72px]">
       <span className="text-[10px] font-bold opacity-75">{post.type.toUpperCase()}</span>
       <span className="mt-1 line-clamp-2 text-xs font-black leading-4">
         {post.tags[0] ?? "AI圈"}
