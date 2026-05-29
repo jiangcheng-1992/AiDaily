@@ -7,12 +7,27 @@ import { useEffect, useState } from "react";
 const CONSENT_STORAGE_KEY = "ai-circle-privacy-consent-v1";
 const CONSENT_READABLE_PATHS = new Set(["/privacy", "/terms"]);
 
+type CapacitorWindow = Window & {
+  Capacitor?: {
+    getPlatform?: () => string;
+    isNativePlatform?: () => boolean;
+  };
+};
+
 export function PrivacyConsentDialog() {
   const pathname = usePathname();
+  const [isNativeApp, setIsNativeApp] = useState(false);
   const [isAccepted, setIsAccepted] = useState<boolean | null>(null);
   const canReadPolicyPage = CONSENT_READABLE_PATHS.has(pathname);
 
   useEffect(() => {
+    const nativeApp = isRunningInNativeApp();
+    setIsNativeApp(nativeApp);
+    if (!nativeApp) {
+      setIsAccepted(true);
+      return;
+    }
+
     setIsAccepted(window.localStorage.getItem(CONSENT_STORAGE_KEY) === "accepted");
   }, []);
 
@@ -28,7 +43,7 @@ export function PrivacyConsentDialog() {
     return undefined;
   }, [canReadPolicyPage, isAccepted]);
 
-  if (isAccepted !== false || canReadPolicyPage) return null;
+  if (!isNativeApp || isAccepted !== false || canReadPolicyPage) return null;
 
   function acceptConsent() {
     window.localStorage.setItem(CONSENT_STORAGE_KEY, "accepted");
@@ -75,4 +90,19 @@ export function PrivacyConsentDialog() {
       </div>
     </div>
   );
+}
+
+function isRunningInNativeApp() {
+  const capacitor = (window as CapacitorWindow).Capacitor;
+  if (!capacitor) return false;
+
+  if (typeof capacitor.isNativePlatform === "function") {
+    return capacitor.isNativePlatform();
+  }
+
+  if (typeof capacitor.getPlatform === "function") {
+    return capacitor.getPlatform() !== "web";
+  }
+
+  return false;
 }
