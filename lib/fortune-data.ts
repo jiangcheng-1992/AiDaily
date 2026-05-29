@@ -1,0 +1,178 @@
+export type FortuneCard = {
+  id: number;
+  name: string;
+  englishName: string;
+  symbol: string;
+  theme: string;
+  keywords: string[];
+  advice: string;
+  luckyColor: string;
+  luckyNumber: number;
+  action: string;
+  gradient: string;
+};
+
+export const fortuneCards: FortuneCard[] = [
+  {
+    id: 1,
+    name: "灵感之门",
+    englishName: "THE PORTAL",
+    symbol: "✦",
+    theme: "开始",
+    keywords: ["创造", "行动", "显化"],
+    advice: "今天适合把脑子里的想法快速做成一个可见作品。不要等完美，先发布，机会会在行动中出现。",
+    luckyColor: "蓝紫色",
+    luckyNumber: 7,
+    action: "发布一个小作品",
+    gradient: "from-indigo-500 via-violet-500 to-fuchsia-500",
+  },
+  {
+    id: 2,
+    name: "数据水晶",
+    englishName: "DATA CRYSTAL",
+    symbol: "◇",
+    theme: "洞察",
+    keywords: ["判断", "清晰", "结构"],
+    advice: "今天适合整理信息和做选择。把复杂问题拆成三步，你会更快看见真正重要的方向。",
+    luckyColor: "冰蓝色",
+    luckyNumber: 4,
+    action: "整理一个信息表",
+    gradient: "from-cyan-400 via-blue-500 to-indigo-600",
+  },
+  {
+    id: 3,
+    name: "月影回声",
+    englishName: "MOON ECHO",
+    symbol: "☾",
+    theme: "修复",
+    keywords: ["直觉", "安静", "复盘"],
+    advice: "今天不必强行冲刺。给自己一点安静时间，复盘会带来比盲目前进更好的答案。",
+    luckyColor: "银紫色",
+    luckyNumber: 2,
+    action: "写下三个新想法",
+    gradient: "from-slate-500 via-purple-500 to-indigo-800",
+  },
+  {
+    id: 4,
+    name: "太阳引擎",
+    englishName: "SOLAR ENGINE",
+    symbol: "☉",
+    theme: "表达",
+    keywords: ["能量", "自信", "公开"],
+    advice: "今天适合把你的观点说出来。一个清楚的表达，会帮你吸引到同频的人和新的合作机会。",
+    luckyColor: "金橙色",
+    luckyNumber: 9,
+    action: "发一条观点动态",
+    gradient: "from-amber-400 via-orange-500 to-rose-500",
+  },
+  {
+    id: 5,
+    name: "量子蝴蝶",
+    englishName: "QUANTUM BUTTERFLY",
+    symbol: "∞",
+    theme: "变化",
+    keywords: ["机会", "转折", "试验"],
+    advice: "今天的小尝试可能带来连锁反应。允许计划发生一点偏移，新的入口会从变化里出现。",
+    luckyColor: "青绿色",
+    luckyNumber: 5,
+    action: "尝试一个新工具",
+    gradient: "from-emerald-400 via-teal-500 to-cyan-500",
+  },
+  {
+    id: 6,
+    name: "星河旅人",
+    englishName: "STAR TRAVELER",
+    symbol: "✧",
+    theme: "探索",
+    keywords: ["学习", "远方", "连接"],
+    advice: "今天适合打开新的资料源，或者联系一个不同领域的人。你的灵感会来自边界之外。",
+    luckyColor: "午夜蓝",
+    luckyNumber: 6,
+    action: "收藏一篇长文",
+    gradient: "from-blue-700 via-indigo-600 to-violet-700",
+  },
+  {
+    id: 7,
+    name: "机械神谕",
+    englishName: "MACHINE ORACLE",
+    symbol: "⌬",
+    theme: "效率",
+    keywords: ["工具", "自动化", "系统"],
+    advice: "今天适合把重复动作交给工具。搭一个小自动化流程，会让后面的工作轻很多。",
+    luckyColor: "电光蓝",
+    luckyNumber: 11,
+    action: "自动化一个流程",
+    gradient: "from-sky-500 via-blue-600 to-slate-900",
+  },
+  {
+    id: 8,
+    name: "玫瑰星云",
+    englishName: "ROSE NEBULA",
+    symbol: "✺",
+    theme: "连接",
+    keywords: ["关系", "温柔", "合作"],
+    advice: "今天适合主动释放善意。一个简短的回应或感谢，可能会打开长期关系的入口。",
+    luckyColor: "玫瑰金",
+    luckyNumber: 8,
+    action: "联系一个重要的人",
+    gradient: "from-pink-400 via-rose-500 to-purple-600",
+  },
+  {
+    id: 9,
+    name: "时间沙漏",
+    englishName: "TIME HOURGLASS",
+    symbol: "⌛",
+    theme: "积累",
+    keywords: ["耐心", "节奏", "等待"],
+    advice: "今天适合推进长期项目的一小步。不要低估稳定重复的力量，复利正在悄悄发生。",
+    luckyColor: "沙金色",
+    luckyNumber: 3,
+    action: "推进一个旧计划",
+    gradient: "from-yellow-500 via-amber-600 to-stone-800",
+  },
+  {
+    id: 10,
+    name: "光之森林",
+    englishName: "LIGHT FOREST",
+    symbol: "♧",
+    theme: "平衡",
+    keywords: ["治愈", "呼吸", "恢复"],
+    advice: "今天适合让节奏慢一点。清理桌面、散步或早睡，都会让明天的创造力更稳定。",
+    luckyColor: "森绿色",
+    luckyNumber: 10,
+    action: "给自己 20 分钟空白",
+    gradient: "from-lime-400 via-emerald-500 to-green-800",
+  },
+  {
+    id: 11,
+    name: "命运之眼",
+    englishName: "VISION EYE",
+    symbol: "◉",
+    theme: "看见",
+    keywords: ["选择", "决断", "聚焦"],
+    advice: "今天适合做一次取舍。你不需要抓住所有机会，只需要选择最能代表你的那一个。",
+    luckyColor: "深紫色",
+    luckyNumber: 1,
+    action: "删掉一个低优先级任务",
+    gradient: "from-violet-700 via-purple-700 to-slate-950",
+  },
+  {
+    id: 12,
+    name: "宇宙鲸鱼",
+    englishName: "COSMIC WHALE",
+    symbol: "♒",
+    theme: "幸运",
+    keywords: ["贵人", "大机会", "流动"],
+    advice: "今天适合保持开放。一次随手分享、一次偶然对话，都可能把你推向更大的水域。",
+    luckyColor: "星海蓝",
+    luckyNumber: 12,
+    action: "分享一个你正在做的事",
+    gradient: "from-cyan-500 via-indigo-600 to-purple-900",
+  },
+];
+
+export function pickDailyFortuneCard() {
+  const now = new Date();
+  const daySeed = Number(`${now.getFullYear()}${now.getMonth() + 1}${now.getDate()}`);
+  return fortuneCards[daySeed % fortuneCards.length];
+}
