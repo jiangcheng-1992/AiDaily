@@ -23,8 +23,7 @@ export default async function InterestingPlayPage({
 
   if (!work || work.source !== "itchio" || !work.externalUrl) notFound();
 
-  const playUrl = await resolveItchioPlayUrl(work.externalUrl);
-  const frameUrl = playUrl ?? work.externalUrl;
+  const frameUrl = await resolveItchioFrameUrl(work.externalUrl);
 
   return (
     <div className="mx-auto max-w-6xl px-3 py-3 sm:px-6 sm:py-6 lg:px-8">
@@ -54,28 +53,29 @@ export default async function InterestingPlayPage({
             </div>
             <h1 className="mt-2 line-clamp-1 text-lg font-black sm:text-xl">{work.title}</h1>
           </div>
-          <Link
-            href={`/interesting/${work.id}/play?refresh=${Date.now()}`}
+          <a
+            href={`/interesting/${work.id}/play?refresh=1`}
             className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-2 text-xs font-bold text-white/80 transition-colors hover:bg-white/15 hover:text-white"
           >
             <RefreshCw className="h-3.5 w-3.5" />
             重新加载
-          </Link>
+          </a>
         </div>
 
         <div className="relative h-[calc(100vh-11rem)] min-h-[520px] bg-black">
           <iframe
             src={frameUrl}
             title={work.title}
-            allow="autoplay; fullscreen; gamepad; clipboard-read; clipboard-write"
+            allow="autoplay; fullscreen *; geolocation; microphone; camera; midi; monetization; xr-spatial-tracking; gamepad; gyroscope; accelerometer; xr; cross-origin-isolated; web-share; clipboard-read; clipboard-write"
             allowFullScreen
             loading="eager"
+            scrolling="no"
             className="h-full w-full border-0 bg-black"
           />
         </div>
       </Card>
 
-      {!playUrl ? (
+      {frameUrl === work.externalUrl ? (
         <Card className="mt-4 rounded-3xl p-5">
           <p className="text-sm leading-7 text-slate-600">
             这个游戏没有解析到 itch.io 的直接运行地址，已在 App 内加载原页面。若页面提示登录、弹窗或无法开始，请点击“打开 itch.io 原页”继续。
@@ -86,11 +86,11 @@ export default async function InterestingPlayPage({
   );
 }
 
-async function resolveItchioPlayUrl(gameUrl: string) {
+async function resolveItchioFrameUrl(gameUrl: string) {
   try {
     const response = await fetch(gameUrl, {
       headers: {
-        "user-agent": process.env.AIQ_USER_AGENT ?? "AIQ/1.0 itch.io app player",
+        "user-agent": process.env.AIQ_USER_AGENT ?? "Mozilla/5.0 AIQ/1.0 itch.io app player",
         accept: "text/html,application/xhtml+xml",
       },
       cache: "no-store",
@@ -99,14 +99,50 @@ async function resolveItchioPlayUrl(gameUrl: string) {
     if (!response.ok) return undefined;
 
     const html = await response.text();
+    const iframeUrl = extractItchioIframeUrl(html);
+    if (iframeUrl) return iframeUrl;
+
     const rawPlayUrl = html.match(/"play_url":"([^"]+)"/)?.[1];
-    if (!rawPlayUrl) return undefined;
+    if (!rawPlayUrl) return gameUrl;
 
     const playUrl = decodeJsonString(rawPlayUrl);
-    return /^https:\/\/[^/]+\.itch\.io\/.+\/rp\//i.test(playUrl) ? playUrl : undefined;
+    return /^https:\/\/[^/]+\.itch\.io\/.+\/rp\//i.test(playUrl) ? playUrl : gameUrl;
   } catch {
-    return undefined;
+    return gameUrl;
   }
+}
+
+function extractItchioIframeUrl(html: string) {
+  const iframeMatches = html.matchAll(/<iframe\b[^>]*\bsrc="([^"]+)"[^>]*>/gi);
+
+  for (const match of iframeMatches) {
+    const iframeHtml = match[0];
+    const src = decodeHtmlAttribute(match[1] ?? "");
+    if (!src) continue;
+
+    const isGameIframe =
+      iframeHtml.includes("game_drop") ||
+      iframeHtml.includes("allowfullscreen") ||
+      /https:\/\/[^/]+\.itch\.zone\//i.test(src) ||
+      /https:\/\/itch\.io\/embed-upload\//i.test(src);
+
+    if (isGameIframe && isSafeItchioFrameUrl(src)) return src;
+  }
+
+  return undefined;
+}
+
+function isSafeItchioFrameUrl(value: string) {
+  return /^https:\/\/(?:[^/]+\.)?(?:itch\.zone|itch\.io)\//i.test(value);
+}
+
+function decodeHtmlAttribute(value: string) {
+  return value
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
 }
 
 function decodeJsonString(value: string) {
