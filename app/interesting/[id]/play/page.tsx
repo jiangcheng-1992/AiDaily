@@ -26,7 +26,7 @@ export default async function InterestingPlayPage({
   const frameUrl = await resolveItchioFrameUrl(work.externalUrl);
 
   return (
-    <div className="mx-auto max-w-6xl px-3 py-3 sm:px-6 sm:py-6 lg:px-8">
+    <div className="mx-auto max-w-6xl px-2 py-2 sm:px-6 sm:py-6 lg:px-8">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <Link
           href={`/interesting/${work.id}`}
@@ -44,14 +44,14 @@ export default async function InterestingPlayPage({
         </a>
       </div>
 
-      <Card className="overflow-hidden rounded-[2rem] bg-slate-950 p-0 shadow-lift">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3 text-white">
+      <Card className="overflow-hidden rounded-2xl bg-slate-950 p-0 shadow-lift sm:rounded-[2rem]">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-3 py-2 text-white sm:gap-3 sm:px-4 sm:py-3">
           <div className="min-w-0">
             <div className="inline-flex items-center gap-2 rounded-full bg-emerald-400/15 px-2.5 py-1 text-[11px] font-black text-emerald-200">
               <Gamepad2 className="h-3.5 w-3.5" />
               App 内试玩
             </div>
-            <h1 className="mt-2 line-clamp-1 text-lg font-black sm:text-xl">{work.title}</h1>
+            <h1 className="mt-1 line-clamp-1 text-base font-black sm:mt-2 sm:text-xl">{work.title}</h1>
           </div>
           <a
             href={`/interesting/${work.id}/play?refresh=1`}
@@ -62,7 +62,7 @@ export default async function InterestingPlayPage({
           </a>
         </div>
 
-        <div className="relative h-[calc(100vh-11rem)] min-h-[520px] bg-black">
+        <div className="relative h-[calc(100svh-9rem)] min-h-[430px] bg-black sm:h-[calc(100vh-11rem)] sm:min-h-[520px]">
           <iframe
             src={frameUrl}
             title={work.title}

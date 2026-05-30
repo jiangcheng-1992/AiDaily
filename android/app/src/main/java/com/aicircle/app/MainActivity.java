@@ -11,6 +11,8 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.webkit.CookieManager;
+import android.webkit.WebSettings;
 import android.webkit.WebView;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.WebViewListener;
@@ -22,6 +24,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        hardenWebView();
         installLaunchLoadingView();
         bindLaunchLoadingToWebView();
         mainHandler.postDelayed(this::hideLaunchLoadingView, 15000);
@@ -38,6 +41,34 @@ public class MainActivity extends BridgeActivity {
         }
 
         moveTaskToBack(true);
+    }
+
+    private void hardenWebView() {
+        if (bridge == null) {
+            return;
+        }
+
+        WebView webView = bridge.getWebView();
+        if (webView == null) {
+            return;
+        }
+
+        WebView.setWebContentsDebuggingEnabled(false);
+        WebSettings settings = webView.getSettings();
+        CookieManager cookieManager = CookieManager.getInstance();
+        cookieManager.setAcceptCookie(true);
+        cookieManager.setAcceptThirdPartyCookies(webView, true);
+
+        settings.setDomStorageEnabled(true);
+        settings.setDatabaseEnabled(true);
+        settings.setLoadWithOverviewMode(true);
+        settings.setMediaPlaybackRequiresUserGesture(false);
+        settings.setUseWideViewPort(true);
+        settings.setAllowFileAccess(false);
+        settings.setAllowContentAccess(false);
+        settings.setAllowFileAccessFromFileURLs(false);
+        settings.setAllowUniversalAccessFromFileURLs(false);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
     }
 
     private void installLaunchLoadingView() {
