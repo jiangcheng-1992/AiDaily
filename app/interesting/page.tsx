@@ -4,6 +4,7 @@ import { InterestingClient } from "@/components/interesting-client";
 import { readGeneratedFeed } from "@/lib/generated-feed-store";
 import { readGeneratedWorks } from "@/lib/generated-works-store";
 import { buildInterestingSkillWorks } from "@/lib/interesting-skill-works";
+import { interestingCategories, type WorkCategoryId } from "@/lib/interesting-works";
 import { mockPosts } from "@/lib/mock-data";
 import { absoluteUrl } from "@/lib/seo";
 import { triggerWorksRebuild } from "@/lib/works-rebuild";
@@ -40,7 +41,7 @@ export default async function InterestingPage({
   }
 
   const skillWorks = buildInterestingSkillWorks([...generatedFeed.posts, ...mockPosts]);
-  const requestedTab = resolvedSearchParams.tab === "skill" ? "skill" : undefined;
+  const requestedTab = parseInterestingTab(resolvedSearchParams.tab);
 
   return (
     <InterestingClient
@@ -48,6 +49,10 @@ export default async function InterestingPage({
       initialCategory={requestedTab}
     />
   );
+}
+
+function parseInterestingTab(tab?: string): WorkCategoryId | undefined {
+  return interestingCategories.some((item) => item.id === tab) ? (tab as WorkCategoryId) : undefined;
 }
 
 async function waitForWorksRebuild(reason: string) {

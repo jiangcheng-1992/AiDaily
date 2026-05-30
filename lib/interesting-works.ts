@@ -97,10 +97,16 @@ export const interestingCategories: Array<{ id: WorkCategoryId; label: string }>
 
 export function getWorkCategoryId(work: WorkItem): Exclude<WorkCategoryId, "all"> {
   if (work.categoryHint) return work.categoryHint;
-  if (work.source === "itchio") return "game";
+  if (isGameWork(work)) return "game";
   if (work.source === "producthunt") return "website-agent";
   if (work.type === "image" || work.type === "video") return "media";
   return "website-agent";
+}
+
+function isGameWork(work: WorkItem) {
+  if (work.source === "itchio") return true;
+  const text = `${work.title} ${work.description} ${work.tags.join(" ")}`.toLowerCase();
+  return /ai小游戏|h5游戏|浏览器可玩|browser game|html5 game|itch\.io|platformer|arcade|puzzle|game/.test(text);
 }
 
 export function workMatchesInterestingCategory(work: WorkItem, category: WorkCategoryId) {
