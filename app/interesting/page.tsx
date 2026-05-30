@@ -4,7 +4,12 @@ import { InterestingClient } from "@/components/interesting-client";
 import { readGeneratedFeed } from "@/lib/generated-feed-store";
 import { readGeneratedWorks } from "@/lib/generated-works-store";
 import { buildInterestingSkillWorks } from "@/lib/interesting-skill-works";
-import { interestingCategories, type WorkCategoryId } from "@/lib/interesting-works";
+import {
+  interestingCategories,
+  interestingWorks,
+  type WorkCategoryId,
+  type WorkItem,
+} from "@/lib/interesting-works";
 import { mockPosts } from "@/lib/mock-data";
 import { absoluteUrl } from "@/lib/seo";
 import { triggerWorksRebuild } from "@/lib/works-rebuild";
@@ -42,13 +47,27 @@ export default async function InterestingPage({
 
   const skillWorks = buildInterestingSkillWorks([...generatedFeed.posts, ...mockPosts]);
   const requestedTab = parseInterestingTab(resolvedSearchParams.tab);
+  const works = mergeInterestingWorks([...skillWorks, ...worksFeed.works, ...interestingWorks]);
 
   return (
     <InterestingClient
-      initialWorks={[...skillWorks, ...worksFeed.works]}
+      initialWorks={works}
       initialCategory={requestedTab}
     />
   );
+}
+
+function mergeInterestingWorks(works: WorkItem[]) {
+  const merged = new Map<string, WorkItem>();
+
+  for (const work of works) {
+    const key = work.externalUrl || work.githubUrl || work.videoUrl || work.id;
+    if (!merged.has(key)) {
+      merged.set(key, work);
+    }
+  }
+
+  return Array.from(merged.values());
 }
 
 function parseInterestingTab(tab?: string): WorkCategoryId | undefined {
