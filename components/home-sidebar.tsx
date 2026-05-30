@@ -7,7 +7,6 @@ import {
   Trophy,
 } from "lucide-react";
 
-import { AiFortuneExperience } from "@/components/ai-fortune";
 import { GoogleAdSlot } from "@/components/google-ad-slot";
 import { Card } from "@/components/ui/card";
 import { shouldRenderGoogleAd } from "@/lib/google-ads";
@@ -23,7 +22,6 @@ import { cn, formatRelativeTime } from "@/lib/utils";
 const DEFAULT_SIDEBAR_AD_SLOT = "4376617489";
 const sidebarAdSlot = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_SIDEBAR_SLOT || DEFAULT_SIDEBAR_AD_SLOT;
 const showSidebarAd = shouldRenderGoogleAd(sidebarAdSlot);
-const showAiFortuneEntry = process.env.NODE_ENV !== "production";
 
 export function HomeSidebar({
   posts,
@@ -52,8 +50,6 @@ export function HomeSidebar({
 
   return (
     <div className="space-y-4 pb-10">
-      {showAiFortuneEntry ? <AiFortuneExperience /> : null}
-
       <PosterSection
         title="今日热门"
         subtitle="文章 / 视频 / 游戏 / 网站 / Skill"
