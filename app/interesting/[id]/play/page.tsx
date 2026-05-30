@@ -113,6 +113,9 @@ async function resolveItchioFrameUrl(gameUrl: string) {
 }
 
 function extractItchioIframeUrl(html: string) {
+  const embeddedUploadUrl = extractItchioEmbeddedUploadUrl(html);
+  if (embeddedUploadUrl) return embeddedUploadUrl;
+
   const iframeMatches = html.matchAll(/<iframe\b[^>]*\bsrc="([^"]+)"[^>]*>/gi);
 
   for (const match of iframeMatches) {
@@ -134,12 +137,25 @@ function extractItchioIframeUrl(html: string) {
   return undefined;
 }
 
+function extractItchioEmbeddedUploadUrl(html: string) {
+  const dataIframeMatches = html.matchAll(/\bdata-iframe="([^"]+)"/gi);
+
+  for (const match of dataIframeMatches) {
+    const decodedIframe = decodeHtmlAttribute(match[1] ?? "");
+    const iframeSrc = decodedIframe.match(/<iframe\b[^>]*\bsrc="([^"]+)"/i)?.[1];
+    const embedUploadUrl = iframeSrc ? toItchioEmbedUploadUrl(decodeHtmlAttribute(iframeSrc)) : undefined;
+    if (embedUploadUrl) return embedUploadUrl;
+  }
+
+  return toItchioEmbedUploadUrl(decodeHtmlAttribute(html));
+}
+
 function isSafeItchioFrameUrl(value: string) {
   return /^https:\/\/itch\.io\/embed-upload\//i.test(value) || /^https:\/\/[^/]+\.itch\.io\//i.test(value);
 }
 
 function toItchioEmbedUploadUrl(value: string) {
-  const uploadId = value.match(/^https:\/\/[^/]+\.itch\.zone\/html\/(\d+)\//i)?.[1];
+  const uploadId = value.match(/https:\/\/[^/]+\.itch\.zone\/html\/(\d+)(?:[-/])/i)?.[1];
   return uploadId ? `https://itch.io/embed-upload/${uploadId}?color=191919` : undefined;
 }
 
