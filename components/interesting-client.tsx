@@ -1,11 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { memo, useCallback, useMemo, useState, useTransition } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import {
   ArrowUpRight,
   Eye,
-  Heart,
   MessageCircle,
   Play,
   Search,
@@ -31,7 +30,6 @@ export function InterestingClient({
   const [category, setCategory] = useState<WorkCategoryId>(initialCategory);
   const [likedIds, setLikedIds] = useState<Set<string>>(() => new Set());
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(() => new Set());
-  const [isPending, startTransition] = useTransition();
 
   const approvedWorks = useMemo(() => {
     return initialWorks
@@ -61,7 +59,7 @@ export function InterestingClient({
   const works = worksByCategory[category] ?? worksByCategory.all;
 
   const handleCategoryChange = useCallback((nextCategory: WorkCategoryId) => {
-    startTransition(() => setCategory(nextCategory));
+    setCategory(nextCategory);
   }, []);
 
   const handleLike = useCallback((workId: string) => {
@@ -109,7 +107,6 @@ export function InterestingClient({
                 category === item.id
                   ? "bg-slate-950 text-white"
                   : "bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-700",
-                isPending && category === item.id && "opacity-85",
               )}
             >
               {item.label}

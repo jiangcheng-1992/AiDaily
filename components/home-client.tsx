@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 
 import { GoogleAdSlot } from "@/components/google-ad-slot";
@@ -32,7 +32,7 @@ export function HomeClient({
   initialWorks?: WorkItem[];
   initialSkillWorks?: WorkItem[];
 }) {
-  const { allPosts, hydrated, getPostStats, toggleLike, toggleSave } = useAiCircleStore();
+  const { submissions, getPostStats, toggleLike, toggleSave } = useAiCircleStore();
   const [sharedPostId, setSharedPostId] = useState<string | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedChannel, setSelectedChannel] = useState<HomeChannelId>("all");
@@ -41,16 +41,11 @@ export function HomeClient({
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const sourcePosts = useMemo(() => {
-    const generatedOrSubmissionPosts = allPosts.filter((post) => post.type !== "skill");
-    const fallbackPosts = liveFeedPosts.length > 0 ? liveFeedPosts : initialPosts;
+    const primaryPosts = liveFeedPosts.length > 0 ? liveFeedPosts : initialPosts;
+    const supplementalPosts = submissions.filter((post) => post.type !== "skill");
 
-    if (fallbackPosts.length > 0 && (!hydrated || generatedOrSubmissionPosts.length === 0)) {
-      return buildHomeFeedPosts(fallbackPosts);
-    }
-
-    const storePosts = buildHomeFeedPosts(allPosts);
-    return storePosts.length > 0 ? storePosts : buildHomeFeedPosts(fallbackPosts);
-  }, [allPosts, hydrated, initialPosts, liveFeedPosts]);
+    return buildHomeFeedPosts(mergeHomePosts([...supplementalPosts, ...primaryPosts]));
+  }, [initialPosts, liveFeedPosts, submissions]);
 
   const filteredPosts = useMemo(() => {
     const channelPosts = filterPostsByHomeChannel(sourcePosts, selectedChannel);
@@ -58,16 +53,25 @@ export function HomeClient({
       ? channelPosts.filter((post) => post.tags.includes(selectedTag))
       : channelPosts;
 
-    const filtered = buildHomeFeedPosts(visiblePosts);
-    return filtered.length > 0 ? filtered : selectedChannel === "all" && !selectedTag ? sourcePosts : [];
+    return visiblePosts.length > 0
+      ? visiblePosts
+      : selectedChannel === "all" && !selectedTag
+        ? sourcePosts
+        : [];
   }, [selectedChannel, selectedTag, sourcePosts]);
 
   const displayedPosts = filteredPosts.slice(0, visiblePostCount);
   const hasMorePosts = visiblePostCount < filteredPosts.length;
 
-  useEffect(() => {
+  const handleChannelChange = useCallback((channel: HomeChannelId) => {
+    setSelectedChannel(channel);
     setVisiblePostCount(INITIAL_VISIBLE_POST_COUNT);
-  }, [selectedChannel, selectedTag]);
+  }, []);
+
+  const handleTagChange = useCallback((tag: string | null) => {
+    setSelectedTag(tag);
+    setVisiblePostCount(INITIAL_VISIBLE_POST_COUNT);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -93,6 +97,10 @@ export function HomeClient({
     }
 
     void loadLiveFeed();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -144,7 +152,7 @@ export function HomeClient({
                 <button
                   type="button"
                   key={channel.id}
-                  onClick={() => setSelectedChannel(channel.id)}
+                  onClick={() => handleChannelChange(channel.id)}
                   className={cn(
                     "shrink-0 rounded-full px-3.5 py-2 text-xs font-black transition-colors",
                     selectedChannel === channel.id
@@ -167,9 +175,9 @@ export function HomeClient({
               </div>
               <button
                 type="button"
-                onClick={() => setSelectedTag(null)}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
                 aria-label="清除标签筛选"
+                onClick={() => handleTagChange(null)}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -189,7 +197,7 @@ export function HomeClient({
                 stats={getPostStats(post)}
                 onLike={toggleLike}
                 onSave={toggleSave}
-                onTagClick={setSelectedTag}
+                onTagClick={handleTagChange}
                 onShare={handleShare}
                 shared={sharedPostId === post.id}
               />
@@ -225,8 +233,8 @@ export function HomeClient({
               <button
                 type="button"
                 onClick={() => {
-                  setSelectedTag(null);
-                  setSelectedChannel("all");
+                  handleTagChange(null);
+                  handleChannelChange("all");
                 }}
                 className="mt-5 rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700"
               >
@@ -241,7 +249,7 @@ export function HomeClient({
             posts={sourcePosts}
             works={initialWorks}
             skillWorks={initialSkillWorks}
-            onTagClick={setSelectedTag}
+            onTagClick={handleTagChange}
           />
         </aside>
 
@@ -250,10 +258,31 @@ export function HomeClient({
             posts={sourcePosts}
             works={initialWorks}
             skillWorks={initialSkillWorks}
-            onTagClick={setSelectedTag}
+            onTagClick={handleTagChange}
           />
         </div>
       </section>
     </div>
   );
+}
+
+function mergeHomePosts(posts: Post[]) {
+  const merged = new Map<string, Post>();
+
+  for (const post of posts) {
+    const key = buildHomePostIdentity(post);
+    if (!merged.has(key)) {
+      merged.set(key, post);
+    }
+  }
+
+  return Array.from(merged.values());
+}
+
+function buildHomePostIdentity(post: Post) {
+  if (post.sourceUrl) {
+    return `${post.type}:${post.sourceUrl.replace(/#.*$/, "").replace(/\/+$/, "").toLowerCase()}`;
+  }
+
+  return post.id;
 }

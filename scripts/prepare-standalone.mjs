@@ -41,4 +41,5 @@ function copyRecursive(from, to) {
 if (existsSync(standaloneDir)) {
   copyIfExists(join(root, ".next", "static"), join(standaloneDir, ".next", "static"));
   copyIfExists(join(root, "public"), join(standaloneDir, "public"));
+  copyIfExists(join(root, "data"), join(standaloneDir, "data"));
 }

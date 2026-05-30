@@ -1,0 +1,691 @@
+{
+  "updatedAt": "2026-05-27T04:32:30.744Z",
+  "works": [
+    {
+      "id": "itchio-75152",
+      "title": "Combo Pool：把 AI 主题做成轻量动作或街机玩法",
+      "description": "Combo Pool 是一款偏轻互动的浏览器小游戏，核心体验更接近街机动作、躲避或快速反应玩法。",
+      "whyInteresting": "它把 AI 相关概念做成了可以直接上手的浏览器游戏，比单纯工具列表更适合试玩和传播。 这条作品满足浏览器可玩、有封面和简介等硬条件，已有 616 个评分信号，精品评分 92，适合放进「有点意思」作为 AI 小游戏样本。",
+      "type": "app",
+      "source": "itchio",
+      "coverUrl": "https://img.itch.zone/aW1hZ2UvNzUxNTIvMzUyNTEwLmdpZg==/original/cJ%2Fdk5.gif",
+      "externalUrl": "https://nusan.itch.io/combo-pool",
+      "authorName": "NuSan",
+      "originalAuthorUrl": "https://nusan.itch.io/",
+      "toolNames": [
+        "itch.io",
+        "HTML5",
+        "Browser Game"
+      ],
+      "tags": [
+        "AI小游戏",
+        "H5游戏",
+        "浏览器可玩",
+        "无需下载",
+        "轻互动",
+        "解谜"
+      ],
+      "status": "approved",
+      "featured": true,
+      "sourceVerified": true,
+      "viewCount": 92016,
+      "likeCount": 5112,
+      "favoriteCount": 2147,
+      "commentCount": 0,
+      "clickCount": 15336,
+      "heatScore": 92,
+      "createdAt": "2026-05-27T04:31:47.922Z",
+      "publishedAt": "2026-05-27T04:31:47.922Z"
+    },
+    {
+      "id": "vimeo-1195508357",
+      "title": "Trapped｜Vimeo 纪录短片",
+      "description": "来自 Vimeo Staff Picks 的纪录短片，由 Mads Engel 发布，围绕真实人物或社会议题展开，适合放进「有点意思」视频 tab 里当作高质量影像灵感。",
+      "whyInteresting": "Vimeo Staff Picks 本身是编辑精选入口，说明画面、叙事或完成度已经过人工筛选。这条作品来自 Mads Engel，时长约 12分2秒，归类为纪录短片，综合评分 91，适合作为 AI 圈「有点意思」里的视频灵感来源。",
+      "type": "video",
+      "source": "vimeo",
+      "coverUrl": "https://i.vimeocdn.com/video/2161394809-d305693be96a0b9aadc69ac07cb74861e849cd3cfbb4066004603b52bc19431c-d?region=us&f=webp",
+      "mediaUrls": [
+        "https://i.vimeocdn.com/video/2161394809-d305693be96a0b9aadc69ac07cb74861e849cd3cfbb4066004603b52bc19431c-d?region=us&f=webp"
+      ],
+      "videoUrl": "https://vimeo.com/1195508357",
+      "externalUrl": "https://vimeo.com/1195508357",
+      "authorName": "Mads Engel",
+      "originalAuthorUrl": "https://vimeo.com/user87447296",
+      "toolNames": [
+        "Vimeo",
+        "Staff Picks",
+        "纪录短片"
+      ],
+      "tags": [
+        "纪录短片",
+        "Vimeo",
+        "Staff Picks",
+        "社会议题",
+        "纪实影像"
+      ],
+      "status": "approved",
+      "featured": true,
+      "sourceVerified": true,
+      "viewCount": 3344,
+      "likeCount": 209,
+      "favoriteCount": 94,
+      "commentCount": 17,
+      "clickCount": 585,
+      "heatScore": 91,
+      "createdAt": "2026-05-25T18:12:06.000Z",
+      "publishedAt": "2026-05-25T18:12:06.000Z"
+    },
+    {
+      "id": "itchio-4340743",
+      "title": "Moss Moss：把 AI 主题做成平台跳跃小游戏",
+      "description": "Moss Moss 把 AI 主题放进平台跳跃玩法里，玩家可以直接用键盘操作角色完成关卡挑战。",
+      "whyInteresting": "它把 AI 相关概念做成了可以直接上手的浏览器游戏，比单纯工具列表更适合试玩和传播。 这条作品满足浏览器可玩、有封面和简介等硬条件，已有 971 个评分信号，精品评分 88，适合放进「有点意思」作为 AI 小游戏样本。",
+      "type": "app",
+      "source": "itchio",
+      "coverUrl": "https://img.itch.zone/aW1nLzI2MTExNDM4LmdpZg==/original/zf17cf.gif",
+      "externalUrl": "https://noelcody.itch.io/moss-moss",
+      "authorName": "Noel Cody",
+      "originalAuthorUrl": "https://noelcody.itch.io/",
+      "toolNames": [
+        "itch.io",
+        "HTML5",
+        "Browser Game"
+      ],
+      "tags": [
+        "AI小游戏",
+        "H5游戏",
+        "浏览器可玩",
+        "无需下载",
+        "轻互动"
+      ],
+      "status": "approved",
+      "featured": true,
+      "sourceVerified": true,
+      "viewCount": 142992,
+      "likeCount": 7944,
+      "favoriteCount": 3336,
+      "commentCount": 0,
+      "clickCount": 23832,
+      "heatScore": 88,
+      "createdAt": "2026-05-27T04:29:52.173Z",
+      "publishedAt": "2026-05-27T04:29:52.173Z"
+    },
+    {
+      "id": "vimeo-1193849110",
+      "title": "Basketball Explorer Presents: The Shot Doctor｜Vimeo 创意短片",
+      "description": "来自 Vimeo Staff Picks 的创意短片，由 Moon County 发布，用完整影像叙事传达一个独立主题，适合放进「有点意思」视频 tab 里当作高质量影像灵感。",
+      "whyInteresting": "Vimeo Staff Picks 本身是编辑精选入口，说明画面、叙事或完成度已经过人工筛选。这条作品来自 Moon County，时长约 4分41秒，归类为创意短片，综合评分 81，适合作为 AI 圈「有点意思」里的视频灵感来源。",
+      "type": "video",
+      "source": "vimeo",
+      "coverUrl": "https://i.vimeocdn.com/video/2159405328-79590d0be431c1a5127798a35dbd389dda62178c5aa37b9271b66aa2f06b6855-d?region=us&f=webp",
+      "mediaUrls": [
+        "https://i.vimeocdn.com/video/2159405328-79590d0be431c1a5127798a35dbd389dda62178c5aa37b9271b66aa2f06b6855-d?region=us&f=webp"
+      ],
+      "videoUrl": "https://vimeo.com/1193849110",
+      "externalUrl": "https://vimeo.com/1193849110",
+      "authorName": "Moon County",
+      "originalAuthorUrl": "https://vimeo.com/mooncountyanim",
+      "toolNames": [
+        "Vimeo",
+        "Staff Picks",
+        "创意短片"
+      ],
+      "tags": [
+        "创意短片",
+        "Vimeo",
+        "Staff Picks",
+        "叙事灵感",
+        "精选视频"
+      ],
+      "status": "approved",
+      "featured": true,
+      "sourceVerified": true,
+      "viewCount": 2976,
+      "likeCount": 186,
+      "favoriteCount": 84,
+      "commentCount": 15,
+      "clickCount": 521,
+      "heatScore": 81,
+      "createdAt": "2026-05-19T17:14:57.000Z",
+      "publishedAt": "2026-05-19T17:14:57.000Z"
+    },
+    {
+      "id": "vimeo-1192684612",
+      "title": "Appalheads｜Vimeo 广告短片",
+      "description": "来自 Vimeo Staff Picks 的广告短片，由 Universe Creative 发布，围绕真实人物或社会议题展开，适合放进「有点意思」视频 tab 里当作高质量影像灵感。",
+      "whyInteresting": "Vimeo Staff Picks 本身是编辑精选入口，说明画面、叙事或完成度已经过人工筛选。这条作品来自 Universe Creative，时长约 16分33秒，归类为广告短片，综合评分 79，适合作为 AI 圈「有点意思」里的视频灵感来源。",
+      "type": "video",
+      "source": "vimeo",
+      "coverUrl": "https://i.vimeocdn.com/video/2158859790-95f07cdff209bea7131610194e96820f27f29f3770015f88093ff514b8492e03-d?region=us&f=webp",
+      "mediaUrls": [
+        "https://i.vimeocdn.com/video/2158859790-95f07cdff209bea7131610194e96820f27f29f3770015f88093ff514b8492e03-d?region=us&f=webp"
+      ],
+      "videoUrl": "https://vimeo.com/1192684612",
+      "externalUrl": "https://vimeo.com/1192684612",
+      "authorName": "Universe Creative",
+      "originalAuthorUrl": "https://vimeo.com/madeofstories",
+      "toolNames": [
+        "Vimeo",
+        "Staff Picks",
+        "广告短片"
+      ],
+      "tags": [
+        "广告短片",
+        "Vimeo",
+        "Staff Picks",
+        "品牌灵感",
+        "商业创意"
+      ],
+      "status": "approved",
+      "featured": true,
+      "sourceVerified": true,
+      "viewCount": 2912,
+      "likeCount": 182,
+      "favoriteCount": 82,
+      "commentCount": 15,
+      "clickCount": 510,
+      "heatScore": 79,
+      "createdAt": "2026-05-15T07:11:58.000Z",
+      "publishedAt": "2026-05-15T07:11:58.000Z"
+    },
+    {
+      "id": "vimeo-1153646975",
+      "title": "The Keeper｜Vimeo 广告短片",
+      "description": "来自 Vimeo Staff Picks 的广告短片，由 Skyler Knutzen 发布，用完整影像叙事传达一个独立主题，适合放进「有点意思」视频 tab 里当作高质量影像灵感。",
+      "whyInteresting": "Vimeo Staff Picks 本身是编辑精选入口，说明画面、叙事或完成度已经过人工筛选。这条作品来自 Skyler Knutzen，时长约 6分9秒，归类为广告短片，综合评分 75，适合作为 AI 圈「有点意思」里的视频灵感来源。",
+      "type": "video",
+      "source": "vimeo",
+      "coverUrl": "https://i.vimeocdn.com/video/2105785130-2fbe5da9a31908d0f6d90c9cba4f757e3de275da9f486e11bd85660d1fdb7f6a-d?region=us&f=webp",
+      "mediaUrls": [
+        "https://i.vimeocdn.com/video/2105785130-2fbe5da9a31908d0f6d90c9cba4f757e3de275da9f486e11bd85660d1fdb7f6a-d?region=us&f=webp"
+      ],
+      "videoUrl": "https://vimeo.com/1153646975",
+      "externalUrl": "https://vimeo.com/1153646975",
+      "authorName": "Skyler Knutzen",
+      "originalAuthorUrl": "https://vimeo.com/skylerknutzen",
+      "toolNames": [
+        "Vimeo",
+        "Staff Picks",
+        "广告短片"
+      ],
+      "tags": [
+        "广告短片",
+        "Vimeo",
+        "Staff Picks",
+        "品牌灵感",
+        "商业创意"
+      ],
+      "status": "approved",
+      "featured": true,
+      "sourceVerified": true,
+      "viewCount": 2768,
+      "likeCount": 173,
+      "favoriteCount": 78,
+      "commentCount": 14,
+      "clickCount": 484,
+      "heatScore": 78,
+      "createdAt": "2026-01-12T03:24:21.000Z",
+      "publishedAt": "2026-01-12T03:24:21.000Z"
+    },
+    {
+      "id": "itchio-940924",
+      "title": "Red Handed：把 AI 主题做成轻量动作或街机玩法",
+      "description": "Red Handed 是一款偏轻互动的浏览器小游戏，核心体验更接近街机动作、躲避或快速反应玩法。",
+      "whyInteresting": "它把 AI 相关概念做成了可以直接上手的浏览器游戏，比单纯工具列表更适合试玩和传播。 这条作品满足浏览器可玩、有封面和简介等硬条件，已有 1644 个评分信号，精品评分 87，适合放进「有点意思」作为 AI 小游戏样本。",
+      "type": "app",
+      "source": "itchio",
+      "coverUrl": "https://img.itch.zone/aW1nLzU0MjU2NzEuZ2lm/original/I6VtOo.gif",
+      "externalUrl": "https://badpiggy.itch.io/red-handed",
+      "authorName": "Bad Piggy",
+      "originalAuthorUrl": "https://badpiggy.itch.io/",
+      "toolNames": [
+        "itch.io",
+        "HTML5",
+        "Browser Game"
+      ],
+      "tags": [
+        "AI小游戏",
+        "H5游戏",
+        "浏览器可玩",
+        "无需下载",
+        "轻互动",
+        "解谜"
+      ],
+      "status": "approved",
+      "featured": false,
+      "sourceVerified": true,
+      "viewCount": 239868,
+      "likeCount": 13326,
+      "favoriteCount": 5597,
+      "commentCount": 0,
+      "clickCount": 39978,
+      "heatScore": 87,
+      "createdAt": "2026-05-27T04:31:17.959Z",
+      "publishedAt": "2026-05-27T04:31:17.959Z"
+    },
+    {
+      "id": "itchio-3171782",
+      "title": "Gar-Type：把 AI 主题做成轻量动作或街机玩法",
+      "description": "Gar-Type 是一款偏轻互动的浏览器小游戏，核心体验更接近街机动作、躲避或快速反应玩法。",
+      "whyInteresting": "它把 AI 相关概念做成了可以直接上手的浏览器游戏，比单纯工具列表更适合试玩和传播。 这条作品满足浏览器可玩、有封面和简介等硬条件，已有 205 个评分信号，精品评分 87，适合放进「有点意思」作为 AI 小游戏样本。",
+      "type": "app",
+      "source": "itchio",
+      "coverUrl": "https://img.itch.zone/aW1nLzE5MDg3OTg1LmdpZg==/original/xFld7F.gif",
+      "externalUrl": "https://lumpytouch.itch.io/gar-type",
+      "authorName": "Lumpy",
+      "originalAuthorUrl": "https://lumpytouch.itch.io/",
+      "toolNames": [
+        "itch.io",
+        "HTML5",
+        "Browser Game"
+      ],
+      "tags": [
+        "AI小游戏",
+        "H5游戏",
+        "浏览器可玩",
+        "无需下载",
+        "轻互动"
+      ],
+      "status": "approved",
+      "featured": false,
+      "sourceVerified": true,
+      "viewCount": 32652,
+      "likeCount": 1814,
+      "favoriteCount": 762,
+      "commentCount": 0,
+      "clickCount": 5442,
+      "heatScore": 87,
+      "createdAt": "2026-05-27T04:30:20.903Z",
+      "publishedAt": "2026-05-27T04:30:20.903Z"
+    },
+    {
+      "id": "itchio-648858",
+      "title": "Picowars：把 AI 概念做成人机博弈或策略玩法",
+      "description": "Picowars 把 AI 决策或人机博弈做成策略小游戏，适合短时间试玩和观察规则变化。",
+      "whyInteresting": "它把 AI 相关概念做成了可以直接上手的浏览器游戏，比单纯工具列表更适合试玩和传播。 这条作品满足浏览器可玩、有封面和简介等硬条件，已有 26 个评分信号，精品评分 82，适合放进「有点意思」作为 AI 小游戏样本。",
+      "type": "app",
+      "source": "itchio",
+      "coverUrl": "https://img.itch.zone/aW1nLzM3MTQ0NDgucG5n/original/kLDyOM.png",
+      "externalUrl": "https://lambdanaut.itch.io/picowars",
+      "authorName": "Lambdanaut",
+      "originalAuthorUrl": "https://lambdanaut.itch.io/",
+      "toolNames": [
+        "itch.io",
+        "HTML5",
+        "Browser Game"
+      ],
+      "tags": [
+        "AI小游戏",
+        "H5游戏",
+        "浏览器可玩",
+        "无需下载",
+        "策略"
+      ],
+      "status": "approved",
+      "featured": false,
+      "sourceVerified": true,
+      "viewCount": 6696,
+      "likeCount": 372,
+      "favoriteCount": 156,
+      "commentCount": 0,
+      "clickCount": 1116,
+      "heatScore": 82,
+      "createdAt": "2026-05-27T04:31:02.961Z",
+      "publishedAt": "2026-05-27T04:31:02.961Z"
+    },
+    {
+      "id": "itchio-1593590",
+      "title": "HER TREES : First Puzzle：把 AI 主题做成浏览器解谜体验",
+      "description": "HER TREES : First Puzzle 把 AI 概念包装成轻量解谜，玩家通过观察线索、移动或选择来完成浏览器内挑战。",
+      "whyInteresting": "它把 AI 相关概念做成了可以直接上手的浏览器游戏，比单纯工具列表更适合试玩和传播。 这条作品满足浏览器可玩、有封面和简介等硬条件，已有 491 个评分信号，精品评分 82，适合放进「有点意思」作为 AI 小游戏样本。",
+      "type": "app",
+      "source": "itchio",
+      "coverUrl": "https://img.itch.zone/aW1nLzk0MjI3NDgucG5n/original/EVFAE9.png",
+      "externalUrl": "https://stonetreebook.itch.io/her-trees",
+      "authorName": "stone",
+      "originalAuthorUrl": "https://stonetreebook.itch.io/",
+      "toolNames": [
+        "itch.io",
+        "HTML5",
+        "Browser Game"
+      ],
+      "tags": [
+        "AI小游戏",
+        "H5游戏",
+        "浏览器可玩",
+        "无需下载",
+        "解谜"
+      ],
+      "status": "approved",
+      "featured": false,
+      "sourceVerified": true,
+      "viewCount": 73656,
+      "likeCount": 4092,
+      "favoriteCount": 1719,
+      "commentCount": 0,
+      "clickCount": 12276,
+      "heatScore": 82,
+      "createdAt": "2026-05-27T04:30:53.905Z",
+      "publishedAt": "2026-05-27T04:30:53.905Z"
+    },
+    {
+      "id": "itchio-613121",
+      "title": "Pikwip：把 AI 主题做成轻量动作或街机玩法",
+      "description": "Pikwip 是一款偏轻互动的浏览器小游戏，核心体验更接近街机动作、躲避或快速反应玩法。",
+      "whyInteresting": "它把 AI 相关概念做成了可以直接上手的浏览器游戏，比单纯工具列表更适合试玩和传播。 这条作品满足浏览器可玩、有封面和简介等硬条件，已有 520 个评分信号，精品评分 82，适合放进「有点意思」作为 AI 小游戏样本。",
+      "type": "app",
+      "source": "itchio",
+      "coverUrl": "https://img.itch.zone/aW1nLzUzNDQzNDYucG5n/original/QQZicg.png",
+      "externalUrl": "https://cookiecrayon.itch.io/pikwip",
+      "authorName": "Cookiecrayon",
+      "originalAuthorUrl": "https://cookiecrayon.itch.io/",
+      "toolNames": [
+        "itch.io",
+        "HTML5",
+        "Browser Game"
+      ],
+      "tags": [
+        "AI小游戏",
+        "H5游戏",
+        "浏览器可玩",
+        "无需下载",
+        "轻互动"
+      ],
+      "status": "approved",
+      "featured": false,
+      "sourceVerified": true,
+      "viewCount": 77832,
+      "likeCount": 4324,
+      "favoriteCount": 1816,
+      "commentCount": 0,
+      "clickCount": 12972,
+      "heatScore": 82,
+      "createdAt": "2026-05-27T04:30:52.309Z",
+      "publishedAt": "2026-05-27T04:30:52.309Z"
+    },
+    {
+      "id": "itchio-585053",
+      "title": "Waterworks!：把 AI 概念做成人机博弈或策略玩法",
+      "description": "Waterworks! 把 AI 决策或人机博弈做成策略小游戏，适合短时间试玩和观察规则变化。",
+      "whyInteresting": "它把 AI 相关概念做成了可以直接上手的浏览器游戏，比单纯工具列表更适合试玩和传播。 这条作品满足浏览器可玩、有封面和简介等硬条件，已有 1257 个评分信号，精品评分 81，适合放进「有点意思」作为 AI 小游戏样本。",
+      "type": "app",
+      "source": "itchio",
+      "coverUrl": "https://img.itch.zone/aW1nLzM4ODk4MTgucG5n/original/Amzmm6.png",
+      "externalUrl": "https://scriptwelder.itch.io/waterworks",
+      "authorName": "scriptwelder",
+      "originalAuthorUrl": "https://scriptwelder.itch.io/",
+      "toolNames": [
+        "itch.io",
+        "HTML5",
+        "Browser Game"
+      ],
+      "tags": [
+        "AI小游戏",
+        "H5游戏",
+        "浏览器可玩",
+        "无需下载"
+      ],
+      "status": "approved",
+      "featured": false,
+      "sourceVerified": true,
+      "viewCount": 183924,
+      "likeCount": 10218,
+      "favoriteCount": 4292,
+      "commentCount": 0,
+      "clickCount": 30654,
+      "heatScore": 81,
+      "createdAt": "2026-05-27T04:30:24.534Z",
+      "publishedAt": "2026-05-27T04:30:24.534Z"
+    },
+    {
+      "id": "itchio-1829893",
+      "title": "PolyTrack：把 AI 主题做成轻量动作或街机玩法",
+      "description": "PolyTrack 是一款偏轻互动的浏览器小游戏，核心体验更接近街机动作、躲避或快速反应玩法。",
+      "whyInteresting": "它把 AI 相关概念做成了可以直接上手的浏览器游戏，比单纯工具列表更适合试玩和传播。 这条作品满足浏览器可玩、有封面和简介等硬条件，已有 580 个评分信号，精品评分 80，适合放进「有点意思」作为 AI 小游戏样本。",
+      "type": "app",
+      "source": "itchio",
+      "coverUrl": "https://img.itch.zone/aW1nLzI2MDUxNTMzLnBuZw==/original/AEnurg.png",
+      "externalUrl": "https://kodub.itch.io/polytrack",
+      "authorName": "Kodub",
+      "originalAuthorUrl": "https://kodub.itch.io/",
+      "toolNames": [
+        "itch.io",
+        "HTML5",
+        "Browser Game"
+      ],
+      "tags": [
+        "AI小游戏",
+        "H5游戏",
+        "浏览器可玩",
+        "无需下载",
+        "轻互动"
+      ],
+      "status": "approved",
+      "featured": false,
+      "sourceVerified": true,
+      "viewCount": 86400,
+      "likeCount": 4800,
+      "favoriteCount": 2016,
+      "commentCount": 0,
+      "clickCount": 14400,
+      "heatScore": 80,
+      "createdAt": "2026-05-27T04:30:48.291Z",
+      "publishedAt": "2026-05-27T04:30:48.291Z"
+    },
+    {
+      "id": "itchio-3963422",
+      "title": "Interact With Me!：把 AI 主题做成交互叙事",
+      "description": "Interact With Me! 把 AI 对话或叙事系统放进浏览器游戏里，玩家通过选择、输入或角色互动推动故事发展。",
+      "whyInteresting": "它把 AI 相关概念做成了可以直接上手的浏览器游戏，比单纯工具列表更适合试玩和传播。 这条作品满足浏览器可玩、有封面和简介等硬条件，已有 114 个评分信号，精品评分 80，适合放进「有点意思」作为 AI 小游戏样本。",
+      "type": "app",
+      "source": "itchio",
+      "coverUrl": "https://img.itch.zone/aW1nLzI2OTE1MTUzLnBuZw==/original/5xiTdh.png",
+      "externalUrl": "https://tomyself.itch.io/interact-with-me",
+      "authorName": "ToMyself",
+      "originalAuthorUrl": "https://tomyself.itch.io/",
+      "toolNames": [
+        "itch.io",
+        "HTML5",
+        "Browser Game"
+      ],
+      "tags": [
+        "AI小游戏",
+        "H5游戏",
+        "浏览器可玩",
+        "无需下载",
+        "互动叙事"
+      ],
+      "status": "approved",
+      "featured": false,
+      "sourceVerified": true,
+      "viewCount": 19296,
+      "likeCount": 1072,
+      "favoriteCount": 450,
+      "commentCount": 0,
+      "clickCount": 3216,
+      "heatScore": 80,
+      "createdAt": "2026-05-27T04:30:10.462Z",
+      "publishedAt": "2026-05-27T04:30:10.462Z"
+    },
+    {
+      "id": "vimeo-1192171109",
+      "title": "SNARE｜Vimeo 广告短片",
+      "description": "来自 Vimeo Staff Picks 的广告短片，由 James Fraser 发布，通过音乐和镜头节奏建立强烈风格，适合放进「有点意思」视频 tab 里当作高质量影像灵感。",
+      "whyInteresting": "Vimeo Staff Picks 本身是编辑精选入口，说明画面、叙事或完成度已经过人工筛选。这条作品来自 James Fraser，时长约 13分44秒，归类为广告短片，综合评分 75，适合作为 AI 圈「有点意思」里的视频灵感来源。",
+      "type": "video",
+      "source": "vimeo",
+      "coverUrl": "https://i.vimeocdn.com/video/2157360902-477a3e10ca08129dfbc5de91f16dbc4dceb12a288adc4814473a86736a495bea-d?region=us&f=webp",
+      "mediaUrls": [
+        "https://i.vimeocdn.com/video/2157360902-477a3e10ca08129dfbc5de91f16dbc4dceb12a288adc4814473a86736a495bea-d?region=us&f=webp"
+      ],
+      "videoUrl": "https://vimeo.com/1192171109",
+      "externalUrl": "https://vimeo.com/1192171109",
+      "authorName": "James Fraser",
+      "originalAuthorUrl": "https://vimeo.com/jamespeterfraser",
+      "toolNames": [
+        "Vimeo",
+        "Staff Picks",
+        "广告短片"
+      ],
+      "tags": [
+        "广告短片",
+        "Vimeo",
+        "Staff Picks",
+        "品牌灵感",
+        "商业创意"
+      ],
+      "status": "approved",
+      "featured": false,
+      "sourceVerified": true,
+      "viewCount": 2768,
+      "likeCount": 173,
+      "favoriteCount": 78,
+      "commentCount": 14,
+      "clickCount": 484,
+      "heatScore": 78,
+      "createdAt": "2026-05-13T19:29:07.000Z",
+      "publishedAt": "2026-05-13T19:29:07.000Z"
+    },
+    {
+      "id": "vimeo-1190846167",
+      "title": "A Thousand Odd Days｜Vimeo 广告短片",
+      "description": "来自 Vimeo Staff Picks 的广告短片，由 Riley Blakeway 发布，通过音乐和镜头节奏建立强烈风格，适合放进「有点意思」视频 tab 里当作高质量影像灵感。",
+      "whyInteresting": "Vimeo Staff Picks 本身是编辑精选入口，说明画面、叙事或完成度已经过人工筛选。这条作品来自 Riley Blakeway，时长约 14分，归类为广告短片，综合评分 77，适合作为 AI 圈「有点意思」里的视频灵感来源。",
+      "type": "video",
+      "source": "vimeo",
+      "coverUrl": "https://i.vimeocdn.com/video/2155874668-5fbcaa497edfe14f247229affaec62b9dc21f165953bac71a5da056501a218ca-d?region=us&f=webp",
+      "mediaUrls": [
+        "https://i.vimeocdn.com/video/2155874668-5fbcaa497edfe14f247229affaec62b9dc21f165953bac71a5da056501a218ca-d?region=us&f=webp"
+      ],
+      "videoUrl": "https://vimeo.com/1190846167",
+      "externalUrl": "https://vimeo.com/1190846167",
+      "authorName": "Riley Blakeway",
+      "originalAuthorUrl": "https://vimeo.com/rileyblakeway",
+      "toolNames": [
+        "Vimeo",
+        "Staff Picks",
+        "广告短片"
+      ],
+      "tags": [
+        "广告短片",
+        "Vimeo",
+        "Staff Picks",
+        "品牌灵感",
+        "商业创意"
+      ],
+      "status": "approved",
+      "featured": false,
+      "sourceVerified": true,
+      "viewCount": 3012,
+      "likeCount": 177,
+      "favoriteCount": 80,
+      "commentCount": 14,
+      "clickCount": 496,
+      "heatScore": 78,
+      "createdAt": "2026-05-09T14:45:54.000Z",
+      "publishedAt": "2026-05-09T14:45:54.000Z"
+    },
+    {
+      "id": "vimeo-1189984971",
+      "title": "How Was Your Weekend?｜Vimeo 创意短片",
+      "description": "来自 Vimeo Staff Picks 的创意短片，由 Cam Banfield 发布，通过音乐和镜头节奏建立强烈风格，适合放进「有点意思」视频 tab 里当作高质量影像灵感。",
+      "whyInteresting": "Vimeo Staff Picks 本身是编辑精选入口，说明画面、叙事或完成度已经过人工筛选。这条作品来自 Cam Banfield，时长约 9分59秒，归类为创意短片，综合评分 77，适合作为 AI 圈「有点意思」里的视频灵感来源。",
+      "type": "video",
+      "source": "vimeo",
+      "coverUrl": "https://i.vimeocdn.com/video/2155041967-c2f3837617a5369e9b110ed405b99286abed3b99d0fb23fd83cfceb1fbbd41c6-d?region=us&f=webp",
+      "mediaUrls": [
+        "https://i.vimeocdn.com/video/2155041967-c2f3837617a5369e9b110ed405b99286abed3b99d0fb23fd83cfceb1fbbd41c6-d?region=us&f=webp"
+      ],
+      "videoUrl": "https://vimeo.com/1189984971",
+      "externalUrl": "https://vimeo.com/1189984971",
+      "authorName": "Cam Banfield",
+      "originalAuthorUrl": "https://vimeo.com/user29210052",
+      "toolNames": [
+        "Vimeo",
+        "Staff Picks",
+        "创意短片"
+      ],
+      "tags": [
+        "创意短片",
+        "Vimeo",
+        "Staff Picks",
+        "叙事灵感",
+        "精选视频"
+      ],
+      "status": "approved",
+      "featured": false,
+      "sourceVerified": true,
+      "viewCount": 3012,
+      "likeCount": 177,
+      "favoriteCount": 80,
+      "commentCount": 14,
+      "clickCount": 496,
+      "heatScore": 78,
+      "createdAt": "2026-05-06T16:15:28.000Z",
+      "publishedAt": "2026-05-06T16:15:28.000Z"
+    },
+    {
+      "id": "vimeo-1189456423",
+      "title": "Our Uniform｜Vimeo 动画短片",
+      "description": "来自 Vimeo Staff Picks 的动画短片，由 Yegane Moghaddam 发布，用动画语言完成完整叙事，适合放进「有点意思」视频 tab 里当作高质量影像灵感。",
+      "whyInteresting": "Vimeo Staff Picks 本身是编辑精选入口，说明画面、叙事或完成度已经过人工筛选。这条作品来自 Yegane Moghaddam，时长约 6分57秒，归类为动画短片，综合评分 76，适合作为 AI 圈「有点意思」里的视频灵感来源。",
+      "type": "video",
+      "source": "vimeo",
+      "coverUrl": "https://i.vimeocdn.com/video/2153973401-c4bfc87d930cec720e94a51ebb90c0fe0ce3978b22832ad04a4d8381c0e249dc-d?region=us&f=webp",
+      "mediaUrls": [
+        "https://i.vimeocdn.com/video/2153973401-c4bfc87d930cec720e94a51ebb90c0fe0ce3978b22832ad04a4d8381c0e249dc-d?region=us&f=webp"
+      ],
+      "videoUrl": "https://vimeo.com/1189456423",
+      "externalUrl": "https://vimeo.com/1189456423",
+      "authorName": "Yegane Moghaddam",
+      "originalAuthorUrl": "https://vimeo.com/ye9ane",
+      "toolNames": [
+        "Vimeo",
+        "Staff Picks",
+        "动画短片"
+      ],
+      "tags": [
+        "动画短片",
+        "Vimeo",
+        "Staff Picks",
+        "视觉灵感",
+        "导演作品"
+      ],
+      "status": "approved",
+      "featured": false,
+      "sourceVerified": true,
+      "viewCount": 2980,
+      "likeCount": 175,
+      "favoriteCount": 79,
+      "commentCount": 14,
+      "clickCount": 490,
+      "heatScore": 78,
+      "createdAt": "2026-05-05T04:58:22.000Z",
+      "publishedAt": "2026-05-05T04:58:22.000Z"
+    }
+  ],
+  "sources": {
+    "producthunt": {
+      "ok": false,
+      "count": 0,
+      "fetchedAt": "2026-05-27T04:32:30.743Z",
+      "error": "PRODUCT_HUNT_TOKEN is not configured"
+    },
+    "itchio": {
+      "ok": true,
+      "count": 10,
+      "fetchedAt": "2026-05-27T04:32:30.743Z"
+    },
+    "youtube": {
+      "ok": false,
+      "count": 0,
+      "fetchedAt": "2026-05-27T04:32:30.743Z"
+    },
+    "vimeo": {
+      "ok": true,
+      "count": 8,
+      "fetchedAt": "2026-05-27T04:32:30.743Z"
+    }
+  }
+}
