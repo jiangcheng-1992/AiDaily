@@ -120,10 +120,12 @@ function extractItchioIframeUrl(html: string) {
     const src = decodeHtmlAttribute(match[1] ?? "");
     if (!src) continue;
 
+    const embedUploadUrl = toItchioEmbedUploadUrl(src);
+    if (embedUploadUrl) return embedUploadUrl;
+
     const isGameIframe =
       iframeHtml.includes("game_drop") ||
       iframeHtml.includes("allowfullscreen") ||
-      /https:\/\/[^/]+\.itch\.zone\//i.test(src) ||
       /https:\/\/itch\.io\/embed-upload\//i.test(src);
 
     if (isGameIframe && isSafeItchioFrameUrl(src)) return src;
@@ -133,7 +135,12 @@ function extractItchioIframeUrl(html: string) {
 }
 
 function isSafeItchioFrameUrl(value: string) {
-  return /^https:\/\/(?:[^/]+\.)?(?:itch\.zone|itch\.io)\//i.test(value);
+  return /^https:\/\/itch\.io\/embed-upload\//i.test(value) || /^https:\/\/[^/]+\.itch\.io\//i.test(value);
+}
+
+function toItchioEmbedUploadUrl(value: string) {
+  const uploadId = value.match(/^https:\/\/[^/]+\.itch\.zone\/html\/(\d+)\//i)?.[1];
+  return uploadId ? `https://itch.io/embed-upload/${uploadId}?color=191919` : undefined;
 }
 
 function decodeHtmlAttribute(value: string) {
