@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { buildInterestingSkillWorks } from "@/lib/interesting-skill-works";
 import { readGeneratedFeed } from "@/lib/generated-feed-store";
 import { readGeneratedWorks } from "@/lib/generated-works-store";
+import { interestingWorks } from "@/lib/interesting-works";
 import { mockPosts } from "@/lib/mock-data";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +20,7 @@ export default async function InterestingPlayPage({
   const generatedFeed = await readGeneratedFeed({ includeSkills: true, allowFallback: false });
   const worksFeed = await readGeneratedWorks({ allowFallback: false });
   const skillWorks = buildInterestingSkillWorks([...generatedFeed.posts, ...mockPosts]);
-  const work = [...skillWorks, ...worksFeed.works].find((item) => item.id === id);
+  const work = [...skillWorks, ...worksFeed.works, ...interestingWorks].find((item) => item.id === id);
 
   if (!work || work.source !== "itchio" || !work.externalUrl) notFound();
 

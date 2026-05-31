@@ -5,6 +5,7 @@ import { readGeneratedFeed } from "@/lib/generated-feed-store";
 import { readGeneratedWorks } from "@/lib/generated-works-store";
 import { buildInterestingSkillWorks } from "@/lib/interesting-skill-works";
 import {
+  getWorkCategoryId,
   interestingCategories,
   interestingWorks,
   type WorkCategoryId,
@@ -47,7 +48,8 @@ export default async function InterestingPage({
 
   const skillWorks = buildInterestingSkillWorks([...generatedFeed.posts, ...mockPosts]);
   const requestedTab = parseInterestingTab(resolvedSearchParams.tab);
-  const works = mergeInterestingWorks([...skillWorks, ...worksFeed.works, ...interestingWorks]);
+  const baseWorks = mergeInterestingWorks([...skillWorks, ...worksFeed.works]);
+  const works = mergeInterestingWorks([...baseWorks, ...getMissingCategoryFallbacks(baseWorks)]);
 
   return (
     <InterestingClient
@@ -68,6 +70,27 @@ function mergeInterestingWorks(works: WorkItem[]) {
   }
 
   return Array.from(merged.values());
+}
+
+function getMissingCategoryFallbacks(works: WorkItem[]) {
+  const usedFallbackIds = new Set<string>();
+  const fallbackWorks: WorkItem[] = [];
+
+  for (const category of interestingCategories) {
+    if (category.id === "all") continue;
+    if (works.some((work) => getWorkCategoryId(work) === category.id)) continue;
+
+    const categoryFallbacks = interestingWorks
+      .filter((work) => getWorkCategoryId(work) === category.id && !usedFallbackIds.has(work.id))
+      .slice(0, 4);
+
+    for (const work of categoryFallbacks) {
+      usedFallbackIds.add(work.id);
+      fallbackWorks.push(work);
+    }
+  }
+
+  return fallbackWorks;
 }
 
 function parseInterestingTab(tab?: string): WorkCategoryId | undefined {

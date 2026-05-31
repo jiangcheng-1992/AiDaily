@@ -17,7 +17,9 @@ import { Card } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import {
   getWorkTypeLabel,
+  interestingWorks,
   getRelatedInterestingWorks,
+  type WorkItem,
   workSourceLabels,
 } from "@/lib/interesting-works";
 import { buildInterestingSkillWorks } from "@/lib/interesting-skill-works";
@@ -103,7 +105,7 @@ export default async function InterestingDetailPage({
   }
 
   const skillWorks = buildInterestingSkillWorks([...generatedFeed.posts, ...mockPosts]);
-  const allWorks = [...skillWorks, ...worksFeed.works];
+  const allWorks = mergeInterestingWorks([...skillWorks, ...worksFeed.works, ...interestingWorks]);
   const work = allWorks.find((item) => item.id === id);
 
   if (!work) notFound();
@@ -336,7 +338,22 @@ async function findInterestingWork(id: string) {
     readGeneratedFeed({ includeSkills: true, allowFallback: true }),
   ]);
   const skillWorks = buildInterestingSkillWorks([...generatedFeed.posts, ...mockPosts]);
-  return [...skillWorks, ...worksFeed.works].find((item) => item.id === id);
+  return mergeInterestingWorks([...skillWorks, ...worksFeed.works, ...interestingWorks]).find(
+    (item) => item.id === id,
+  );
+}
+
+function mergeInterestingWorks(works: WorkItem[]) {
+  const merged = new Map<string, WorkItem>();
+
+  for (const work of works) {
+    const key = work.externalUrl || work.githubUrl || work.videoUrl || work.id;
+    if (!merged.has(key)) {
+      merged.set(key, work);
+    }
+  }
+
+  return Array.from(merged.values());
 }
 
 async function waitForWorksRebuild(reason: string) {
