@@ -12,6 +12,7 @@ import {
   Heart,
   Maximize2,
   MessageCircle,
+  Minimize2,
   Pause,
   Play,
   SendHorizontal,
@@ -89,6 +90,7 @@ export function PostDetailClient({
   const [videoCurrentTime, setVideoCurrentTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
   const [videoPlaying, setVideoPlaying] = useState(false);
+  const [videoExpanded, setVideoExpanded] = useState(false);
   const loadProgressTimerRef = useRef<number | null>(null);
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
   const videoFrameRef = useRef<HTMLDivElement | null>(null);
@@ -217,6 +219,7 @@ export function PostDetailClient({
       setVideoCurrentTime(0);
       setVideoDuration(0);
       setVideoPlaying(false);
+      setVideoExpanded(false);
       setVideoPlaybackMode(preferEmbedPlayback ? "embed" : "direct");
       playbackRequestStartedAtRef.current = null;
       lastLoggedProgressBucketRef.current = -1;
@@ -282,6 +285,36 @@ export function PostDetailClient({
 
     return () => window.clearTimeout(timer);
   }, [activeVideoUrl, videoPlaybackMode, videoStarted]);
+
+  useEffect(() => {
+    if (!videoExpanded) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const previousOverscrollBehavior = document.body.style.overscrollBehavior;
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.overscrollBehavior = previousOverscrollBehavior;
+    };
+  }, [videoExpanded]);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        setVideoExpanded(false);
+      }
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
+    };
+  }, []);
 
   if (!post && !hydrated) {
     return (
@@ -600,10 +633,22 @@ export function PostDetailClient({
     setVideoCurrentTime(nextTime);
   };
 
-  const requestVideoFullscreen = async () => {
+  const toggleVideoExpanded = async () => {
+    if (videoExpanded) {
+      setVideoExpanded(false);
+      if (document.fullscreenElement) {
+        await document.exitFullscreen().catch((error) => {
+          logVideoEvent("warn", "exit fullscreen failed", { error });
+        });
+      }
+      return;
+    }
+
     const target = videoFrameRef.current ?? videoElementRef.current;
+    setVideoExpanded(true);
+
     if (!target?.requestFullscreen) {
-      logVideoEvent("warn", "fullscreen API unavailable");
+      logVideoEvent("warn", "fullscreen API unavailable, using fixed viewport mode");
       return;
     }
 
@@ -611,7 +656,7 @@ export function PostDetailClient({
       await target.requestFullscreen();
       logVideoEvent("info", "fullscreen requested");
     } catch (error) {
-      logVideoEvent("warn", "fullscreen request failed", { error });
+      logVideoEvent("warn", "fullscreen request failed, using fixed viewport mode", { error });
     }
   };
 
@@ -755,7 +800,14 @@ export function PostDetailClient({
 
           {post.type === "video" ? (
             <div className="mx-auto mt-6 w-full max-w-[360px] overflow-hidden rounded-[1.75rem] border border-slate-100 bg-slate-950 shadow-lift sm:max-w-[420px]">
-              <div ref={videoFrameRef} className="relative bg-black">
+              <div
+                ref={videoFrameRef}
+                className={cn(
+                  "relative bg-black",
+                  videoExpanded &&
+                    "fixed inset-0 z-[9999] flex h-[100dvh] w-screen items-center justify-center rounded-none",
+                )}
+              >
                 {videoStarted && videoPlaybackMode === "direct" && activeVideoUrl ? (
                   <>
                     <video
@@ -776,9 +828,17 @@ export function PostDetailClient({
                       onWaiting={handleVideoBuffering}
                       onProgress={updateVideoBufferedProgress}
                       onError={markVideoFailed}
-                      className="aspect-[9/16] w-full bg-black object-contain"
+                      className={cn(
+                        "bg-black object-contain",
+                        videoExpanded ? "h-[100dvh] w-screen max-w-none" : "aspect-[9/16] w-full",
+                      )}
                     />
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/70 to-transparent px-3 pb-3 pt-12 text-white">
+                    <div
+                      className={cn(
+                        "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/70 to-transparent px-3 pt-12 text-white",
+                        videoExpanded ? "pb-[max(12px,env(safe-area-inset-bottom))]" : "pb-3",
+                      )}
+                    >
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
@@ -809,11 +869,15 @@ export function PostDetailClient({
                         </span>
                         <button
                           type="button"
-                          onClick={requestVideoFullscreen}
+                          onClick={toggleVideoExpanded}
                           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white ring-1 ring-white/20"
-                          aria-label="全屏播放"
+                          aria-label={videoExpanded ? "退出全屏" : "全屏播放"}
                         >
-                          <Maximize2 className="h-4 w-4" />
+                          {videoExpanded ? (
+                            <Minimize2 className="h-4 w-4" />
+                          ) : (
+                            <Maximize2 className="h-4 w-4" />
+                          )}
                         </button>
                       </div>
                     </div>
