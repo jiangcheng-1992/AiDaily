@@ -10,6 +10,8 @@ import { absoluteUrl, getSiteUrl } from "@/lib/seo";
 import "./globals.css";
 
 const GA_MEASUREMENT_ID = "G-0W61YMLPCN";
+const BAIDU_SITE_VERIFICATION =
+  process.env.NEXT_PUBLIC_BAIDU_SITE_VERIFICATION ?? "codeva-PW6SzpKQQx";
 const siteUrl = getSiteUrl();
 
 export const metadata: Metadata = {
@@ -62,7 +64,7 @@ export const metadata: Metadata = {
   verification: {
     google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
     other: {
-      "baidu-site-verification": process.env.NEXT_PUBLIC_BAIDU_SITE_VERIFICATION ?? "",
+      "baidu-site-verification": BAIDU_SITE_VERIFICATION,
     },
   },
 };
@@ -82,7 +84,7 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <head>
-        <meta name="baidu-site-verification" content="codeva-lhGhvmAxwe" />
+        <meta name="baidu-site-verification" content={BAIDU_SITE_VERIFICATION} />
         {ADSENSE_CLIENT ? (
           <script
             async
