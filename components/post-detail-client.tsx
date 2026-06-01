@@ -128,7 +128,10 @@ export function PostDetailClient({
     Boolean(videoEmbedUrl);
   const isEmbedPlaybackActive =
     Boolean(videoStarted && activeVideoEmbedUrl && videoPlaybackMode === "embed");
-  const shouldUseEmbedLayout = preferEmbedPlayback || isEmbedPlaybackActive;
+  const shouldUseEmbedLayout =
+    post?.type === "video" &&
+    !isDouyinVideoPost &&
+    (isBilibiliVideoPost || preferEmbedPlayback || Boolean(activeVideoEmbedUrl) || isEmbedPlaybackActive);
   const articleImageUrls = useMemo(() => {
     if (!post || post.type === "video") return [];
 
