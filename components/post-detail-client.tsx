@@ -647,28 +647,11 @@ export function PostDetailClient({
   const toggleVideoExpanded = async () => {
     if (videoExpanded) {
       setVideoExpanded(false);
-      if (document.fullscreenElement) {
-        await document.exitFullscreen().catch((error) => {
-          logVideoEvent("warn", "exit fullscreen failed", { error });
-        });
-      }
       return;
     }
 
-    const target = videoFrameRef.current ?? videoElementRef.current;
     setVideoExpanded(true);
-
-    if (!target?.requestFullscreen) {
-      logVideoEvent("warn", "fullscreen API unavailable, using fixed viewport mode");
-      return;
-    }
-
-    try {
-      await target.requestFullscreen();
-      logVideoEvent("info", "fullscreen requested");
-    } catch (error) {
-      logVideoEvent("warn", "fullscreen request failed, using fixed viewport mode", { error });
-    }
+    logVideoEvent("info", "expanded video viewport");
   };
 
   const startBufferedVideo = async () => {
@@ -979,7 +962,9 @@ export function PostDetailClient({
                     </div>
                   </div>
                 ) : null}
-                {videoLoading && !videoReady ? (
+                {videoLoading &&
+                !videoReady &&
+                !(videoStarted && videoPlaybackMode === "direct" && activeVideoUrl) ? (
                   <div>
                     <div className="h-1.5 overflow-hidden rounded-full bg-white/15">
                       <div
