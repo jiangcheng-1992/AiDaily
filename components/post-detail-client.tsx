@@ -128,6 +128,7 @@ export function PostDetailClient({
     Boolean(videoEmbedUrl);
   const isEmbedPlaybackActive =
     Boolean(videoStarted && activeVideoEmbedUrl && videoPlaybackMode === "embed");
+  const shouldUseEmbedLayout = preferEmbedPlayback || isEmbedPlaybackActive;
   const articleImageUrls = useMemo(() => {
     if (!post || post.type === "video") return [];
 
@@ -849,7 +850,7 @@ export function PostDetailClient({
             <div
               className={cn(
                 "mx-auto mt-6 w-full overflow-hidden rounded-[1.75rem] border border-slate-100 bg-slate-950 shadow-lift",
-                isEmbedPlaybackActive ? "max-w-3xl" : "max-w-[360px] sm:max-w-[420px]",
+                shouldUseEmbedLayout ? "max-w-3xl" : "max-w-[360px] sm:max-w-[420px]",
               )}
             >
               <div
@@ -962,20 +963,46 @@ export function PostDetailClient({
                         <img
                           src={post.coverImageUrl}
                           alt={post.title}
-                          className="relative aspect-[9/16] w-full object-contain"
+                          className={cn(
+                            "relative w-full object-contain",
+                            shouldUseEmbedLayout ? "aspect-video" : "aspect-[9/16]",
+                          )}
                         />
                       </>
                     ) : (
-                      <div className="aspect-[9/16] w-full bg-black" />
+                      <div
+                        className={cn(
+                          "w-full bg-black",
+                          shouldUseEmbedLayout ? "aspect-video" : "aspect-[9/16]",
+                        )}
+                      />
                     )}
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/55 to-transparent px-5 pb-6 pt-20">
+                    <div
+                      className={cn(
+                        "absolute flex",
+                        shouldUseEmbedLayout
+                          ? "inset-0 items-center justify-center bg-black/10"
+                          : "inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/55 to-transparent px-5 pb-6 pt-20",
+                      )}
+                    >
                       <button
                         type="button"
                         onClick={startVideoPlayback}
-                        className="mx-auto inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-4 py-3 text-sm font-black text-slate-950 transition-colors hover:bg-fuchsia-100"
+                        className={cn(
+                          "inline-flex items-center justify-center gap-2 bg-white text-sm font-black text-slate-950 shadow-soft transition-colors hover:bg-fuchsia-100",
+                          shouldUseEmbedLayout
+                            ? "h-16 w-16 rounded-full p-0 sm:h-20 sm:w-20"
+                            : "mx-auto w-full rounded-full px-4 py-3",
+                        )}
+                        aria-label="App 内播放"
                       >
-                        App 内播放
-                        <Play className="h-4 w-4 fill-current" />
+                        {shouldUseEmbedLayout ? null : "App 内播放"}
+                        <Play
+                          className={cn(
+                            "fill-current",
+                            shouldUseEmbedLayout ? "h-7 w-7 translate-x-0.5" : "h-4 w-4",
+                          )}
+                        />
                       </button>
                     </div>
                   </>
