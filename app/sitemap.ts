@@ -4,7 +4,7 @@ import { readGeneratedFeed } from "@/lib/generated-feed-store";
 import { readGeneratedWorks } from "@/lib/generated-works-store";
 import { buildInterestingSkillWorks } from "@/lib/interesting-skill-works";
 import { mockPosts } from "@/lib/mock-data";
-import { absoluteUrl } from "@/lib/seo";
+import { canonicalUrl } from "@/lib/seo";
 
 const staticRoutes: Array<{ path: string; priority: number; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"] }> = [
   { path: "/", priority: 1, changeFrequency: "hourly" },
@@ -27,13 +27,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
   const skillWorks = buildInterestingSkillWorks([...feed.posts, ...mockPosts]);
   const postRoutes = feed.posts.map((post) => ({
-    url: absoluteUrl(`/post/${post.id}`),
+    url: canonicalUrl(`/post/${post.id}`),
     lastModified: safeDate(post.collectedAt || post.createdAt, now),
     changeFrequency: "weekly" as const,
     priority: post.featured ? 0.85 : 0.72,
   }));
   const workRoutes = [...skillWorks, ...worksFeed.works].map((work) => ({
-    url: absoluteUrl(`/interesting/${work.id}`),
+    url: canonicalUrl(`/interesting/${work.id}`),
     lastModified: safeDate(work.publishedAt || work.createdAt, now),
     changeFrequency: "weekly" as const,
     priority: work.featured ? 0.82 : 0.68,
@@ -41,7 +41,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...staticRoutes.map((route) => ({
-      url: absoluteUrl(route.path),
+      url: canonicalUrl(route.path),
       lastModified: now,
       changeFrequency: route.changeFrequency,
       priority: route.priority,

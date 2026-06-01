@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-import { absoluteUrl } from "@/lib/seo";
+import { canonicalUrl, getCanonicalSiteUrl } from "@/lib/seo";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -8,15 +8,22 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/api/", "/auth", "/me", "/saved"],
+        disallow: [
+          "/api/",
+          "/auth",
+          "/me",
+          "/saved",
+          "/_next/",
+          "/*.json$",
+        ],
       },
       {
         userAgent: ["Googlebot", "Bingbot", "Baiduspider", "BaiduSpider"],
         allow: "/",
-        disallow: ["/api/", "/auth", "/me", "/saved"],
+        disallow: ["/api/", "/auth", "/me", "/saved", "/_next/"],
       },
     ],
-    sitemap: absoluteUrl("/sitemap.xml"),
-    host: absoluteUrl("/"),
+    sitemap: canonicalUrl("/sitemap.xml"),
+    host: getCanonicalSiteUrl(),
   };
 }

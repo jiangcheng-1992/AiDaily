@@ -2,17 +2,39 @@ import type { Post } from "@/lib/mock-data";
 import type { WorkItem } from "@/lib/interesting-works";
 import { createElement } from "react";
 
-const DEFAULT_SITE_URL = "https://aiquan.me";
+export const CANONICAL_SITE_URL = "https://aiquan.me";
+const DEFAULT_SITE_URL = CANONICAL_SITE_URL;
 const SITE_NAME = "AI圈";
+const LEGACY_SITE_HOSTS = new Set(["aidaily-production.up.railway.app"]);
 
 export function getSiteUrl() {
   const raw = process.env.NEXT_PUBLIC_SITE_URL || process.env.APP_BASE_URL || DEFAULT_SITE_URL;
-  return raw.replace(/\/+$/, "");
+  const normalized = raw.replace(/\/+$/, "");
+
+  try {
+    const url = new URL(normalized);
+    if (LEGACY_SITE_HOSTS.has(url.hostname.toLowerCase())) {
+      return CANONICAL_SITE_URL;
+    }
+  } catch {
+    return DEFAULT_SITE_URL;
+  }
+
+  return normalized;
+}
+
+export function getCanonicalSiteUrl() {
+  return CANONICAL_SITE_URL;
 }
 
 export function absoluteUrl(path = "/") {
   if (/^https?:\/\//i.test(path)) return path;
   return `${getSiteUrl()}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+export function canonicalUrl(path = "/") {
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${getCanonicalSiteUrl()}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
 export function seoTitle(title: string) {
