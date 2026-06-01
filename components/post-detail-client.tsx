@@ -941,20 +941,38 @@ export function PostDetailClient({
                     </div>
                   </>
                 ) : videoStarted && activeVideoEmbedUrl ? (
-                  <iframe
-                    src={activeVideoEmbedUrl}
-                    title={post.title}
-                    allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-                    allowFullScreen
-                    loading="lazy"
-                    onLoad={markVideoReady}
-                    sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    className={cn(
-                      "border-0 bg-black",
-                      videoExpanded ? "h-[100dvh] w-screen max-w-none" : "aspect-video w-full",
-                    )}
-                  />
+                  <>
+                    <iframe
+                      src={activeVideoEmbedUrl}
+                      title={post.title}
+                      allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+                      allowFullScreen
+                      loading="lazy"
+                      onLoad={markVideoReady}
+                      sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      className={cn(
+                        "border-0 bg-black",
+                        videoExpanded ? "h-[100dvh] w-screen max-w-none" : "aspect-video w-full",
+                      )}
+                    />
+                    <button
+                      type="button"
+                      onClick={toggleVideoExpanded}
+                      className={cn(
+                        "absolute right-3 top-3 z-20 inline-flex items-center gap-1.5 rounded-full bg-black/65 px-3 py-2 text-xs font-black text-white shadow-soft ring-1 ring-white/20 backdrop-blur transition-colors hover:bg-black/80",
+                        videoExpanded && "right-[max(12px,env(safe-area-inset-right))] top-[max(12px,env(safe-area-inset-top))]",
+                      )}
+                      aria-label={videoExpanded ? "退出网页全屏" : "网页全屏播放"}
+                    >
+                      {videoExpanded ? (
+                        <Minimize2 className="h-4 w-4" />
+                      ) : (
+                        <Maximize2 className="h-4 w-4" />
+                      )}
+                      <span>{videoExpanded ? "退出" : "全屏"}</span>
+                    </button>
+                  </>
                 ) : (
                   <>
                     {post.coverImageUrl ? (
