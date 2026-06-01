@@ -91,6 +91,8 @@ export function PostDetailClient({
   const [videoDuration, setVideoDuration] = useState(0);
   const [videoPlaying, setVideoPlaying] = useState(false);
   const [videoExpanded, setVideoExpanded] = useState(false);
+  const [embedPlaying, setEmbedPlaying] = useState(false);
+  const [embedProgress, setEmbedProgress] = useState(0);
   const loadProgressTimerRef = useRef<number | null>(null);
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
   const videoFrameRef = useRef<HTMLDivElement | null>(null);
@@ -126,6 +128,11 @@ export function PostDetailClient({
     (isBilibiliVideoPost || !post.videoUrl) &&
     Boolean(videoEmbedUrl) &&
     Boolean(videoEmbedUrl);
+  const isEmbedPlaybackActive =
+    Boolean(videoStarted && activeVideoEmbedUrl && videoPlaybackMode === "embed");
+  const activeEmbedPlayerUrl = activeVideoEmbedUrl
+    ? buildEmbedPlaybackUrl(activeVideoEmbedUrl, embedPlaying)
+    : undefined;
   const articleImageUrls = useMemo(() => {
     if (!post || post.type === "video") return [];
 
@@ -227,6 +234,8 @@ export function PostDetailClient({
       setVideoDuration(0);
       setVideoPlaying(false);
       setVideoExpanded(false);
+      setEmbedPlaying(false);
+      setEmbedProgress(0);
       setVideoPlaybackMode(preferEmbedPlayback ? "embed" : "direct");
       playbackRequestStartedAtRef.current = null;
       lastLoggedProgressBucketRef.current = -1;
@@ -323,8 +332,21 @@ export function PostDetailClient({
   }, [videoExpanded]);
 
   useEffect(() => {
+    if (!isEmbedPlaybackActive || !embedPlaying) return;
+
+    const progressTimer = window.setInterval(() => {
+      setEmbedProgress((current) => Math.min(98, current + (current < 12 ? 1.8 : 0.45)));
+    }, 1000);
+
+    return () => window.clearInterval(progressTimer);
+  }, [embedPlaying, isEmbedPlaybackActive]);
+
+  useEffect(() => {
     const handleFullscreenChange = () => {
-      if (!document.fullscreenElement) {
+      const fullscreenDocument = document as Document & {
+        webkitFullscreenElement?: Element | null;
+      };
+      if (!fullscreenDocument.fullscreenElement && !fullscreenDocument.webkitFullscreenElement) {
         setVideoExpanded(false);
       }
     };
@@ -533,6 +555,8 @@ export function PostDetailClient({
     }
 
     if (videoPlaybackMode !== "direct") {
+      setEmbedPlaying(true);
+      setEmbedProgress((current) => Math.max(current, 2));
       return;
     }
   };
@@ -657,6 +681,17 @@ export function PostDetailClient({
     }
   };
 
+  const toggleEmbedPlayback = () => {
+    if (!activeVideoEmbedUrl) return;
+
+    setVideoStarted(true);
+    setVideoReady(true);
+    setVideoLoading(false);
+    setVideoSlow(false);
+    setEmbedPlaying((current) => !current);
+    setEmbedProgress((current) => Math.max(current, 2));
+  };
+
   const seekVideo = (value: string) => {
     const video = videoElementRef.current;
     const nextTime = Number(value);
@@ -667,13 +702,39 @@ export function PostDetailClient({
   };
 
   const toggleVideoExpanded = async () => {
+    const fullscreenDocument = document as Document & {
+      webkitExitFullscreen?: () => Promise<void> | void;
+    };
+
     if (videoExpanded) {
       setVideoExpanded(false);
+      if (fullscreenDocument.fullscreenElement && fullscreenDocument.exitFullscreen) {
+        await fullscreenDocument.exitFullscreen().catch((error) => {
+          logVideoEvent("warn", "exit native fullscreen failed", { error });
+        });
+      } else if (fullscreenDocument.webkitExitFullscreen) {
+        await Promise.resolve(fullscreenDocument.webkitExitFullscreen()).catch((error) => {
+          logVideoEvent("warn", "exit native fullscreen failed", { error });
+        });
+      }
       return;
     }
 
     setVideoExpanded(true);
     logVideoEvent("info", "expanded video viewport");
+    const fullscreenTarget = videoFrameRef.current as
+      | (HTMLDivElement & {
+          webkitRequestFullscreen?: () => Promise<void> | void;
+        })
+      | null;
+    const requestFullscreen =
+      fullscreenTarget?.requestFullscreen ?? fullscreenTarget?.webkitRequestFullscreen;
+
+    if (fullscreenTarget && requestFullscreen) {
+      await Promise.resolve(requestFullscreen.call(fullscreenTarget)).catch((error) => {
+        logVideoEvent("warn", "native fullscreen failed, keeping custom overlay", { error });
+      });
+    }
   };
 
   const startBufferedVideo = async () => {
@@ -815,7 +876,12 @@ export function PostDetailClient({
           ) : null}
 
           {post.type === "video" ? (
-            <div className="mx-auto mt-6 w-full max-w-[360px] overflow-hidden rounded-[1.75rem] border border-slate-100 bg-slate-950 shadow-lift sm:max-w-[420px]">
+            <div
+              className={cn(
+                "mx-auto mt-6 w-full overflow-hidden rounded-[1.75rem] border border-slate-100 bg-slate-950 shadow-lift",
+                isEmbedPlaybackActive ? "max-w-3xl" : "max-w-[360px] sm:max-w-[420px]",
+              )}
+            >
               <div
                 ref={videoFrameRef}
                 className={cn(
@@ -854,7 +920,7 @@ export function PostDetailClient({
                     <div
                       className={cn(
                         "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/70 to-transparent px-3 pt-12 text-white",
-                        videoExpanded ? "pb-[max(12px,env(safe-area-inset-bottom))]" : "hidden",
+                        videoExpanded ? "pb-[max(12px,env(safe-area-inset-bottom))]" : "pb-3",
                       )}
                     >
                       <div className="flex items-center gap-2">
@@ -900,16 +966,67 @@ export function PostDetailClient({
                       </div>
                     </div>
                   </>
-                ) : videoStarted && activeVideoEmbedUrl ? (
-                  <iframe
-                    src={activeVideoEmbedUrl}
-                    title={post.title}
-                    allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-                    allowFullScreen
-                    loading="lazy"
-                    onLoad={markVideoReady}
-                    className="aspect-video w-full border-0 bg-black"
-                  />
+                ) : videoStarted && activeEmbedPlayerUrl ? (
+                  <>
+                    <iframe
+                      key={`${activeVideoEmbedUrl}-${embedPlaying ? "playing" : "paused"}`}
+                      src={activeEmbedPlayerUrl}
+                      title={post.title}
+                      allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+                      allowFullScreen
+                      loading="lazy"
+                      onLoad={markVideoReady}
+                      sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      className={cn(
+                        "pointer-events-none border-0 bg-black",
+                        videoExpanded ? "h-[100dvh] w-screen max-w-none" : "aspect-video w-full",
+                      )}
+                    />
+                    <div className="absolute inset-0 z-10" aria-hidden="true" />
+                    <div
+                      className={cn(
+                        "pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/95 via-black/55 to-transparent px-3 pt-14 text-white",
+                        videoExpanded ? "pb-[max(12px,env(safe-area-inset-bottom))]" : "pb-3",
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={toggleEmbedPlayback}
+                          className="pointer-events-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/90 text-slate-950 shadow-soft"
+                          aria-label={embedPlaying ? "暂停视频" : "播放视频"}
+                        >
+                          {embedPlaying ? (
+                            <Pause className="h-4 w-4 fill-current" />
+                          ) : (
+                            <Play className="h-4 w-4 fill-current" />
+                          )}
+                        </button>
+                        <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-white/20">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-blue-400 to-fuchsia-400 transition-all"
+                            style={{ width: `${Math.max(embedProgress, videoReady ? 6 : 2)}%` }}
+                          />
+                        </div>
+                        <span className="min-w-[52px] text-right text-[11px] font-bold text-white/75">
+                          {embedPlaying ? "播放中" : "已暂停"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={toggleVideoExpanded}
+                          className="pointer-events-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white ring-1 ring-white/20"
+                          aria-label={videoExpanded ? "退出全屏" : "全屏播放"}
+                        >
+                          {videoExpanded ? (
+                            <Minimize2 className="h-4 w-4" />
+                          ) : (
+                            <Maximize2 className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </>
                 ) : (
                   <>
                     {post.coverImageUrl ? (
@@ -982,6 +1099,42 @@ export function PostDetailClient({
                         {formatVideoDuration(videoCurrentTime * 1000)} /{" "}
                         {formatVideoDuration(videoDuration * 1000)}
                       </span>
+                    </div>
+                  </div>
+                ) : null}
+                {isEmbedPlaybackActive && !videoExpanded ? (
+                  <div className="rounded-2xl bg-white/5 p-3 ring-1 ring-white/10">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={toggleEmbedPlayback}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/90 text-slate-950 shadow-soft"
+                        aria-label={embedPlaying ? "暂停视频" : "播放视频"}
+                      >
+                        {embedPlaying ? (
+                          <Pause className="h-4 w-4 fill-current" />
+                        ) : (
+                          <Play className="h-4 w-4 fill-current" />
+                        )}
+                      </button>
+                      <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-white/20">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-blue-400 to-fuchsia-400 transition-all"
+                          style={{ width: `${Math.max(embedProgress, videoReady ? 6 : 2)}%` }}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={toggleVideoExpanded}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white ring-1 ring-white/20"
+                        aria-label="全屏播放"
+                      >
+                        <Maximize2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-[11px] font-bold text-white/65">
+                      <span>播放进度</span>
+                      <span>{embedPlaying ? "内嵌播放中" : "已暂停"}</span>
                     </div>
                   </div>
                 ) : null}
@@ -1294,6 +1447,17 @@ function buildVideoEmbedUrl(sourceUrl?: string) {
   }
 
   return undefined;
+}
+
+function buildEmbedPlaybackUrl(embedUrl: string, shouldAutoplay: boolean) {
+  try {
+    const url = new URL(embedUrl);
+    url.searchParams.set("autoplay", shouldAutoplay ? "1" : "0");
+    url.searchParams.set("high_quality", "1");
+    return url.toString();
+  } catch {
+    return embedUrl;
+  }
 }
 
 function isLikelyDouyinVideoPost(sourceId?: string, sourceUrl?: string, profileUrl?: string) {
