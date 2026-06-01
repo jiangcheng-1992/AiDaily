@@ -40,7 +40,8 @@ function redirectLegacyHost(request: NextRequest) {
 
   const targetUrl = request.nextUrl.clone();
   targetUrl.protocol = "https:";
-  targetUrl.host = canonicalHost;
+  targetUrl.hostname = canonicalHost;
+  targetUrl.port = "";
   return NextResponse.redirect(targetUrl, 301);
 }
 
