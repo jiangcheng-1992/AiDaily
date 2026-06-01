@@ -10,7 +10,9 @@ import {
   Pencil,
   ExternalLink,
   Heart,
+  Maximize2,
   MessageCircle,
+  Pause,
   Play,
   SendHorizontal,
   Share2,
@@ -84,8 +86,12 @@ export function PostDetailClient({
   const [resolvedVideoUrl, setResolvedVideoUrl] = useState<string | undefined>();
   const [resolvedVideoEmbedUrl, setResolvedVideoEmbedUrl] = useState<string | undefined>();
   const [videoSourceLimited, setVideoSourceLimited] = useState(false);
+  const [videoCurrentTime, setVideoCurrentTime] = useState(0);
+  const [videoDuration, setVideoDuration] = useState(0);
+  const [videoPlaying, setVideoPlaying] = useState(false);
   const loadProgressTimerRef = useRef<number | null>(null);
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
+  const videoFrameRef = useRef<HTMLDivElement | null>(null);
   const playbackRequestStartedAtRef = useRef<number | null>(null);
   const lastLoggedProgressBucketRef = useRef<number>(-1);
 
@@ -197,19 +203,24 @@ export function PostDetailClient({
   useEffect(() => {
     if (!post) return;
 
-    setVideoStarted(false);
-    setVideoLoading(false);
-    setVideoReady(false);
-    setVideoLoadProgress(0);
-    setVideoSlow(false);
-    setVideoFailed(false);
-    setVideoNeedsManualPlay(false);
-    setResolvedVideoUrl(undefined);
-    setResolvedVideoEmbedUrl(undefined);
-    setVideoSourceLimited(false);
-    setVideoPlaybackMode(preferEmbedPlayback ? "embed" : "direct");
-    playbackRequestStartedAtRef.current = null;
-    lastLoggedProgressBucketRef.current = -1;
+    const resetTimer = window.setTimeout(() => {
+      setVideoStarted(false);
+      setVideoLoading(false);
+      setVideoReady(false);
+      setVideoLoadProgress(0);
+      setVideoSlow(false);
+      setVideoFailed(false);
+      setVideoNeedsManualPlay(false);
+      setResolvedVideoUrl(undefined);
+      setResolvedVideoEmbedUrl(undefined);
+      setVideoSourceLimited(false);
+      setVideoCurrentTime(0);
+      setVideoDuration(0);
+      setVideoPlaying(false);
+      setVideoPlaybackMode(preferEmbedPlayback ? "embed" : "direct");
+      playbackRequestStartedAtRef.current = null;
+      lastLoggedProgressBucketRef.current = -1;
+    }, 0);
     console.info("[video] reset state for post", {
       postId: post.id,
       sourceId: post.sourceId ?? null,
@@ -220,7 +231,8 @@ export function PostDetailClient({
       hasStoredVideoUrl: Boolean(post.videoUrl),
       hasVideoEmbedUrl: Boolean(videoEmbedUrl),
     });
-  }, [post, preferEmbedPlayback]);
+    return () => window.clearTimeout(resetTimer);
+  }, [isDouyinVideoPost, post, preferEmbedPlayback, videoEmbedUrl]);
 
   useEffect(() => {
     if (!videoLoading) {
@@ -551,6 +563,58 @@ export function PostDetailClient({
     setVideoLoadProgress((current) => Math.max(current, bufferedPercent));
   };
 
+  const updateVideoTimeline = () => {
+    const video = videoElementRef.current;
+    if (!video) return;
+
+    setVideoCurrentTime(Number.isFinite(video.currentTime) ? video.currentTime : 0);
+    setVideoDuration(Number.isFinite(video.duration) ? video.duration : 0);
+  };
+
+  const toggleVideoPlayback = async () => {
+    const video = videoElementRef.current;
+    if (!video) return;
+
+    try {
+      if (video.paused) {
+        await video.play();
+        setVideoPlaying(true);
+        markVideoReady();
+        return;
+      }
+
+      video.pause();
+      setVideoPlaying(false);
+    } catch (error) {
+      logVideoEvent("warn", "custom play toggle failed", { error });
+      setVideoNeedsManualPlay(true);
+    }
+  };
+
+  const seekVideo = (value: string) => {
+    const video = videoElementRef.current;
+    const nextTime = Number(value);
+    if (!video || !Number.isFinite(nextTime)) return;
+
+    video.currentTime = nextTime;
+    setVideoCurrentTime(nextTime);
+  };
+
+  const requestVideoFullscreen = async () => {
+    const target = videoFrameRef.current ?? videoElementRef.current;
+    if (!target?.requestFullscreen) {
+      logVideoEvent("warn", "fullscreen API unavailable");
+      return;
+    }
+
+    try {
+      await target.requestFullscreen();
+      logVideoEvent("info", "fullscreen requested");
+    } catch (error) {
+      logVideoEvent("warn", "fullscreen request failed", { error });
+    }
+  };
+
   const startBufferedVideo = async () => {
     const video = videoElementRef.current;
     if (!video || videoFailed) return;
@@ -691,21 +755,69 @@ export function PostDetailClient({
 
           {post.type === "video" ? (
             <div className="mx-auto mt-6 w-full max-w-[360px] overflow-hidden rounded-[1.75rem] border border-slate-100 bg-slate-950 shadow-lift sm:max-w-[420px]">
-              <div className="relative bg-black">
+              <div ref={videoFrameRef} className="relative bg-black">
                 {videoStarted && videoPlaybackMode === "direct" && activeVideoUrl ? (
-                  <video
-                    ref={videoElementRef}
-                    src={activeVideoUrl}
-                    controls
-                    playsInline
-                    preload="metadata"
-                    poster={post.coverImageUrl}
-                    onCanPlay={markVideoReady}
-                    onWaiting={handleVideoBuffering}
-                    onProgress={updateVideoBufferedProgress}
-                    onError={markVideoFailed}
-                    className="aspect-[9/16] w-full bg-black object-contain"
-                  />
+                  <>
+                    <video
+                      ref={videoElementRef}
+                      src={activeVideoUrl}
+                      playsInline
+                      preload="metadata"
+                      poster={post.coverImageUrl}
+                      onCanPlay={() => {
+                        updateVideoTimeline();
+                        markVideoReady();
+                      }}
+                      onLoadedMetadata={updateVideoTimeline}
+                      onTimeUpdate={updateVideoTimeline}
+                      onPlay={() => setVideoPlaying(true)}
+                      onPause={() => setVideoPlaying(false)}
+                      onEnded={() => setVideoPlaying(false)}
+                      onWaiting={handleVideoBuffering}
+                      onProgress={updateVideoBufferedProgress}
+                      onError={markVideoFailed}
+                      className="aspect-[9/16] w-full bg-black object-contain"
+                    />
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/70 to-transparent px-3 pb-3 pt-12 text-white">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={toggleVideoPlayback}
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/90 text-slate-950 shadow-soft"
+                          aria-label={videoPlaying ? "暂停视频" : "播放视频"}
+                        >
+                          {videoPlaying ? (
+                            <Pause className="h-4 w-4 fill-current" />
+                          ) : (
+                            <Play className="h-4 w-4 fill-current" />
+                          )}
+                        </button>
+                        <input
+                          type="range"
+                          min={0}
+                          max={Math.max(0, Math.floor(videoDuration))}
+                          step={0.1}
+                          value={Math.min(videoCurrentTime, videoDuration || videoCurrentTime)}
+                          onChange={(event) => seekVideo(event.currentTarget.value)}
+                          disabled={!videoDuration}
+                          aria-label="视频进度"
+                          className="h-1.5 min-w-0 flex-1 accent-fuchsia-400"
+                        />
+                        <span className="min-w-[72px] text-right text-[11px] font-bold text-white/80">
+                          {formatVideoDuration(videoCurrentTime * 1000)} /{" "}
+                          {formatVideoDuration(videoDuration * 1000)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={requestVideoFullscreen}
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white ring-1 ring-white/20"
+                          aria-label="全屏播放"
+                        >
+                          <Maximize2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </>
                 ) : videoStarted && activeVideoEmbedUrl ? (
                   <iframe
                     src={activeVideoEmbedUrl}

@@ -7,6 +7,7 @@ import android.os.Looper;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.WebChromeClient;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -14,11 +15,15 @@ import android.widget.TextView;
 import android.webkit.CookieManager;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import com.getcapacitor.Bridge;
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.BridgeWebChromeClient;
 import com.getcapacitor.WebViewListener;
 
 public class MainActivity extends BridgeActivity {
     private View launchLoadingView;
+    private View fullScreenVideoView;
+    private WebChromeClient.CustomViewCallback fullScreenVideoCallback;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     @Override
@@ -32,6 +37,11 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onBackPressed() {
+        if (fullScreenVideoView != null) {
+            hideFullScreenVideoView();
+            return;
+        }
+
         if (bridge != null) {
             WebView webView = bridge.getWebView();
             if (webView != null && webView.canGoBack()) {
@@ -69,6 +79,7 @@ public class MainActivity extends BridgeActivity {
         settings.setAllowFileAccessFromFileURLs(false);
         settings.setAllowUniversalAccessFromFileURLs(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+        webView.setWebChromeClient(new AiCircleWebChromeClient(bridge));
     }
 
     private void installLaunchLoadingView() {
@@ -178,5 +189,66 @@ public class MainActivity extends BridgeActivity {
                 }
             )
             .start();
+    }
+
+    private class AiCircleWebChromeClient extends BridgeWebChromeClient {
+        AiCircleWebChromeClient(Bridge bridge) {
+            super(bridge);
+        }
+
+        @Override
+        public void onShowCustomView(View view, WebChromeClient.CustomViewCallback callback) {
+            if (fullScreenVideoView != null) {
+                onHideCustomView();
+            }
+
+            FrameLayout rootView = findViewById(android.R.id.content);
+            if (rootView == null) {
+                callback.onCustomViewHidden();
+                return;
+            }
+
+            fullScreenVideoView = view;
+            fullScreenVideoCallback = callback;
+            view.setBackgroundColor(Color.BLACK);
+            rootView.addView(
+                view,
+                new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+            );
+            rootView.setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                    | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            );
+        }
+
+        @Override
+        public void onHideCustomView() {
+            hideFullScreenVideoView();
+        }
+    }
+
+    private void hideFullScreenVideoView() {
+        FrameLayout rootView = findViewById(android.R.id.content);
+        if (fullScreenVideoView != null && rootView != null) {
+            rootView.removeView(fullScreenVideoView);
+        }
+
+        if (rootView != null) {
+            rootView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
+        }
+
+        WebChromeClient.CustomViewCallback callback = fullScreenVideoCallback;
+        fullScreenVideoView = null;
+        fullScreenVideoCallback = null;
+        if (callback != null) {
+            callback.onCustomViewHidden();
+        }
     }
 }
