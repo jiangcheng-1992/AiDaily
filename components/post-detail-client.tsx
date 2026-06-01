@@ -1056,7 +1056,7 @@ export function PostDetailClient({
                     当前视频暂时无法在 App 内播放。
                   </p>
                 ) : null}
-                {post.sourceUrl ? (
+                {post.sourceUrl && !isEmbedPlaybackActive ? (
                   <a
                     href={post.sourceUrl}
                     className="inline-flex items-center gap-1 text-xs font-bold text-white/70 hover:text-white"
@@ -1322,19 +1322,26 @@ function buildVideoEmbedUrl(sourceUrl?: string) {
     sourceUrl.match(/\/video\/(BV[A-Za-z0-9]+)/)?.[1] ??
     sourceUrl.match(/[?&]bvid=(BV[A-Za-z0-9]+)/)?.[1];
   if (bilibiliBvid) {
-    return `https://player.bilibili.com/player.html?bvid=${encodeURIComponent(
-      bilibiliBvid,
-    )}&autoplay=0`;
+    return buildBilibiliEmbedUrl("bvid", bilibiliBvid);
   }
 
   const bilibiliAid = sourceUrl.match(/\/video\/av(\d+)/i)?.[1] ?? sourceUrl.match(/[?&]aid=(\d+)/)?.[1];
   if (bilibiliAid) {
-    return `https://player.bilibili.com/player.html?aid=${encodeURIComponent(
-      bilibiliAid,
-    )}&autoplay=0`;
+    return buildBilibiliEmbedUrl("aid", bilibiliAid);
   }
 
   return undefined;
+}
+
+function buildBilibiliEmbedUrl(idType: "aid" | "bvid", id: string) {
+  const url = new URL("https://player.bilibili.com/player.html");
+  url.searchParams.set(idType, id);
+  url.searchParams.set("autoplay", "0");
+  url.searchParams.set("danmaku", "0");
+  url.searchParams.set("high_quality", "1");
+  url.searchParams.set("as_wide", "1");
+  url.searchParams.set("hideCoverInfo", "1");
+  return url.toString();
 }
 
 function isLikelyDouyinVideoPost(sourceId?: string, sourceUrl?: string, profileUrl?: string) {
