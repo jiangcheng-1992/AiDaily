@@ -162,7 +162,7 @@ async function checkFeed() {
 
 function readCategoryMarkers(tab, html) {
   const expectedByTab = {
-    game: parseCsv(process.env.INTERESTING_MONITOR_GAME_MARKERS) ?? ["Moss Moss", "itchio"],
+    game: parseCsv(process.env.INTERESTING_MONITOR_GAME_MARKERS) ?? ["itchio", "浏览器可玩"],
     skill: parseCsv(process.env.INTERESTING_MONITOR_SKILL_MARKERS) ?? ["Skill"],
   };
   const expected = expectedByTab[tab] ?? [];

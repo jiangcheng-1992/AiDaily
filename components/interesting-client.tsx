@@ -27,7 +27,7 @@ export function InterestingClient({
   initialWorks: WorkItem[];
   initialCategory?: WorkCategoryId;
 }) {
-  const [category, setCategory] = useState<WorkCategoryId>(initialCategory);
+  const category = initialCategory;
   const [likedIds, setLikedIds] = useState<Set<string>>(() => new Set());
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(() => new Set());
 
@@ -57,10 +57,6 @@ export function InterestingClient({
   }, [approvedWorks]);
 
   const works = worksByCategory[category] ?? worksByCategory.all;
-
-  const handleCategoryChange = useCallback((nextCategory: WorkCategoryId) => {
-    setCategory(nextCategory);
-  }, []);
 
   const handleLike = useCallback((workId: string) => {
     setLikedIds((current) => {
@@ -97,21 +93,24 @@ export function InterestingClient({
 
       <div className="sticky top-16 z-20 mt-4 rounded-[1.5rem] border border-slate-100 bg-white/90 p-3 shadow-soft backdrop-blur-xl">
         <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
-          {interestingCategories.map((item) => (
-            <button
-              type="button"
-              key={item.id}
-              onClick={() => handleCategoryChange(item.id)}
-              className={cn(
-                "shrink-0 rounded-full px-3.5 py-2 text-xs font-black transition-colors",
-                category === item.id
-                  ? "bg-slate-950 text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-700",
-              )}
-            >
-              {item.label}
-            </button>
-          ))}
+          {interestingCategories.map((item) => {
+            const href = item.id === "all" ? "/interesting?tab=all" : `/interesting?tab=${item.id}`;
+
+            return (
+              <Link
+                key={item.id}
+                href={href}
+                className={cn(
+                  "shrink-0 rounded-full px-3.5 py-2 text-xs font-black transition-colors",
+                  category === item.id
+                    ? "bg-slate-950 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-700",
+                )}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
         </div>
       </div>
 
