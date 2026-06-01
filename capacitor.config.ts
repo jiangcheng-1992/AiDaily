@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: "AI圈",
   webDir: "public",
   server: {
-    url: "https://aidaily-production.up.railway.app",
+    url: "https://aiquan.me",
     cleartext: false,
     androidScheme: "https",
     allowNavigation: ["*"],

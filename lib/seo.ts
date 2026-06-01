@@ -2,7 +2,7 @@ import type { Post } from "@/lib/mock-data";
 import type { WorkItem } from "@/lib/interesting-works";
 import { createElement } from "react";
 
-const DEFAULT_SITE_URL = "https://aidaily-production.up.railway.app";
+const DEFAULT_SITE_URL = "https://aiquan.me";
 const SITE_NAME = "AI圈";
 
 export function getSiteUrl() {

@@ -4,7 +4,7 @@ const defaultBaseUrl =
   process.env.INTERESTING_MONITOR_BASE_URL ||
   process.env.NEXT_PUBLIC_SITE_URL ||
   process.env.APP_BASE_URL ||
-  "https://aidaily-production.up.railway.app";
+  "https://aiquan.me";
 
 const emptyMessage = "这个分类暂时没有作品";
 const defaultTabs = ["all", "media", "website-agent", "game", "skill"];
