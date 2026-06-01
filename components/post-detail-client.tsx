@@ -524,6 +524,12 @@ export function PostDetailClient({
     setVideoNeedsManualPlay(false);
   };
 
+  const markVideoPlaying = () => {
+    updateVideoTimeline();
+    setVideoPlaying(true);
+    markVideoReady();
+  };
+
   const markVideoFailed = () => {
     if (videoPlaybackMode === "direct" && videoEmbedUrl) {
       logVideoEvent("warn", "direct playback failed", {
@@ -602,6 +608,11 @@ export function PostDetailClient({
 
     setVideoCurrentTime(Number.isFinite(video.currentTime) ? video.currentTime : 0);
     setVideoDuration(Number.isFinite(video.duration) ? video.duration : 0);
+    if (video.currentTime > 0 && !video.paused) {
+      setVideoReady(true);
+      setVideoLoading(false);
+      setVideoSlow(false);
+    }
   };
 
   const toggleVideoPlayback = async () => {
@@ -820,9 +831,11 @@ export function PostDetailClient({
                         updateVideoTimeline();
                         markVideoReady();
                       }}
+                      onLoadedData={markVideoReady}
                       onLoadedMetadata={updateVideoTimeline}
                       onTimeUpdate={updateVideoTimeline}
-                      onPlay={() => setVideoPlaying(true)}
+                      onPlay={markVideoPlaying}
+                      onPlaying={markVideoPlaying}
                       onPause={() => setVideoPlaying(false)}
                       onEnded={() => setVideoPlaying(false)}
                       onWaiting={handleVideoBuffering}
@@ -836,7 +849,7 @@ export function PostDetailClient({
                     <div
                       className={cn(
                         "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/70 to-transparent px-3 pt-12 text-white",
-                        videoExpanded ? "pb-[max(12px,env(safe-area-inset-bottom))]" : "pb-3",
+                        videoExpanded ? "pb-[max(12px,env(safe-area-inset-bottom))]" : "hidden",
                       )}
                     >
                       <div className="flex items-center gap-2">
@@ -922,7 +935,51 @@ export function PostDetailClient({
                 )}
               </div>
               <div className="space-y-2 bg-slate-950 px-4 py-3 text-white">
-                {videoLoading ? (
+                {videoStarted && videoPlaybackMode === "direct" && activeVideoUrl && !videoExpanded ? (
+                  <div className="rounded-2xl bg-white/5 p-3 ring-1 ring-white/10">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={toggleVideoPlayback}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/90 text-slate-950 shadow-soft"
+                        aria-label={videoPlaying ? "暂停视频" : "播放视频"}
+                      >
+                        {videoPlaying ? (
+                          <Pause className="h-4 w-4 fill-current" />
+                        ) : (
+                          <Play className="h-4 w-4 fill-current" />
+                        )}
+                      </button>
+                      <input
+                        type="range"
+                        min={0}
+                        max={Math.max(0, Math.floor(videoDuration))}
+                        step={0.1}
+                        value={Math.min(videoCurrentTime, videoDuration || videoCurrentTime)}
+                        onChange={(event) => seekVideo(event.currentTarget.value)}
+                        disabled={!videoDuration}
+                        aria-label="视频播放进度"
+                        className="h-1.5 min-w-0 flex-1 accent-fuchsia-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={toggleVideoExpanded}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white ring-1 ring-white/20"
+                        aria-label="全屏播放"
+                      >
+                        <Maximize2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-[11px] font-bold text-white/65">
+                      <span>播放进度</span>
+                      <span>
+                        {formatVideoDuration(videoCurrentTime * 1000)} /{" "}
+                        {formatVideoDuration(videoDuration * 1000)}
+                      </span>
+                    </div>
+                  </div>
+                ) : null}
+                {videoLoading && !videoReady ? (
                   <div>
                     <div className="h-1.5 overflow-hidden rounded-full bg-white/15">
                       <div
