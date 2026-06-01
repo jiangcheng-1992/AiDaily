@@ -153,8 +153,8 @@ def read_sitemap_urls(sitemap_url: str, timeout: int, seen: set[str] | None = No
 
 def submit_urls_to_baidu(site: str, token: str, urls: list[str], timeout: int) -> dict[str, Any]:
     endpoint = "http://data.zz.baidu.com/urls"
-    query = urllib.parse.urlencode({"site": site, "token": token})
-    request_url = f"{endpoint}?{query}"
+    # Baidu's endpoint rejects an URL-encoded https:// site value in some accounts.
+    request_url = f"{endpoint}?site={site}&token={urllib.parse.quote(token)}"
     body = ("\n".join(urls) + "\n").encode("utf-8")
     request = urllib.request.Request(
         request_url,
