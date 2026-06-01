@@ -104,9 +104,16 @@ export function PostDetailClient({
   const isDouyinVideoPost =
     post?.type === "video" &&
     isLikelyDouyinVideoPost(post.sourceId, post.sourceUrl, post.profileUrl);
+  const isBilibiliVideoPost =
+    post?.type === "video" &&
+    isLikelyBilibiliVideoPost(post.sourceId, post.sourceUrl, post.profileUrl);
   const videoEmbedUrl =
     post?.type === "video" ? post.videoEmbedUrl ?? buildVideoEmbedUrl(post.sourceUrl) : undefined;
-  const activeVideoUrl = isDouyinVideoPost ? resolvedVideoUrl : resolvedVideoUrl ?? post?.videoUrl;
+  const activeVideoUrl = isDouyinVideoPost
+    ? resolvedVideoUrl
+    : isBilibiliVideoPost
+      ? undefined
+      : resolvedVideoUrl ?? post?.videoUrl;
   const activeVideoEmbedUrl = isDouyinVideoPost ? undefined : resolvedVideoEmbedUrl ?? videoEmbedUrl;
   const hasPlayableVideo =
     post?.type === "video" &&
@@ -116,7 +123,7 @@ export function PostDetailClient({
   const preferEmbedPlayback =
     post?.type === "video" &&
     !isDouyinVideoPost &&
-    !post.videoUrl &&
+    (isBilibiliVideoPost || !post.videoUrl) &&
     Boolean(videoEmbedUrl) &&
     Boolean(videoEmbedUrl);
   const articleImageUrls = useMemo(() => {
@@ -230,12 +237,13 @@ export function PostDetailClient({
       sourceUrl: post.sourceUrl ?? null,
       type: post.type,
       isDouyinVideoPost,
+      isBilibiliVideoPost,
       preferEmbedPlayback,
       hasStoredVideoUrl: Boolean(post.videoUrl),
       hasVideoEmbedUrl: Boolean(videoEmbedUrl),
     });
     return () => window.clearTimeout(resetTimer);
-  }, [isDouyinVideoPost, post, preferEmbedPlayback, videoEmbedUrl]);
+  }, [isBilibiliVideoPost, isDouyinVideoPost, post, preferEmbedPlayback, videoEmbedUrl]);
 
   useEffect(() => {
     if (!videoLoading) {
@@ -285,6 +293,20 @@ export function PostDetailClient({
 
     return () => window.clearTimeout(timer);
   }, [activeVideoUrl, videoPlaybackMode, videoStarted]);
+
+  useEffect(() => {
+    if (!videoStarted || videoPlaybackMode !== "embed" || !activeVideoEmbedUrl) return;
+
+    const fallbackTimer = window.setTimeout(() => {
+      logVideoEvent("warn", "embed player load timeout, hiding loading indicator");
+      setVideoReady(true);
+      setVideoLoading(false);
+      setVideoSlow(false);
+      setVideoLoadProgress(100);
+    }, 5000);
+
+    return () => window.clearTimeout(fallbackTimer);
+  }, [activeVideoEmbedUrl, videoPlaybackMode, videoStarted]);
 
   useEffect(() => {
     if (!videoExpanded) return;
@@ -885,6 +907,7 @@ export function PostDetailClient({
                     allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
                     allowFullScreen
                     loading="lazy"
+                    onLoad={markVideoReady}
                     className="aspect-video w-full border-0 bg-black"
                   />
                 ) : (
@@ -1279,5 +1302,14 @@ function isLikelyDouyinVideoPost(sourceId?: string, sourceUrl?: string, profileU
       sourceUrl?.includes("douyin.com") ||
       sourceUrl?.includes("iesdouyin.com") ||
       profileUrl?.includes("douyin.com"),
+  );
+}
+
+function isLikelyBilibiliVideoPost(sourceId?: string, sourceUrl?: string, profileUrl?: string) {
+  return Boolean(
+    sourceId?.includes("bilibili") ||
+      sourceUrl?.includes("bilibili.com") ||
+      sourceUrl?.includes("b23.tv") ||
+      profileUrl?.includes("bilibili.com"),
   );
 }
