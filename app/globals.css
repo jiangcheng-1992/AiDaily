@@ -47,6 +47,18 @@ body {
   background: rgba(59, 130, 246, 0.18);
 }
 
+@keyframes appBootLoading {
+  0% {
+    transform: translateX(-120%);
+  }
+  55% {
+    transform: translateX(70%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+
 @layer components {
   .brand-gradient {
     @apply bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent;

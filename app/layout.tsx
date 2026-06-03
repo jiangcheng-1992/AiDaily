@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 
+import { AppBootLoading } from "@/components/app-boot-loading";
 import { MobileTabbar } from "@/components/mobile-tabbar";
 import { PrivacyConsentDialog } from "@/components/privacy-consent-dialog";
 import { SiteFooter } from "@/components/site-footer";
@@ -111,6 +112,7 @@ export default function RootLayout({
         <SiteFooter />
         <MobileTabbar />
         <PrivacyConsentDialog />
+        <AppBootLoading />
       </body>
     </html>
   );

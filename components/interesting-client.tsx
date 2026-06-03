@@ -78,14 +78,14 @@ export function InterestingClient({
 
   return (
     <div className="mx-auto max-w-7xl px-3 py-4 sm:px-6 sm:py-8 lg:px-8">
-      <section className="relative overflow-hidden rounded-[1.7rem] border border-white/80 bg-[#060a18] px-5 py-5 text-white shadow-[0_18px_52px_rgba(15,23,42,0.16)] ring-1 ring-slate-950/5 sm:px-7 sm:py-6">
+      <section className="relative overflow-hidden rounded-[1.45rem] border border-white/80 bg-[#060a18] px-4 py-5 text-white shadow-[0_18px_52px_rgba(15,23,42,0.16)] ring-1 ring-slate-950/5 sm:rounded-[1.7rem] sm:px-7 sm:py-6">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(99,102,241,0.32),transparent_30%),radial-gradient(circle_at_84%_26%,rgba(14,165,233,0.26),transparent_26%),linear-gradient(120deg,rgba(255,255,255,0.08),transparent_42%)]" />
         <div className="absolute inset-0 opacity-[0.12] [background-image:linear-gradient(rgba(255,255,255,0.22)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.22)_1px,transparent_1px)] [background-size:32px_32px]" />
         <div className="absolute -left-14 top-1/2 h-32 w-32 -translate-y-1/2 rounded-full border border-white/10" />
         <div className="absolute -right-10 top-4 h-24 w-24 rounded-full border border-blue-200/20" />
-        <div className="absolute bottom-4 right-7 h-1 w-28 rounded-full bg-gradient-to-r from-blue-300 via-fuchsia-300 to-amber-200 opacity-80 shadow-[0_0_18px_rgba(129,140,248,0.55)]" />
-        <div className="relative flex min-h-20 items-center">
-          <h1 className="max-w-full whitespace-nowrap text-[clamp(1.18rem,3.15vw,2.65rem)] font-black leading-none tracking-[-0.03em]">
+        <div className="absolute bottom-4 right-5 h-1 w-20 rounded-full bg-gradient-to-r from-blue-300 via-fuchsia-300 to-amber-200 opacity-70 shadow-[0_0_18px_rgba(129,140,248,0.55)] sm:right-7 sm:w-28" />
+        <div className="relative flex min-h-[5.25rem] items-center sm:min-h-20">
+          <h1 className="max-w-[18rem] text-[clamp(1.55rem,7vw,2.1rem)] font-black leading-tight tracking-[-0.04em] sm:max-w-full sm:whitespace-nowrap sm:text-[clamp(1.18rem,3.15vw,2.65rem)] sm:leading-none">
             发现全网好玩的 AI 作品、网站和灵感
           </h1>
         </div>
