@@ -24,7 +24,8 @@ export default async function InterestingPlayPage({
 
   if (!work || work.source !== "itchio" || !work.externalUrl) notFound();
 
-  const frameUrl = (await resolveItchioFrameUrl(work.externalUrl)) ?? work.externalUrl;
+  const frameSelection = await resolveItchioFrameUrl(work.externalUrl);
+  const frameUrl = frameSelection?.url ?? work.externalUrl;
 
   return (
     <div className="mx-auto max-w-6xl px-2 py-2 sm:px-6 sm:py-6 lg:px-8">
@@ -77,7 +78,7 @@ export default async function InterestingPlayPage({
         </div>
       </Card>
 
-      {frameUrl === work.externalUrl ? (
+      {frameSelection?.mode === "original" ? (
         <Card className="mt-4 rounded-3xl p-5">
           <p className="text-sm leading-7 text-slate-600">
             这个游戏没有解析到 itch.io 的直接运行地址，已在 App 内加载原页面。若页面提示登录、弹窗或无法开始，请点击“打开 itch.io 原页”继续。
@@ -98,25 +99,28 @@ async function resolveItchioFrameUrl(gameUrl: string) {
       cache: "no-store",
     });
 
-    if (!response.ok) return gameUrl;
+    if (!response.ok) return { url: gameUrl, mode: "original" as const };
 
     const html = await response.text();
-    const iframeUrl = extractItchioIframeUrl(html);
-    if (iframeUrl) return iframeUrl;
+    const frameCandidate = extractItchioFrameCandidate(html);
+    const bestPlayableUrl = await chooseItchioPlayableUrl(frameCandidate);
+    if (bestPlayableUrl) return bestPlayableUrl;
 
     const rawPlayUrl = html.match(/"play_url":"([^"]+)"/)?.[1];
-    if (!rawPlayUrl) return gameUrl;
+    if (!rawPlayUrl) return { url: gameUrl, mode: "original" as const };
 
     const playUrl = decodeJsonString(rawPlayUrl);
-    return /^https:\/\/[^/]+\.itch\.io\/.+\/rp\//i.test(playUrl) ? playUrl : gameUrl;
+    return /^https:\/\/[^/]+\.itch\.io\/.+\/rp\//i.test(playUrl)
+      ? { url: playUrl, mode: "direct" as const }
+      : { url: gameUrl, mode: "original" as const };
   } catch {
-    return gameUrl;
+    return { url: gameUrl, mode: "original" as const };
   }
 }
 
-function extractItchioIframeUrl(html: string) {
-  const embeddedPlayableUrl = extractItchioEmbeddedPlayableUrl(html);
-  if (embeddedPlayableUrl) return embeddedPlayableUrl;
+function extractItchioFrameCandidate(html: string) {
+  const embeddedCandidate = extractItchioEmbeddedFrameCandidate(html);
+  if (embeddedCandidate.directUrl || embeddedCandidate.embedUrl) return embeddedCandidate;
 
   const iframeMatches = html.matchAll(/<iframe\b[^>]*\bsrc="([^"]+)"[^>]*>/gi);
 
@@ -125,31 +129,79 @@ function extractItchioIframeUrl(html: string) {
     const src = decodeHtmlAttribute(match[1] ?? "");
     if (!src) continue;
 
-    const playableUrl = toItchioPlayableUrl(src);
-    if (playableUrl) return playableUrl;
+    const directUrl = toItchioPlayableUrl(src);
+    const embedUrl = toItchioEmbedUploadUrl(src);
+    if (directUrl || embedUrl) {
+      return { directUrl, embedUrl };
+    }
 
     const isGameIframe =
       iframeHtml.includes("game_drop") ||
       iframeHtml.includes("allowfullscreen") ||
       /https:\/\/itch\.io\/embed-upload\//i.test(src);
 
-    if (isGameIframe && isSafeItchioFrameUrl(src)) return src;
+    if (isGameIframe && isSafeItchioFrameUrl(src)) {
+      return { directUrl: undefined, embedUrl: /^https:\/\/itch\.io\/embed-upload\//i.test(src) ? src : undefined };
+    }
   }
 
-  return undefined;
+  return { directUrl: undefined, embedUrl: undefined };
 }
 
-function extractItchioEmbeddedPlayableUrl(html: string) {
+function extractItchioEmbeddedFrameCandidate(html: string) {
   const dataIframeMatches = html.matchAll(/\bdata-iframe="([^"]+)"/gi);
 
   for (const match of dataIframeMatches) {
     const decodedIframe = decodeHtmlAttribute(match[1] ?? "");
     const iframeSrc = decodedIframe.match(/<iframe\b[^>]*\bsrc="([^"]+)"/i)?.[1];
-    const playableUrl = iframeSrc ? toItchioPlayableUrl(decodeHtmlAttribute(iframeSrc)) : undefined;
-    if (playableUrl) return playableUrl;
+    const normalizedSrc = iframeSrc ? decodeHtmlAttribute(iframeSrc) : "";
+    const directUrl = normalizedSrc ? toItchioPlayableUrl(normalizedSrc) : undefined;
+    const embedUrl = normalizedSrc ? toItchioEmbedUploadUrl(normalizedSrc) : undefined;
+    if (directUrl || embedUrl) return { directUrl, embedUrl };
   }
 
-  return toItchioPlayableUrl(decodeHtmlAttribute(html));
+  const normalizedHtml = decodeHtmlAttribute(html);
+  return {
+    directUrl: toItchioPlayableUrl(normalizedHtml),
+    embedUrl: toItchioEmbedUploadUrl(normalizedHtml),
+  };
+}
+
+async function chooseItchioPlayableUrl(candidate: { directUrl?: string; embedUrl?: string }) {
+  if (candidate.directUrl) {
+    const directStatus = await inspectItchioDirectUrl(candidate.directUrl);
+    if (directStatus.ok) return { url: candidate.directUrl, mode: "direct" as const };
+  }
+
+  if (candidate.embedUrl) {
+    return { url: candidate.embedUrl, mode: "embed" as const };
+  }
+
+  return undefined;
+}
+
+async function inspectItchioDirectUrl(url: string) {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "user-agent": process.env.AIQ_USER_AGENT ?? "Mozilla/5.0 AIQ/1.0 itch.io app player",
+        accept: "text/html,application/xhtml+xml",
+      },
+      cache: "no-store",
+    });
+
+    if (!response.ok) return { ok: false };
+
+    const html = await response.text();
+    const blockedByHotlink =
+      html.includes("You should be using itch.io") ||
+      html.includes("tried to steal or hotlink it") ||
+      html.includes("Play on itch.io");
+
+    return { ok: !blockedByHotlink };
+  } catch {
+    return { ok: false };
+  }
 }
 
 function isSafeItchioFrameUrl(value: string) {
@@ -166,6 +218,14 @@ function toItchioPlayableUrl(value: string) {
 
   const uploadId = value.match(/https:\/\/[^/]+\.itch\.zone\/html\/(\d+)(?:[-/])/i)?.[1];
   return uploadId ? `https://html-classic.itch.zone/html/${uploadId}/index.html` : undefined;
+}
+
+function toItchioEmbedUploadUrl(value: string) {
+  const uploadId = value.match(/https:\/\/[^/]+\.itch\.zone\/html\/(\d+)(?:[-/])/i)?.[1];
+  if (uploadId) return `https://itch.io/embed-upload/${uploadId}?color=191919`;
+
+  const embedMatch = value.match(/https:\/\/itch\.io\/embed-upload\/\d+(?:\?[^"'<>\\\s]*)?/i)?.[0];
+  return embedMatch;
 }
 
 function decodeHtmlAttribute(value: string) {
