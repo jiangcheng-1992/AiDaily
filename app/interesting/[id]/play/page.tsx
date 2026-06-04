@@ -24,7 +24,7 @@ export default async function InterestingPlayPage({
 
   if (!work || work.source !== "itchio" || !work.externalUrl) notFound();
 
-  const frameUrl = await resolveItchioFrameUrl(work.externalUrl);
+  const frameUrl = (await resolveItchioFrameUrl(work.externalUrl)) ?? work.externalUrl;
 
   return (
     <div className="mx-auto max-w-6xl px-2 py-2 sm:px-6 sm:py-6 lg:px-8">
@@ -67,10 +67,11 @@ export default async function InterestingPlayPage({
           <iframe
             src={frameUrl}
             title={work.title}
-            allow="autoplay; fullscreen *; geolocation; microphone; camera; midi; monetization; xr-spatial-tracking; gamepad; gyroscope; accelerometer; xr; cross-origin-isolated; web-share; clipboard-read; clipboard-write"
+            allow="autoplay; fullscreen; gamepad; gyroscope; accelerometer; clipboard-read; clipboard-write"
             allowFullScreen
             loading="eager"
             scrolling="no"
+            referrerPolicy="no-referrer-when-downgrade"
             className="h-full w-full border-0 bg-black"
           />
         </div>
@@ -97,7 +98,7 @@ async function resolveItchioFrameUrl(gameUrl: string) {
       cache: "no-store",
     });
 
-    if (!response.ok) return undefined;
+    if (!response.ok) return gameUrl;
 
     const html = await response.text();
     const iframeUrl = extractItchioIframeUrl(html);
@@ -114,8 +115,8 @@ async function resolveItchioFrameUrl(gameUrl: string) {
 }
 
 function extractItchioIframeUrl(html: string) {
-  const embeddedUploadUrl = extractItchioEmbeddedUploadUrl(html);
-  if (embeddedUploadUrl) return embeddedUploadUrl;
+  const embeddedPlayableUrl = extractItchioEmbeddedPlayableUrl(html);
+  if (embeddedPlayableUrl) return embeddedPlayableUrl;
 
   const iframeMatches = html.matchAll(/<iframe\b[^>]*\bsrc="([^"]+)"[^>]*>/gi);
 
@@ -124,8 +125,8 @@ function extractItchioIframeUrl(html: string) {
     const src = decodeHtmlAttribute(match[1] ?? "");
     if (!src) continue;
 
-    const embedUploadUrl = toItchioEmbedUploadUrl(src);
-    if (embedUploadUrl) return embedUploadUrl;
+    const playableUrl = toItchioPlayableUrl(src);
+    if (playableUrl) return playableUrl;
 
     const isGameIframe =
       iframeHtml.includes("game_drop") ||
@@ -138,26 +139,33 @@ function extractItchioIframeUrl(html: string) {
   return undefined;
 }
 
-function extractItchioEmbeddedUploadUrl(html: string) {
+function extractItchioEmbeddedPlayableUrl(html: string) {
   const dataIframeMatches = html.matchAll(/\bdata-iframe="([^"]+)"/gi);
 
   for (const match of dataIframeMatches) {
     const decodedIframe = decodeHtmlAttribute(match[1] ?? "");
     const iframeSrc = decodedIframe.match(/<iframe\b[^>]*\bsrc="([^"]+)"/i)?.[1];
-    const embedUploadUrl = iframeSrc ? toItchioEmbedUploadUrl(decodeHtmlAttribute(iframeSrc)) : undefined;
-    if (embedUploadUrl) return embedUploadUrl;
+    const playableUrl = iframeSrc ? toItchioPlayableUrl(decodeHtmlAttribute(iframeSrc)) : undefined;
+    if (playableUrl) return playableUrl;
   }
 
-  return toItchioEmbedUploadUrl(decodeHtmlAttribute(html));
+  return toItchioPlayableUrl(decodeHtmlAttribute(html));
 }
 
 function isSafeItchioFrameUrl(value: string) {
-  return /^https:\/\/itch\.io\/embed-upload\//i.test(value) || /^https:\/\/[^/]+\.itch\.io\//i.test(value);
+  return (
+    /^https:\/\/itch\.io\/embed-upload\//i.test(value) ||
+    /^https:\/\/[^/]+\.itch\.io\//i.test(value) ||
+    /^https:\/\/[^/]+\.itch\.zone\/html\//i.test(value)
+  );
 }
 
-function toItchioEmbedUploadUrl(value: string) {
+function toItchioPlayableUrl(value: string) {
+  const directUrl = value.match(/https:\/\/[^/]+\.itch\.zone\/html\/\d+\/[^"'<>\\\s]+/i)?.[0];
+  if (directUrl) return directUrl;
+
   const uploadId = value.match(/https:\/\/[^/]+\.itch\.zone\/html\/(\d+)(?:[-/])/i)?.[1];
-  return uploadId ? `https://itch.io/embed-upload/${uploadId}?color=191919` : undefined;
+  return uploadId ? `https://html-classic.itch.zone/html/${uploadId}/index.html` : undefined;
 }
 
 function decodeHtmlAttribute(value: string) {
