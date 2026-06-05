@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Gamepad2, RefreshCw } from "lucide-react";
+import { ArrowLeft, ExternalLink, Gamepad2, RefreshCw } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { buildInterestingSkillWorks } from "@/lib/interesting-skill-works";
@@ -8,15 +8,20 @@ import { readGeneratedFeed } from "@/lib/generated-feed-store";
 import { readGeneratedWorks } from "@/lib/generated-works-store";
 import { interestingWorks } from "@/lib/interesting-works";
 import { mockPosts } from "@/lib/mock-data";
+import { ItchioGameFrame } from "./itchio-game-frame";
 
 export const dynamic = "force-dynamic";
 
 export default async function InterestingPlayPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ mode?: string; refresh?: string }>;
 }) {
   const { id } = await params;
+  const query = await searchParams;
+  const requestedMode = query?.mode === "direct" ? "direct" : "embed";
   const generatedFeed = await readGeneratedFeed({ includeSkills: true, allowFallback: false });
   const worksFeed = await readGeneratedWorks({ allowFallback: false });
   const skillWorks = buildInterestingSkillWorks([...generatedFeed.posts, ...mockPosts]);
@@ -24,8 +29,13 @@ export default async function InterestingPlayPage({
 
   if (!work || work.source !== "itchio" || !work.externalUrl) notFound();
 
-  const frameSelection = await resolveItchioFrameUrl(work.externalUrl);
+  const frameSelection = await resolveItchioFrameUrl(work.externalUrl, requestedMode);
   const frameUrl = frameSelection?.url ?? work.externalUrl;
+  const activeMode = frameSelection?.mode === "direct" ? "direct" : "embed";
+  const switchMode = activeMode === "direct" ? "embed" : "direct";
+  const nextRefresh = query?.refresh === "1" ? "2" : "1";
+  const reloadUrl = `/interesting/${work.id}/play?mode=${activeMode}&refresh=${nextRefresh}`;
+  const switchModeUrl = `/interesting/${work.id}/play?mode=${switchMode}&refresh=${nextRefresh}`;
 
   return (
     <div className="mx-auto max-w-6xl px-2 py-2 sm:px-6 sm:py-6 lg:px-8">
@@ -37,6 +47,15 @@ export default async function InterestingPlayPage({
           <ArrowLeft className="h-4 w-4" />
           返回作品详情
         </Link>
+        <a
+          href={work.externalUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-full bg-slate-950 px-3.5 py-2 text-xs font-bold text-white shadow-soft transition-colors hover:bg-slate-800"
+        >
+          打开原网站
+          <ExternalLink className="h-3.5 w-3.5" />
+        </a>
       </div>
 
       <Card className="overflow-hidden rounded-2xl bg-slate-950 p-0 shadow-lift sm:rounded-[2rem]">
@@ -49,7 +68,7 @@ export default async function InterestingPlayPage({
             <h1 className="mt-1 line-clamp-1 text-base font-black sm:mt-2 sm:text-xl">{work.title}</h1>
           </div>
           <a
-            href={`/interesting/${work.id}/play?refresh=1`}
+            href={reloadUrl}
             className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-2 text-xs font-bold text-white/80 transition-colors hover:bg-white/15 hover:text-white"
           >
             <RefreshCw className="h-3.5 w-3.5" />
@@ -57,19 +76,15 @@ export default async function InterestingPlayPage({
           </a>
         </div>
 
-        <div className="relative h-[calc(100svh-9rem)] min-h-[430px] bg-black sm:h-[calc(100vh-11rem)] sm:min-h-[520px]">
-          <iframe
-            src={frameUrl}
-            title={work.title}
-            allow="autoplay; fullscreen; gamepad; gyroscope; accelerometer; clipboard-read; clipboard-write"
-            allowFullScreen
-            loading="eager"
-            scrolling="no"
-            referrerPolicy="no-referrer-when-downgrade"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-presentation allow-orientation-lock allow-downloads"
-            className="h-full w-full border-0 bg-black"
-          />
-        </div>
+        <ItchioGameFrame
+          key={`${frameUrl}-${query?.refresh ?? "0"}`}
+          title={work.title}
+          frameUrl={frameUrl}
+          externalUrl={work.externalUrl}
+          reloadUrl={reloadUrl}
+          switchModeUrl={switchModeUrl}
+          modeLabel={activeMode === "direct" ? "直连兼容模式" : "内嵌兼容模式"}
+        />
       </Card>
 
       {frameSelection?.mode === "original" ? (
@@ -83,7 +98,7 @@ export default async function InterestingPlayPage({
   );
 }
 
-async function resolveItchioFrameUrl(gameUrl: string) {
+async function resolveItchioFrameUrl(gameUrl: string, requestedMode: "embed" | "direct") {
   try {
     const response = await fetch(gameUrl, {
       headers: {
@@ -97,7 +112,7 @@ async function resolveItchioFrameUrl(gameUrl: string) {
 
     const html = await response.text();
     const frameCandidate = extractItchioFrameCandidate(html);
-    const bestPlayableUrl = await chooseItchioPlayableUrl(frameCandidate);
+    const bestPlayableUrl = await chooseItchioPlayableUrl(frameCandidate, requestedMode);
     if (bestPlayableUrl) return bestPlayableUrl;
 
     const rawPlayUrl = html.match(/"play_url":"([^"]+)"/)?.[1];
@@ -161,14 +176,20 @@ function extractItchioEmbeddedFrameCandidate(html: string) {
   };
 }
 
-async function chooseItchioPlayableUrl(candidate: { directUrl?: string; embedUrl?: string }) {
-  if (candidate.embedUrl) {
+async function chooseItchioPlayableUrl(candidate: { directUrl?: string; embedUrl?: string }, requestedMode: "embed" | "direct") {
+  if (requestedMode === "embed" && candidate.embedUrl) {
     return { url: candidate.embedUrl, mode: "embed" as const };
   }
 
   if (candidate.directUrl) {
+    if (requestedMode === "direct") return { url: candidate.directUrl, mode: "direct" as const };
+
     const directStatus = await inspectItchioDirectUrl(candidate.directUrl);
-    if (directStatus.ok) return { url: candidate.directUrl, mode: "direct" as const };
+    if (directStatus.ok && !candidate.embedUrl) return { url: candidate.directUrl, mode: "direct" as const };
+  }
+
+  if (candidate.embedUrl) {
+    return { url: candidate.embedUrl, mode: "embed" as const };
   }
 
   return undefined;
