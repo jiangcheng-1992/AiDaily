@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ExternalLink, RefreshCw, Shuffle } from "lucide-react";
+import { ExternalLink, RefreshCw, Shuffle, X } from "lucide-react";
 
 type ItchioGameFrameProps = {
   title: string;
@@ -22,6 +22,7 @@ export function ItchioGameFrame({
 }: ItchioGameFrameProps) {
   const [loaded, setLoaded] = useState(false);
   const [slow, setSlow] = useState(false);
+  const [dismissedSlowNotice, setDismissedSlowNotice] = useState(false);
 
   useEffect(() => {
     const slowTimer = window.setTimeout(() => {
@@ -54,9 +55,17 @@ export function ItchioGameFrame({
         </div>
       ) : null}
 
-      {slow ? (
+      {slow && !dismissedSlowNotice ? (
         <div className="pointer-events-none absolute inset-x-3 bottom-3 rounded-2xl bg-slate-950/90 p-3 text-white shadow-2xl ring-1 ring-white/15 backdrop-blur sm:bottom-4 sm:left-auto sm:w-[360px]">
-          <p className="text-sm font-black">游戏启动较慢或卡住了</p>
+          <button
+            type="button"
+            onClick={() => setDismissedSlowNotice(true)}
+            className="pointer-events-auto absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white/75 transition-colors hover:bg-white/15 hover:text-white"
+            aria-label="关闭提示"
+          >
+            <X className="h-4 w-4" />
+          </button>
+          <p className="pr-8 text-sm font-black">游戏启动较慢或卡住了</p>
           <p className="mt-1 text-xs leading-5 text-white/65">
             当前为{modeLabel}。部分 Unity/itch.io 游戏对内嵌环境有限制，可以先在当前容器内切换兼容模式重试。
           </p>
