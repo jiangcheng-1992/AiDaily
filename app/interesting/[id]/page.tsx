@@ -195,6 +195,8 @@ export default async function InterestingDetailPage({
                       ? "查看 Skill"
                       : work.source === "itchio"
                       ? "直接试玩"
+                      : work.categoryHint === "game"
+                        ? "开始体验"
                       : work.source === "youtube" || work.source === "vimeo" || work.source === "liblib"
                         ? "观看作品"
                         : "查看作品"}

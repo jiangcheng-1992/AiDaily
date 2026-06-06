@@ -156,6 +156,12 @@ const InterestingWorkCard = memo(function InterestingWorkCard({
 }) {
   const likeCount = work.likeCount + (liked ? 1 : 0);
   const favoriteCount = work.favoriteCount + (favorited ? 1 : 0);
+  const isGame = work.categoryHint === "game";
+  const actionHref = isGame && work.source !== "itchio" && work.externalUrl
+    ? work.externalUrl
+    : work.source === "itchio"
+      ? `/interesting/${work.id}/play`
+      : `/interesting/${work.id}`;
 
   return (
     <Card className="mb-4 inline-block w-full overflow-hidden rounded-[1.7rem] bg-white/95 p-0 align-top transition-transform duration-200 hover:-translate-y-1 hover:shadow-lift">
@@ -261,13 +267,15 @@ const InterestingWorkCard = memo(function InterestingWorkCard({
           </div>
         </div>
         <Link
-          href={work.source === "itchio" ? `/interesting/${work.id}/play` : `/interesting/${work.id}`}
+          href={actionHref}
           className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-slate-950 px-4 py-2.5 text-xs font-black text-white transition-colors hover:bg-blue-700"
         >
           {work.categoryHint === "skill"
             ? "查看 Skill"
             : work.source === "itchio"
             ? "直接试玩"
+            : isGame
+              ? "开始体验"
             : work.source === "youtube" || work.source === "vimeo" || work.source === "liblib"
               ? "观看作品"
               : "查看作品"}
