@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowLeft, ExternalLink, Gamepad2, RefreshCw } from "luc
 
 import { Card } from "@/components/ui/card";
 import { buildInterestingSkillWorks } from "@/lib/interesting-skill-works";
+import { AiGamePlayground } from "@/components/ai-game-playground";
 import { readGeneratedFeed } from "@/lib/generated-feed-store";
 import { readGeneratedWorks } from "@/lib/generated-works-store";
 import { interestingWorks } from "@/lib/interesting-works";
@@ -27,7 +28,27 @@ export default async function InterestingPlayPage({
   const skillWorks = buildInterestingSkillWorks([...generatedFeed.posts, ...mockPosts]);
   const work = [...skillWorks, ...worksFeed.works, ...interestingWorks].find((item) => item.id === id);
 
-  if (!work || work.source !== "itchio" || !work.externalUrl) notFound();
+  if (!work || !work.externalUrl) notFound();
+
+  if (work.categoryHint === "game" && work.source !== "itchio") {
+    return (
+      <div className="mx-auto max-w-6xl px-3 py-3 sm:px-6 sm:py-6 lg:px-8">
+        <Link
+          href={`/interesting/${work.id}`}
+          className="mb-3 inline-flex items-center gap-2 rounded-full bg-white px-3.5 py-2 text-xs font-bold text-slate-500 shadow-soft transition-colors hover:text-blue-700"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          返回作品详情
+        </Link>
+
+        <Card className="overflow-hidden rounded-[2rem] bg-white/95 p-0 shadow-lift">
+          <AiGamePlayground gameId={work.id} />
+        </Card>
+      </div>
+    );
+  }
+
+  if (work.source !== "itchio") notFound();
 
   const itchioPlaybackEnabled = process.env.ENABLE_ITCHIO_PLAYER === "1";
   const savedFrameSelection = work.videoUrl ? selectSavedFrameUrl(work.videoUrl, requestedMode) : undefined;
