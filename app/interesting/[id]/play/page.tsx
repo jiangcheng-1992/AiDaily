@@ -50,11 +50,8 @@ export default async function InterestingPlayPage({
 
   if (work.source !== "itchio") notFound();
 
-  const itchioPlaybackEnabled = process.env.ENABLE_ITCHIO_PLAYER === "1";
   const savedFrameSelection = work.videoUrl ? selectSavedFrameUrl(work.videoUrl, requestedMode) : undefined;
-  const frameSelection = itchioPlaybackEnabled
-    ? savedFrameSelection ?? (await resolveItchioFrameUrl(work.externalUrl, requestedMode))
-    : { url: undefined, mode: "unavailable" as const };
+  const frameSelection = savedFrameSelection ?? (await resolveItchioFrameUrl(work.externalUrl, requestedMode));
   const frameUrl = frameSelection?.url;
   const activeMode = frameSelection?.mode === "direct" ? "direct" : "embed";
   const switchMode = activeMode === "direct" ? "embed" : "direct";
@@ -84,33 +81,31 @@ export default async function InterestingPlayPage({
             <h1 className="mt-1 line-clamp-1 text-base font-black sm:mt-2 sm:text-xl">{work.title}</h1>
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-            {frameUrl ? (
-              <>
-                <a
-                  href={work.externalUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-2 text-xs font-bold text-slate-950 transition-colors hover:bg-white/90"
-                >
-                  打开原网站
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </a>
-                <a
-                  href={reloadUrl}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-2 text-xs font-bold text-white/80 transition-colors hover:bg-white/15 hover:text-white"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  重新加载
-                </a>
-              </>
-            ) : (
-              <Link
-                href="/interesting?tab=game"
-                className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-2 text-xs font-bold text-slate-950 transition-colors hover:bg-white/90"
-              >
-                返回游戏列表
-              </Link>
-            )}
+            <a
+              href="https://itch.io/games"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-2 text-xs font-bold text-white/80 transition-colors hover:bg-white/15 hover:text-white"
+            >
+              itch.io 游戏库
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+            <a
+              href={work.externalUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-2 text-xs font-bold text-slate-950 transition-colors hover:bg-white/90"
+            >
+              打开原网站
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+            <a
+              href={reloadUrl}
+              className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-2 text-xs font-bold text-white/80 transition-colors hover:bg-white/15 hover:text-white"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              重新加载
+            </a>
           </div>
         </div>
 
@@ -130,27 +125,45 @@ export default async function InterestingPlayPage({
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-600">
                 <AlertTriangle className="h-6 w-6" />
               </div>
-              <h2 className="mt-4 text-lg font-black text-slate-950">这个游戏已临时下线</h2>
+              <h2 className="mt-4 text-lg font-black text-slate-950">正在尝试恢复端内试玩</h2>
               <p className="mt-2 text-sm leading-6 text-slate-500">
-                当前 itch.io 游戏在端内和原站访问都不稳定，已暂停加载，避免页面白屏或一直卡住。可以先返回游戏列表查看已恢复的稳定内容。
+                当前没有解析到稳定的内嵌地址。你可以重新检测，或直接打开原网站 / itch.io 游戏库继续试玩。
               </p>
               <div className="mt-5 flex flex-wrap justify-center gap-2">
                 <Link
-                  href="/interesting?tab=game"
+                  href={reloadUrl}
                   className="inline-flex items-center gap-1.5 rounded-full bg-slate-950 px-4 py-2 text-xs font-bold text-white"
                 >
-                  返回游戏列表
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  重新检测
                 </Link>
+                <a
+                  href={work.externalUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-xs font-bold text-slate-950 ring-1 ring-slate-200"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  打开原网站
+                </a>
+                <a
+                  href="https://itch.io/games"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-xs font-bold text-slate-950 ring-1 ring-slate-200"
+                >
+                  itch.io 游戏库
+                </a>
               </div>
             </div>
           </div>
         )}
       </Card>
 
-      {frameSelection?.mode === "unavailable" ? (
+      {frameSelection?.mode === "original" ? (
         <Card className="mt-4 rounded-3xl p-5">
           <p className="text-sm leading-7 text-slate-600">
-            已识别为当前不可稳定端内试玩的 itch.io 游戏。后续抓取会优先过滤这类无法解析内嵌地址或原站超时的条目。
+            这个游戏没有解析到稳定内嵌地址时，会尽量在当前容器中打开原页面；如果当前容器受限，可使用上方“打开原网站”或“itch.io 游戏库”入口。
           </p>
         </Card>
       ) : null}
@@ -179,7 +192,7 @@ async function resolveItchioFrameUrl(gameUrl: string, requestedMode: "embed" | "
       cache: "no-store",
     });
 
-    if (!response.ok) return { url: undefined, mode: "unavailable" as const };
+    if (!response.ok) return { url: gameUrl, mode: "original" as const };
 
     const html = await response.text();
     const frameCandidate = extractItchioFrameCandidate(html);
@@ -187,14 +200,14 @@ async function resolveItchioFrameUrl(gameUrl: string, requestedMode: "embed" | "
     if (bestPlayableUrl) return bestPlayableUrl;
 
     const rawPlayUrl = html.match(/"play_url":"([^"]+)"/)?.[1];
-    if (!rawPlayUrl) return { url: undefined, mode: "unavailable" as const };
+    if (!rawPlayUrl) return { url: gameUrl, mode: "original" as const };
 
     const playUrl = decodeJsonString(rawPlayUrl);
     return /^https:\/\/[^/]+\.itch\.io\/.+\/rp\//i.test(playUrl)
       ? { url: playUrl, mode: "direct" as const }
-      : { url: undefined, mode: "unavailable" as const };
+      : { url: gameUrl, mode: "original" as const };
   } catch {
-    return { url: undefined, mode: "unavailable" as const };
+    return { url: gameUrl, mode: "original" as const };
   }
 }
 

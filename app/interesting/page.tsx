@@ -73,10 +73,7 @@ function mergeInterestingWorks(works: WorkItem[]) {
 }
 
 function isDisplayableInterestingWork(work: WorkItem) {
-  if (work.source !== "itchio") return true;
-
-  // itch.io entries are currently unstable in WebView/browser embeds and some original pages time out.
-  return false;
+  return work.status === "approved";
 }
 
 function getCategoryFallbacks(works: WorkItem[]) {

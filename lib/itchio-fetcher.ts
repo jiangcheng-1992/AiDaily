@@ -455,7 +455,6 @@ function passesHardFilters(card: ItchGameCard, detail: ItchGameDetail) {
     detail.tags.some((tag) => tag.toLowerCase() === "html5");
   const hasCover = Boolean(detail.coverUrl || card.coverUrl);
   const hasDescription = Boolean(detail.description || card.description);
-  const hasPlayableFrame = Boolean(detail.playableFrameUrl);
   const hasInteraction =
     Number(detail.ratingCount ?? 0) > 0 ||
     Number(detail.commentCount ?? 0) > 0 ||
@@ -476,7 +475,6 @@ function passesHardFilters(card: ItchGameCard, detail: ItchGameDetail) {
   return (
     sourceAllowsBrowser &&
     playableInBrowser &&
-    hasPlayableFrame &&
     hasCover &&
     hasDescription &&
     (hasInteraction || hasPresentationSignals) &&

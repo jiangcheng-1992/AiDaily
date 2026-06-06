@@ -114,6 +114,24 @@ export function InterestingClient({
         </div>
       </div>
 
+      {category === "game" ? (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[1.5rem] border border-emerald-100 bg-emerald-50/80 px-4 py-3">
+          <div>
+            <div className="text-sm font-black text-slate-950">itch.io 游戏已恢复</div>
+            <p className="mt-1 text-xs font-semibold text-slate-500">优先在 AI 圈容器内试玩，也可以打开 itch.io 官方游戏库。</p>
+          </div>
+          <a
+            href="https://itch.io/games"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white transition-colors hover:bg-blue-700"
+          >
+            打开 itch.io/games
+            <ArrowUpRight className="h-3.5 w-3.5" />
+          </a>
+        </div>
+      ) : null}
+
       <div className="mt-5 columns-1 gap-4 sm:columns-2 lg:columns-3 xl:columns-4">
         {works.map((work, index) => (
           <InterestingWorkCard
