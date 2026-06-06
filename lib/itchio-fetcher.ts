@@ -17,6 +17,7 @@ type ItchGameDetail = {
   title: string;
   description: string;
   coverUrl: string;
+  playableFrameUrl?: string;
   pageText: string;
   tags: string[];
   ratingValue?: number;
@@ -432,6 +433,7 @@ async function fetchItchioGameDetail(url: string): Promise<ItchGameDetail> {
     title: metadata.name || readTitle(html),
     description: cleanText(description),
     coverUrl,
+    playableFrameUrl: extractPlayableFrameUrl(html),
     pageText,
     tags: extractTags(html),
     ratingValue: metadata.ratingValue,
@@ -453,6 +455,7 @@ function passesHardFilters(card: ItchGameCard, detail: ItchGameDetail) {
     detail.tags.some((tag) => tag.toLowerCase() === "html5");
   const hasCover = Boolean(detail.coverUrl || card.coverUrl);
   const hasDescription = Boolean(detail.description || card.description);
+  const hasPlayableFrame = Boolean(detail.playableFrameUrl);
   const hasInteraction =
     Number(detail.ratingCount ?? 0) > 0 ||
     Number(detail.commentCount ?? 0) > 0 ||
@@ -473,12 +476,25 @@ function passesHardFilters(card: ItchGameCard, detail: ItchGameDetail) {
   return (
     sourceAllowsBrowser &&
     playableInBrowser &&
+    hasPlayableFrame &&
     hasCover &&
     hasDescription &&
     (hasInteraction || hasPresentationSignals) &&
     !rejected &&
     !downloadOnly
   );
+}
+
+function extractPlayableFrameUrl(html: string) {
+  const normalizedHtml = decodeHtmlEntities(html);
+  const embedUpload = normalizedHtml.match(/https:\/\/itch\.io\/embed-upload\/\d+(?:\?[^"'<>\\\s]*)?/i)?.[0];
+  if (embedUpload) return embedUpload;
+
+  const directUrl = normalizedHtml.match(/https:\/\/[^/]+\.itch\.zone\/html\/\d+\/[^"'<>\\\s]+/i)?.[0];
+  if (directUrl) return directUrl;
+
+  const uploadId = normalizedHtml.match(/https:\/\/[^/]+\.itch\.zone\/html\/(\d+)(?:[-/])/i)?.[1];
+  return uploadId ? `https://itch.io/embed-upload/${uploadId}?color=191919` : undefined;
 }
 
 function isRejectedByContext(card: ItchGameCard, detail: ItchGameDetail, combinedText: string) {
@@ -634,6 +650,7 @@ function itchGameToWork({ card, detail, score }: ScoredItchGame): WorkItem {
     type: "app",
     source: ITCHIO_SOURCE,
     coverUrl,
+    videoUrl: detail.playableFrameUrl,
     externalUrl: card.url,
     authorName: card.authorName || "itch.io creator",
     originalAuthorUrl: card.authorUrl,

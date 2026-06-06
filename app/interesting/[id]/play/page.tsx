@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ExternalLink, Gamepad2, RefreshCw } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ExternalLink, Gamepad2, RefreshCw } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { buildInterestingSkillWorks } from "@/lib/interesting-skill-works";
@@ -29,8 +29,9 @@ export default async function InterestingPlayPage({
 
   if (!work || work.source !== "itchio" || !work.externalUrl) notFound();
 
-  const frameSelection = await resolveItchioFrameUrl(work.externalUrl, requestedMode);
-  const frameUrl = frameSelection?.url ?? work.externalUrl;
+  const savedFrameSelection = work.videoUrl ? selectSavedFrameUrl(work.videoUrl, requestedMode) : undefined;
+  const frameSelection = savedFrameSelection ?? (await resolveItchioFrameUrl(work.externalUrl, requestedMode));
+  const frameUrl = frameSelection?.url;
   const activeMode = frameSelection?.mode === "direct" ? "direct" : "embed";
   const switchMode = activeMode === "direct" ? "embed" : "direct";
   const nextRefresh = query?.refresh === "1" ? "2" : "1";
@@ -78,26 +79,69 @@ export default async function InterestingPlayPage({
           </div>
         </div>
 
-        <ItchioGameFrame
-          key={`${frameUrl}-${query?.refresh ?? "0"}`}
-          title={work.title}
-          frameUrl={frameUrl}
-          externalUrl={work.externalUrl}
-          reloadUrl={reloadUrl}
-          switchModeUrl={switchModeUrl}
-          modeLabel={activeMode === "direct" ? "直连兼容模式" : "内嵌兼容模式"}
-        />
+        {frameUrl ? (
+          <ItchioGameFrame
+            key={`${frameUrl}-${query?.refresh ?? "0"}`}
+            title={work.title}
+            frameUrl={frameUrl}
+            externalUrl={work.externalUrl}
+            reloadUrl={reloadUrl}
+            switchModeUrl={switchModeUrl}
+            modeLabel={activeMode === "direct" ? "直连兼容模式" : "内嵌兼容模式"}
+          />
+        ) : (
+          <div className="flex min-h-[430px] items-center justify-center bg-slate-100 p-5 sm:min-h-[520px]">
+            <div className="max-w-md rounded-3xl bg-white p-6 text-center shadow-lift">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <h2 className="mt-4 text-lg font-black text-slate-950">这个游戏当前无法在端内启动</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                我们没有解析到稳定的 itch.io 内嵌试玩地址，已停止加载异常 iframe，避免页面一直白屏或显示浏览器错误页。
+              </p>
+              <div className="mt-5 flex flex-wrap justify-center gap-2">
+                <a
+                  href={reloadUrl}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-slate-950 px-4 py-2 text-xs font-bold text-white"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  重新检测
+                </a>
+                <a
+                  href={work.externalUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-xs font-bold text-slate-950 ring-1 ring-slate-200"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  打开原网站
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
       </Card>
 
-      {frameSelection?.mode === "original" ? (
+      {frameSelection?.mode === "unavailable" ? (
         <Card className="mt-4 rounded-3xl p-5">
           <p className="text-sm leading-7 text-slate-600">
-            这个游戏没有解析到可嵌入试玩地址，已尽量保留在当前容器内加载。
+            已识别为当前不可稳定端内试玩的 itch.io 游戏。后续抓取会优先过滤这类无法解析内嵌地址或原站超时的条目。
           </p>
         </Card>
       ) : null}
     </div>
   );
+}
+
+function selectSavedFrameUrl(frameUrl: string, requestedMode: "embed" | "direct") {
+  const embedUrl = toItchioEmbedUploadUrl(frameUrl);
+  const directUrl = toItchioPlayableUrl(frameUrl);
+
+  if (requestedMode === "direct" && directUrl) return { url: directUrl, mode: "direct" as const };
+  if (embedUrl) return { url: embedUrl, mode: "embed" as const };
+  if (directUrl) return { url: directUrl, mode: "direct" as const };
+
+  return undefined;
 }
 
 async function resolveItchioFrameUrl(gameUrl: string, requestedMode: "embed" | "direct") {
@@ -110,7 +154,7 @@ async function resolveItchioFrameUrl(gameUrl: string, requestedMode: "embed" | "
       cache: "no-store",
     });
 
-    if (!response.ok) return { url: gameUrl, mode: "original" as const };
+    if (!response.ok) return { url: undefined, mode: "unavailable" as const };
 
     const html = await response.text();
     const frameCandidate = extractItchioFrameCandidate(html);
@@ -118,14 +162,14 @@ async function resolveItchioFrameUrl(gameUrl: string, requestedMode: "embed" | "
     if (bestPlayableUrl) return bestPlayableUrl;
 
     const rawPlayUrl = html.match(/"play_url":"([^"]+)"/)?.[1];
-    if (!rawPlayUrl) return { url: gameUrl, mode: "original" as const };
+    if (!rawPlayUrl) return { url: undefined, mode: "unavailable" as const };
 
     const playUrl = decodeJsonString(rawPlayUrl);
     return /^https:\/\/[^/]+\.itch\.io\/.+\/rp\//i.test(playUrl)
       ? { url: playUrl, mode: "direct" as const }
-      : { url: gameUrl, mode: "original" as const };
+      : { url: undefined, mode: "unavailable" as const };
   } catch {
-    return { url: gameUrl, mode: "original" as const };
+    return { url: undefined, mode: "unavailable" as const };
   }
 }
 
