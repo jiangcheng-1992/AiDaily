@@ -48,8 +48,8 @@ export default async function InterestingPage({
 
   const skillWorks = buildInterestingSkillWorks([...generatedFeed.posts, ...mockPosts]);
   const requestedTab = parseInterestingTab(resolvedSearchParams.tab);
-  const baseWorks = mergeInterestingWorks([...skillWorks, ...worksFeed.works]);
-  const works = mergeInterestingWorks([...baseWorks, ...getMissingCategoryFallbacks(baseWorks)]);
+  const baseWorks = mergeInterestingWorks([...skillWorks, ...worksFeed.works]).filter(isDisplayableInterestingWork);
+  const works = mergeInterestingWorks([...baseWorks, ...getCategoryFallbacks(baseWorks)]);
 
   return (
     <InterestingClient
@@ -72,17 +72,28 @@ function mergeInterestingWorks(works: WorkItem[]) {
   return Array.from(merged.values());
 }
 
-function getMissingCategoryFallbacks(works: WorkItem[]) {
+function isDisplayableInterestingWork(work: WorkItem) {
+  if (work.source !== "itchio") return true;
+
+  // Old itch.io records without a resolved playable frame often load to blank/error pages.
+  return Boolean(work.videoUrl);
+}
+
+function getCategoryFallbacks(works: WorkItem[]) {
   const usedFallbackIds = new Set<string>();
   const fallbackWorks: WorkItem[] = [];
 
   for (const category of interestingCategories) {
     if (category.id === "all") continue;
-    if (works.some((work) => getWorkCategoryId(work) === category.id)) continue;
+    const minimumCount = category.id === "game" ? 6 : 1;
+    const currentCount = works.filter((work) => getWorkCategoryId(work) === category.id).length;
+    const missingCount = Math.max(0, minimumCount - currentCount);
+
+    if (missingCount === 0) continue;
 
     const categoryFallbacks = interestingWorks
       .filter((work) => getWorkCategoryId(work) === category.id && !usedFallbackIds.has(work.id))
-      .slice(0, 4);
+      .slice(0, missingCount);
 
     for (const work of categoryFallbacks) {
       usedFallbackIds.add(work.id);
