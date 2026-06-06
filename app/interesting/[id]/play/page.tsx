@@ -29,8 +29,11 @@ export default async function InterestingPlayPage({
 
   if (!work || work.source !== "itchio" || !work.externalUrl) notFound();
 
+  const itchioPlaybackEnabled = process.env.ENABLE_ITCHIO_PLAYER === "1";
   const savedFrameSelection = work.videoUrl ? selectSavedFrameUrl(work.videoUrl, requestedMode) : undefined;
-  const frameSelection = savedFrameSelection ?? (await resolveItchioFrameUrl(work.externalUrl, requestedMode));
+  const frameSelection = itchioPlaybackEnabled
+    ? savedFrameSelection ?? (await resolveItchioFrameUrl(work.externalUrl, requestedMode))
+    : { url: undefined, mode: "unavailable" as const };
   const frameUrl = frameSelection?.url;
   const activeMode = frameSelection?.mode === "direct" ? "direct" : "embed";
   const switchMode = activeMode === "direct" ? "embed" : "direct";
@@ -60,22 +63,33 @@ export default async function InterestingPlayPage({
             <h1 className="mt-1 line-clamp-1 text-base font-black sm:mt-2 sm:text-xl">{work.title}</h1>
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-            <a
-              href={work.externalUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-2 text-xs font-bold text-slate-950 transition-colors hover:bg-white/90"
-            >
-              打开原网站
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-            <a
-              href={reloadUrl}
-              className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-2 text-xs font-bold text-white/80 transition-colors hover:bg-white/15 hover:text-white"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              重新加载
-            </a>
+            {frameUrl ? (
+              <>
+                <a
+                  href={work.externalUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-2 text-xs font-bold text-slate-950 transition-colors hover:bg-white/90"
+                >
+                  打开原网站
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+                <a
+                  href={reloadUrl}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-2 text-xs font-bold text-white/80 transition-colors hover:bg-white/15 hover:text-white"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  重新加载
+                </a>
+              </>
+            ) : (
+              <Link
+                href="/interesting?tab=game"
+                className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-2 text-xs font-bold text-slate-950 transition-colors hover:bg-white/90"
+              >
+                返回游戏列表
+              </Link>
+            )}
           </div>
         </div>
 
@@ -95,27 +109,17 @@ export default async function InterestingPlayPage({
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-600">
                 <AlertTriangle className="h-6 w-6" />
               </div>
-              <h2 className="mt-4 text-lg font-black text-slate-950">这个游戏当前无法在端内启动</h2>
+              <h2 className="mt-4 text-lg font-black text-slate-950">这个游戏已临时下线</h2>
               <p className="mt-2 text-sm leading-6 text-slate-500">
-                我们没有解析到稳定的 itch.io 内嵌试玩地址，已停止加载异常 iframe，避免页面一直白屏或显示浏览器错误页。
+                当前 itch.io 游戏在端内和原站访问都不稳定，已暂停加载，避免页面白屏或一直卡住。可以先返回游戏列表查看已恢复的稳定内容。
               </p>
               <div className="mt-5 flex flex-wrap justify-center gap-2">
-                <a
-                  href={reloadUrl}
+                <Link
+                  href="/interesting?tab=game"
                   className="inline-flex items-center gap-1.5 rounded-full bg-slate-950 px-4 py-2 text-xs font-bold text-white"
                 >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  重新检测
-                </a>
-                <a
-                  href={work.externalUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-xs font-bold text-slate-950 ring-1 ring-slate-200"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  打开原网站
-                </a>
+                  返回游戏列表
+                </Link>
               </div>
             </div>
           </div>
