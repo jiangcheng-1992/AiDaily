@@ -183,6 +183,9 @@ function selectSavedFrameUrl(frameUrl: string, requestedMode: "embed" | "direct"
 }
 
 async function resolveItchioFrameUrl(gameUrl: string, requestedMode: "embed" | "direct") {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
   try {
     const response = await fetch(gameUrl, {
       headers: {
@@ -190,6 +193,7 @@ async function resolveItchioFrameUrl(gameUrl: string, requestedMode: "embed" | "
         accept: "text/html,application/xhtml+xml",
       },
       cache: "no-store",
+      signal: controller.signal,
     });
 
     if (!response.ok) return { url: gameUrl, mode: "original" as const };
@@ -208,6 +212,8 @@ async function resolveItchioFrameUrl(gameUrl: string, requestedMode: "embed" | "
       : { url: gameUrl, mode: "original" as const };
   } catch {
     return { url: gameUrl, mode: "original" as const };
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
