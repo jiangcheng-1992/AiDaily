@@ -75,8 +75,8 @@ function mergeInterestingWorks(works: WorkItem[]) {
 function isDisplayableInterestingWork(work: WorkItem) {
   if (work.source !== "itchio") return true;
 
-  // Old itch.io records without a resolved playable frame often load to blank/error pages.
-  return Boolean(work.videoUrl);
+  // itch.io entries are currently unstable in WebView/browser embeds and some original pages time out.
+  return false;
 }
 
 function getCategoryFallbacks(works: WorkItem[]) {
