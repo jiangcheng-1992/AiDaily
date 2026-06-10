@@ -86,6 +86,7 @@ export default function RootLayout({
     <html lang="zh-CN">
       <head>
         <meta name="baidu-site-verification" content={BAIDU_SITE_VERIFICATION} />
+        <meta name="google-adsense-account" content={ADSENSE_CLIENT} />
         {ADSENSE_CLIENT ? (
           <script
             async

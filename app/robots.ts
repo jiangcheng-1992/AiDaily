@@ -7,7 +7,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: "/",
+        allow: ["/", "/ads.txt", "/sitemap.xml", "/robots.txt", "/about", "/contact", "/privacy", "/terms"],
         disallow: [
           "/api/",
           "/auth",
@@ -19,7 +19,7 @@ export default function robots(): MetadataRoute.Robots {
       },
       {
         userAgent: ["Googlebot", "Bingbot", "Baiduspider", "BaiduSpider"],
-        allow: "/",
+        allow: ["/", "/ads.txt", "/sitemap.xml", "/robots.txt", "/about", "/contact", "/privacy", "/terms"],
         disallow: ["/api/", "/auth", "/me", "/saved", "/_next/"],
       },
     ],

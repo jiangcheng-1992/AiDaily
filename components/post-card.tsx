@@ -152,13 +152,17 @@ export function PostCard({
           </a>
         ) : null}
 
-        <div className="mt-4 rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-violet-50/70 p-3">
-          <div className="text-[11px] font-black tracking-[0.08em] text-blue-700">
-            推荐理由
-          </div>
-          <p className="mt-1.5 line-clamp-2 text-[12.5px] leading-5 text-slate-700">
-            {post.whyItMatters}
-          </p>
+        <div className="mt-4 space-y-2 rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-violet-50/70 p-3">
+          {buildAiCircleInsights(post).map((item) => (
+            <div key={item.label}>
+              <div className="text-[11px] font-black tracking-[0.08em] text-blue-700">
+                {item.label}
+              </div>
+              <p className="mt-1 line-clamp-2 text-[12.5px] leading-5 text-slate-700">
+                {item.text}
+              </p>
+            </div>
+          ))}
         </div>
 
         <div className="mt-4 flex flex-wrap gap-1.5">
@@ -221,4 +225,69 @@ export function PostCard({
 
 function pickReliableImage(...urls: Array<string | null | undefined>) {
   return urls.find((url) => url && !isGeneratedPreviewImageUrl(url));
+}
+
+function buildAiCircleInsights(post: Post) {
+  return [
+    {
+      label: "AI圈原创推荐理由",
+      text: post.whyItMatters || `这条内容与 ${post.tags[0] ?? "AI 趋势"} 相关，适合快速判断是否值得继续关注。`,
+    },
+    {
+      label: "适合人群",
+      text: inferAudience(post),
+    },
+    {
+      label: "价值分析",
+      text: inferValueAnalysis(post),
+    },
+  ];
+}
+
+function inferAudience(post: Post) {
+  const text = buildPostText(post);
+
+  if (post.type === "tool" || /(工具|效率|自动化|workflow|mcp|插件|copilot|cursor|代码|开发)/i.test(text)) {
+    return "适合 AI 产品经理、开发者、运营同学和正在搭建自动化工作流的团队。";
+  }
+
+  if (post.type === "product" || /(发布|上线|产品|平台|订阅|商业化|模型服务)/i.test(text)) {
+    return "适合关注 AI 产品机会、竞品动态、商业化路径的创业者和产品团队。";
+  }
+
+  if (post.type === "video" || /(视频|创作|sora|镜头|剪辑|多模态|aigc)/i.test(text)) {
+    return "适合内容创作者、短视频团队、设计师和想学习 AI 创作案例的读者。";
+  }
+
+  if (/(论文|研究|benchmark|评测|训练|推理|安全|对齐|模型能力)/i.test(text)) {
+    return "适合研究员、算法工程师、技术负责人和需要跟进模型能力边界的人。";
+  }
+
+  return "适合希望快速了解 AI 新闻、工具变化和创作灵感的普通读者。";
+}
+
+function inferValueAnalysis(post: Post) {
+  const text = buildPostText(post);
+
+  if (/(降本|效率|自动化|工作流|工具|agent|智能体|mcp)/i.test(text)) {
+    return "价值在于判断它能否降低重复劳动、提升交付速度，并沉淀为可复用流程。";
+  }
+
+  if (/(产品|发布|上线|平台|商业|订阅|生态)/i.test(text)) {
+    return "价值在于观察 AI 产品化方向、用户需求变化，以及可借鉴的功能包装方式。";
+  }
+
+  if (/(视频|图像|创作|内容|素材|设计|prompt|提示词)/i.test(text)) {
+    return "价值在于提炼可复用的创作方法，帮助读者把灵感转化为可执行案例。";
+  }
+
+  if (/(论文|研究|评测|benchmark|推理|训练|安全|对齐)/i.test(text)) {
+    return "价值在于理解模型能力、限制和技术趋势，为选型或学习路线提供参考。";
+  }
+
+  return "价值在于把分散信息整理成可读判断，帮助读者决定是否深入阅读原文。";
+}
+
+function buildPostText(post: Post) {
+  return `${post.title} ${post.summary} ${post.whyItMatters} ${post.tags.join(" ")}`;
 }

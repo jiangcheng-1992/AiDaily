@@ -23,7 +23,7 @@ export const homeChannels: Array<{
 ];
 
 export function buildHomeFeedPosts(posts: Post[]) {
-  return posts.filter((post) => post.type !== "skill").sort(sortHomePosts);
+  return posts.filter((post) => post.type !== "skill" && isAiRelevantPost(post)).sort(sortHomePosts);
 }
 
 export function filterPostsByHomeChannel(posts: Post[], channelId: HomeChannelId) {
@@ -136,4 +136,24 @@ function scoreSourceAuthority(post: Post) {
   if (/(openai|anthropic|deepmind|google|nvidia|microsoft|官方)/i.test(text)) return 0.8;
   if (/(量子位|36氪|it之家|机器之心|新智元)/i.test(text)) return 0.45;
   return 0;
+}
+
+function isAiRelevantPost(post: Post) {
+  const text = `${post.title} ${post.summary} ${post.whyItMatters} ${post.editorComment} ${post.tags.join(" ")} ${
+    post.sourceName
+  }`.toLowerCase();
+
+  const hasAiSignal =
+    /(ai|aigc|agi|agent|llm|gpt|chatgpt|openai|claude|gemini|deepseek|qwen|sora|midjourney|stable diffusion|copilot|cursor|mcp|prompt|大模型|模型|智能体|人工智能|生成式|机器学习|深度学习|神经网络|算力|推理|训练|多模态|机器人|自动化|提示词|智能|图像生成|视频生成|语音生成)/i.test(
+      text,
+    );
+
+  if (hasAiSignal) return true;
+
+  const clearlyOffTopic =
+    /(nba|足球|篮球|体育|赛事|综艺|明星|演唱会|电影票房|娱乐八卦|电商大促|直播带货|房产|装修|旅游|美食|穿搭|母婴|汽车降价|股票荐股|彩票|博彩|网红带货)/i.test(
+      text,
+    );
+
+  return !clearlyOffTopic && post.featured === true;
 }
