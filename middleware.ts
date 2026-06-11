@@ -27,6 +27,7 @@ export function middleware(request: NextRequest) {
 
   const response = NextResponse.next();
   applySecurityHeaders(response, request);
+  applyAdsTxtHeaders(response, request);
   return response;
 }
 
@@ -69,4 +70,11 @@ function applySecurityHeaders(response: NextResponse, request: NextRequest) {
       "max-age=31536000; includeSubDomains; preload",
     );
   }
+}
+
+function applyAdsTxtHeaders(response: NextResponse, request: NextRequest) {
+  if (request.nextUrl.pathname !== "/ads.txt") return;
+
+  response.headers.set("content-type", "text/plain; charset=UTF-8");
+  response.headers.set("cache-control", "public, max-age=0, must-revalidate");
 }
