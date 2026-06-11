@@ -176,12 +176,9 @@ function RankingItem({ post, index, metric }: { post: Post; index: number; metri
         <span className="absolute left-2 top-2 flex h-6 min-w-6 items-center justify-center rounded-full bg-white/92 px-1.5 text-xs font-black text-blue-700 shadow-soft">
           {index + 1}
         </span>
-        <span className="absolute inset-x-1.5 bottom-1.5 flex items-center justify-between gap-1">
-          <PostTypeBadge type={post.type} className="bg-white/92 px-2 py-0.5 shadow-soft" />
-          <span className="inline-flex min-w-0 items-center gap-1 rounded-full bg-slate-950/72 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur">
-            <CalendarClock className="h-3 w-3 shrink-0" />
-            <span className="truncate">{formatRelativeTime(post.collectedAt ?? post.createdAt)}</span>
-          </span>
+        <span className="absolute bottom-1.5 right-1.5 inline-flex max-w-[76px] items-center gap-1 rounded-full bg-slate-950/72 px-2 py-0.5 text-[10px] font-bold text-white shadow-soft backdrop-blur sm:max-w-[92px]">
+          <CalendarClock className="h-3 w-3 shrink-0" />
+          <span className="truncate">{formatRelativeTime(post.collectedAt ?? post.createdAt)}</span>
         </span>
       </span>
 
@@ -199,6 +196,14 @@ function RankingItem({ post, index, metric }: { post: Post; index: number; metri
         </span>
         <span className="mt-1.5 block line-clamp-1 text-xs leading-5 text-slate-500">
           {post.summary}
+        </span>
+        <span className="mt-2 flex flex-wrap items-center gap-1.5">
+          <PostTypeBadge type={post.type} className="px-2 py-0.5 text-[10px]" />
+          {post.tags.slice(0, 2).map((tag) => (
+            <span key={tag} className="rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+              #{tag}
+            </span>
+          ))}
         </span>
       </span>
     </Link>
