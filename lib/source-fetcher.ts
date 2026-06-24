@@ -644,7 +644,7 @@ function isUsableArticleImage(value: string | undefined): value is string {
   ) {
     return false;
   }
-  if (/(pengyouquan|friendcircle|share[_-]?icon|share[_-]?to|weixin|weibo|qzone|qqzone|mgmw\/pengyouquan)/i.test(normalized)) {
+  if (/(pengyouquan|friendcircle|layershare|share[_-]?icon|share[_-]?to|weixin|weibo|qzone|qqzone|mgmw\/)/i.test(normalized)) {
     return false;
   }
   if (/(^|\/)\d{2,4}-\d{2,4}x\d{2,4}\.(jpe?g|png|webp)(\?|#|$)/i.test(normalized)) {

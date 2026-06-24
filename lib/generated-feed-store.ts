@@ -267,6 +267,9 @@ function stripGeneratedPreviewImages(post: Post): Post {
 function shouldStripFeedImage(post: Post, url?: string | null) {
   if (!url) return false;
   if (isGeneratedPreviewImageUrl(url)) return true;
+  if (/(pengyouquan|friendcircle|layershare|share[_-]?icon|share[_-]?to|weixin|weibo|qzone|qqzone|mgmw\/)/i.test(url)) {
+    return true;
+  }
   if (!post.sourceName.startsWith("Google News")) return false;
 
   try {
