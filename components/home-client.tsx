@@ -15,7 +15,7 @@ import {
 } from "@/lib/feed-view";
 import { shouldRenderGoogleAd } from "@/lib/google-ads";
 import type { WorkItem } from "@/lib/interesting-works";
-import type { Post } from "@/lib/mock-data";
+import { mockPosts, type Post } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
 const feedAdSlot = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_FEED_SLOT;
@@ -46,19 +46,27 @@ export function HomeClient({
 
     return buildHomeFeedPosts(mergeHomePosts([...supplementalPosts, ...primaryPosts]));
   }, [initialPosts, liveFeedPosts, submissions]);
+  const dramaFallbackPosts = useMemo(
+    () => buildHomeFeedPosts(mockPosts.filter((post) => post.tags.includes("AI短剧"))),
+    [],
+  );
 
   const filteredPosts = useMemo(() => {
     const channelPosts = filterPostsByHomeChannel(sourcePosts, selectedChannel);
+    const channelPostsWithFallback =
+      selectedChannel === "drama"
+        ? mergeHomePosts([...channelPosts, ...dramaFallbackPosts])
+        : channelPosts;
     const visiblePosts = selectedTag
-      ? channelPosts.filter((post) => post.tags.includes(selectedTag))
-      : channelPosts;
+      ? channelPostsWithFallback.filter((post) => post.tags.includes(selectedTag))
+      : channelPostsWithFallback;
 
     return visiblePosts.length > 0
       ? visiblePosts
       : selectedChannel === "all" && !selectedTag
         ? sourcePosts
         : [];
-  }, [selectedChannel, selectedTag, sourcePosts]);
+  }, [dramaFallbackPosts, selectedChannel, selectedTag, sourcePosts]);
 
   const displayedPosts = filteredPosts.slice(0, visiblePostCount);
   const hasMorePosts = visiblePostCount < filteredPosts.length;

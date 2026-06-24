@@ -108,6 +108,8 @@ type SidebarPosterItem = {
   kindLabel: string;
   meta: string;
   accentClassName: string;
+  sortTime: number;
+  score: number;
 };
 
 function PosterSection({
@@ -132,27 +134,27 @@ function PosterSection({
           </div>
         </div>
         <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-500">
-          TOP 5
+          TOP {Math.max(items.length, 1)}
         </span>
       </div>
       <div className="space-y-3">
-        {items.map((item) => (
+        {items.length > 0 ? items.map((item) => (
           <Link
             key={item.id}
             href={item.href}
             className="group block rounded-[1.35rem] border border-slate-100 bg-white p-3"
           >
-            <div className="relative h-[78px] overflow-hidden rounded-[1rem]">
+            <div className="relative min-h-[92px] overflow-hidden rounded-[1rem]">
               {item.coverUrl ? (
                 <img
                   src={item.coverUrl}
                   alt={item.title}
-                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  className="h-[92px] w-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
               ) : (
                 <div
                   className={cn(
-                    "h-full w-full bg-gradient-to-br",
+                    "h-[92px] w-full bg-gradient-to-br",
                     item.accentClassName,
                   )}
                 />
@@ -176,7 +178,11 @@ function PosterSection({
               </div>
             </div>
           </Link>
-        ))}
+        )) : (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 p-4 text-xs font-semibold leading-5 text-slate-500">
+            当前还没有足够内容进入榜单，下一轮抓取后会自动补齐。
+          </div>
+        )}
       </div>
     </Card>
   );
@@ -213,31 +219,37 @@ function buildSidebarPosterGroup({
   excludedPosterIds?: Set<string>;
 }) {
   return [
-    pickLatestArticlePoster(posts, periodDays, excludedPosterIds),
+    ...buildLatestArticlePosters(posts, periodDays, excludedPosterIds),
     pickLatestWorkPoster(works, periodDays, "video", excludedPosterIds),
     pickLatestWorkPoster(works, periodDays, "game", excludedPosterIds),
     pickLatestWorkPoster(works, periodDays, "website", excludedPosterIds),
     pickLatestSkillPoster(skillWorks, periodDays, excludedPosterIds),
-  ].filter(Boolean) as SidebarPosterItem[];
+  ]
+    .filter(Boolean)
+    .sort((left, right) => {
+      const leftItem = left as SidebarPosterItem;
+      const rightItem = right as SidebarPosterItem;
+      return rightItem.sortTime - leftItem.sortTime || rightItem.score - leftItem.score;
+    })
+    .slice(0, 5) as SidebarPosterItem[];
 }
 
-function pickLatestArticlePoster(
+function buildLatestArticlePosters(
   posts: Post[],
   periodDays: number,
   excludedPosterIds?: Set<string>,
-): SidebarPosterItem | null {
-  const candidate = pickLatest(
+): SidebarPosterItem[] {
+  const articlePosts = pickLatestMany(
     posts.filter((post) => post.type !== "skill" && post.type !== "video"),
     periodDays,
     (post) => `article-${post.id}`,
     (post) => post.collectedAt || post.createdAt,
     (post) => post.likesCount + post.commentsCount * 2 + post.savesCount * 1.5,
+    5,
     excludedPosterIds,
   );
 
-  if (!candidate) return null;
-
-  return {
+  return articlePosts.map((candidate) => ({
     id: `article-${candidate.id}`,
     title: candidate.title,
     href: `/post/${candidate.id}`,
@@ -249,7 +261,9 @@ function pickLatestArticlePoster(
     kindLabel: "文章",
     meta: formatRelativeTime(candidate.collectedAt || candidate.createdAt),
     accentClassName: "from-blue-500 via-cyan-500 to-indigo-600",
-  };
+    sortTime: getItemTime(candidate.collectedAt || candidate.createdAt),
+    score: candidate.likesCount + candidate.commentsCount * 2 + candidate.savesCount * 1.5,
+  }));
 }
 
 function pickLatestWorkPoster(
@@ -289,6 +303,8 @@ function pickLatestWorkPoster(
         : target === "game"
           ? "from-emerald-500 via-teal-500 to-cyan-600"
           : "from-amber-500 via-orange-500 to-rose-500",
+    sortTime: getItemTime(candidate.publishedAt ?? candidate.createdAt),
+    score: candidate.heatScore + candidate.likeCount * 0.2 + candidate.commentCount * 1.2,
   };
 }
 
@@ -316,7 +332,31 @@ function pickLatestSkillPoster(
     kindLabel: "Skill",
     meta: formatRelativeTime(candidate.publishedAt ?? candidate.createdAt),
     accentClassName: "from-lime-500 via-emerald-500 to-green-600",
+    sortTime: getItemTime(candidate.publishedAt ?? candidate.createdAt),
+    score: candidate.heatScore + candidate.favoriteCount * 0.5 + candidate.likeCount * 0.2,
   };
+}
+
+function pickLatestMany<T>(
+  items: T[],
+  periodDays: number,
+  getId: (item: T) => string,
+  getDate: (item: T) => string | undefined,
+  getScore: (item: T) => number,
+  limit: number,
+  excludedPosterIds?: Set<string>,
+) {
+  const threshold = Date.now() - periodDays * 24 * 60 * 60 * 1000;
+  const withinWindow = items.filter((item) => getItemTime(getDate(item)) >= threshold);
+  const source = withinWindow.length > 0 ? withinWindow : items;
+  const preferred = excludedPosterIds?.size
+    ? source.filter((item) => !excludedPosterIds.has(getId(item)))
+    : source;
+  const candidatePool = preferred.length > 0 ? preferred : source;
+
+  return [...candidatePool]
+    .sort((left, right) => getItemTime(getDate(right)) - getItemTime(getDate(left)) || getScore(right) - getScore(left))
+    .slice(0, limit);
 }
 
 function pickLatest<T>(
@@ -331,7 +371,7 @@ function pickLatest<T>(
   const withinWindow = items.filter((item) => {
     const value = getDate(item);
     if (!value) return false;
-    const time = new Date(value).getTime();
+    const time = getItemTime(value);
     return Number.isFinite(time) && time >= threshold;
   });
   const source = withinWindow.length > 0 ? withinWindow : items;
@@ -341,10 +381,15 @@ function pickLatest<T>(
   const candidatePool = preferred.length > 0 ? preferred : source;
 
   return [...candidatePool].sort((left, right) => {
-    const rightTime = new Date(getDate(right) ?? 0).getTime();
-    const leftTime = new Date(getDate(left) ?? 0).getTime();
+    const rightTime = getItemTime(getDate(right));
+    const leftTime = getItemTime(getDate(left));
     return rightTime - leftTime || getScore(right) - getScore(left);
   })[0];
+}
+
+function getItemTime(value?: string) {
+  const time = new Date(value ?? 0).getTime();
+  return Number.isFinite(time) ? time : 0;
 }
 
 function firstContentImage(post: Post) {
