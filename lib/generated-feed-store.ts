@@ -251,17 +251,30 @@ function shouldKeepGeneratedPost(post: Post, options: ReadGeneratedFeedOptions) 
 }
 
 function stripGeneratedPreviewImages(post: Post): Post {
-  const imageUrls = post.imageUrls?.filter((url) => !isGeneratedPreviewImageUrl(url));
+  const imageUrls = post.imageUrls?.filter((url) => !shouldStripFeedImage(post, url));
   const contentBlocks = post.contentBlocks?.filter(
-    (block) => block.type !== "image" || !isGeneratedPreviewImageUrl(block.url),
+    (block) => block.type !== "image" || !shouldStripFeedImage(post, block.url),
   );
 
   return {
     ...post,
-    coverImageUrl: isGeneratedPreviewImageUrl(post.coverImageUrl) ? undefined : post.coverImageUrl,
+    coverImageUrl: shouldStripFeedImage(post, post.coverImageUrl) ? undefined : post.coverImageUrl,
     imageUrls,
     contentBlocks,
   };
+}
+
+function shouldStripFeedImage(post: Post, url?: string | null) {
+  if (!url) return false;
+  if (isGeneratedPreviewImageUrl(url)) return true;
+  if (!post.sourceName.startsWith("Google News")) return false;
+
+  try {
+    const hostname = new URL(url).hostname;
+    return hostname === "news.google.com" || hostname.endsWith("googleusercontent.com");
+  } catch {
+    return false;
+  }
 }
 
 function buildFallbackFeed(options: ReadGeneratedFeedOptions = {}) {

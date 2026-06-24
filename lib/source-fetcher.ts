@@ -345,7 +345,8 @@ async function hydrateSourceItemContent(source: AiSource, item: SourceItem) {
   if (shouldSkipHtmlHydration(source, item)) return finalizeSourceItem(item);
 
   try {
-    const response = await fetchWithRetry(item.url, {
+    const articleUrl = await resolveOriginalArticleUrl(item.url);
+    const response = await fetchWithRetry(articleUrl, {
       headers: {
         "user-agent":
           process.env.AIQ_USER_AGENT ??
@@ -357,15 +358,19 @@ async function hydrateSourceItemContent(source: AiSource, item: SourceItem) {
     if (!response.ok) return finalizeSourceItem(item);
 
     const html = await response.text();
-    const fullText = extractArticleTextFromHtml(html, item.title, item.url);
-    const contentBlocks = extractArticleBlocksFromHtml(html, item.title, item.url);
+    const fullText = extractArticleTextFromHtml(html, item.title, articleUrl);
+    const contentBlocks = extractArticleBlocksFromHtml(html, item.title, articleUrl);
     const content = selectRicherText(item.content, fullText);
-    const htmlImageUrls = extractHtmlImageUrls(html, item.url);
-    const imageUrls = uniqueImageUrls([...(item.imageUrls ?? []), ...htmlImageUrls]);
-    const coverImageUrl = item.coverImageUrl || imageUrls[0] || extractHtmlImageUrl(html, item.url);
+    const htmlImageUrls = extractHtmlImageUrls(html, articleUrl);
+    const feedImageUrls = isGoogleNewsUrl(item.url)
+      ? []
+      : uniqueImageUrls([item.coverImageUrl, ...(item.imageUrls ?? [])]);
+    const imageUrls = uniqueImageUrls([...htmlImageUrls, ...feedImageUrls]);
+    const coverImageUrl = htmlImageUrls[0] || feedImageUrls[0];
 
     return finalizeSourceItem({
       ...item,
+      url: articleUrl,
       coverImageUrl,
       imageUrls,
       contentBlocks: contentBlocks.length ? contentBlocks : item.contentBlocks,
@@ -375,6 +380,128 @@ async function hydrateSourceItemContent(source: AiSource, item: SourceItem) {
     });
   } catch {
     return finalizeSourceItem(item);
+  }
+}
+
+async function resolveOriginalArticleUrl(url: string) {
+  if (!isGoogleNewsUrl(url)) return url;
+
+  try {
+    return (await decodeGoogleNewsArticleUrl(url)) ?? url;
+  } catch {
+    return url;
+  }
+}
+
+async function decodeGoogleNewsArticleUrl(url: string) {
+  const base64Id = extractGoogleNewsArticleId(url);
+  if (!base64Id) return undefined;
+
+  const params = await fetchGoogleNewsDecodeParams(base64Id);
+  if (!params) return undefined;
+
+  return fetchDecodedGoogleNewsUrl(params);
+}
+
+function extractGoogleNewsArticleId(url: string) {
+  try {
+    const parsed = new URL(url);
+    if (!isGoogleNewsUrl(parsed.toString())) return undefined;
+
+    const segments = parsed.pathname.split("/").filter(Boolean);
+    const markerIndex = segments.findIndex((segment) => segment === "articles" || segment === "read");
+    return markerIndex >= 0 ? segments[markerIndex + 1] : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function fetchGoogleNewsDecodeParams(base64Id: string) {
+  const candidateUrls = [
+    `https://news.google.com/articles/${base64Id}`,
+    `https://news.google.com/rss/articles/${base64Id}`,
+  ];
+
+  for (const candidateUrl of candidateUrls) {
+    const response = await fetchWithRetry(candidateUrl, {
+      headers: {
+        "user-agent":
+          process.env.AIQ_USER_AGENT ??
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        accept: "text/html,application/xhtml+xml",
+      },
+    });
+
+    if (!response.ok) continue;
+
+    const html = await response.text();
+    const signature = html.match(/data-n-a-sg="([^"]+)"/)?.[1];
+    const timestamp = html.match(/data-n-a-ts="([^"]+)"/)?.[1];
+
+    if (signature && timestamp) {
+      return { base64Id, signature, timestamp };
+    }
+  }
+
+  return undefined;
+}
+
+async function fetchDecodedGoogleNewsUrl({
+  base64Id,
+  signature,
+  timestamp,
+}: {
+  base64Id: string;
+  signature: string;
+  timestamp: string;
+}) {
+  const payload = [
+    "Fbv4je",
+    `["garturlreq",[["X","X",["X","X"],null,null,1,1,"US:en",null,1,null,null,null,null,null,0,1],"X","X",1,[1,1,1],1,1,null,0,0,null,0],"${base64Id}",${timestamp},"${signature}"]`,
+  ];
+  const body = new URLSearchParams({
+    "f.req": JSON.stringify([[payload]]),
+  });
+  const response = await fetchWithRetry(
+    "https://news.google.com/_/DotsSplashUi/data/batchexecute",
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
+        "user-agent":
+          process.env.AIQ_USER_AGENT ??
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      },
+      body,
+    },
+  );
+
+  if (!response.ok) return undefined;
+
+  const text = await response.text();
+  const parsed = text
+    .split("\n\n")
+    .map((part) => part.trim())
+    .filter((part) => part.startsWith("["))
+    .map((part) => {
+      try {
+        return JSON.parse(part);
+      } catch {
+        return undefined;
+      }
+    })
+    .filter(Boolean);
+  const encodedPayload = parsed.flat(2).find((entry) => typeof entry === "string" && entry.includes("http"));
+
+  if (!encodedPayload || typeof encodedPayload !== "string") return undefined;
+
+  try {
+    const decoded = JSON.parse(encodedPayload);
+    const decodedUrl = Array.isArray(decoded) ? decoded.find((entry) => typeof entry === "string" && /^https?:\/\//i.test(entry)) : undefined;
+    return typeof decodedUrl === "string" && !isGoogleNewsUrl(decodedUrl) ? decodedUrl : undefined;
+  } catch {
+    const match = encodedPayload.match(/https?:\/\/[^"\\]+/);
+    return match?.[0] && !isGoogleNewsUrl(match[0]) ? match[0] : undefined;
   }
 }
 
@@ -414,10 +541,6 @@ function extractHtmlKeywords(html: string) {
     })
     .map((keyword) => stripHtmlToText(keyword))
     .filter(Boolean);
-}
-
-function extractHtmlImageUrl(html: string, pageUrl?: string) {
-  return extractHtmlImageUrls(html, pageUrl)[0];
 }
 
 function extractHtmlImageUrls(html: string, pageUrl?: string) {
@@ -494,6 +617,16 @@ function absolutizeUrl(value: string | undefined, pageUrl?: string) {
     return new URL(value, pageUrl).toString();
   } catch {
     return value;
+  }
+}
+
+function isGoogleNewsUrl(value: string | undefined) {
+  if (!value) return false;
+
+  try {
+    return new URL(value).hostname === "news.google.com";
+  } catch {
+    return false;
   }
 }
 
