@@ -467,6 +467,75 @@ export const authoritativeSources: AiSource[] = [
     autoIngest: false,
     notes: "新智元当前先作为中文热点监控位，后续再接专门解析器。",
   },
+  {
+    id: "google-news-ai-drama-zh",
+    name: "Google News · AI短剧中文",
+    authority: "media",
+    status: "ready",
+    homeUrl: "https://news.google.com/search?q=AI%E7%9F%AD%E5%89%A7%20%E5%BE%AE%E7%9F%AD%E5%89%A7%20AI%E5%BD%B1%E8%A7%86",
+    feedUrl:
+      "https://news.google.com/rss/search?q=AI%E7%9F%AD%E5%89%A7%20OR%20%E5%BE%AE%E7%9F%AD%E5%89%A7%20OR%20AI%E5%BD%B1%E8%A7%86%20OR%20AI%E6%BC%AB%E5%89%A7&hl=zh-CN&gl=CN&ceid=CN:zh-Hans",
+    fetchType: "rss",
+    language: "zh",
+    cadence: "daily",
+    recommendedType: "news",
+    tags: ["AI短剧", "微短剧", "AI影视", "新闻聚合"],
+    reliabilityScore: 82,
+    autoIngest: true,
+    maxItemAgeDays: 14,
+    includeKeywords: ["ai短剧", "微短剧", "短剧", "ai影视", "ai漫剧", "视频生成", "aigc"],
+    excludeKeywords: ["娱乐八卦", "明星绯闻", "综艺", "票房"],
+    notes: "AI短剧补充源，仅进入独立短剧抓取池，不占用正常新闻源配额。",
+  },
+  {
+    id: "google-news-ai-drama-global",
+    name: "Google News · AI Drama Global",
+    authority: "media",
+    status: "ready",
+    homeUrl: "https://news.google.com/search?q=AI%20drama%20AI%20short%20film%20vertical%20drama",
+    feedUrl:
+      "https://news.google.com/rss/search?q=%22AI%20drama%22%20OR%20%22AI%20short%20film%22%20OR%20%22AI%20filmmaking%22%20OR%20%22vertical%20drama%22%20OR%20%22short%20drama%22&hl=en-US&gl=US&ceid=US:en",
+    fetchType: "rss",
+    language: "multi",
+    cadence: "daily",
+    recommendedType: "news",
+    tags: ["AI短剧", "海外市场", "AI Film", "新闻聚合"],
+    reliabilityScore: 81,
+    autoIngest: true,
+    maxItemAgeDays: 21,
+    includeKeywords: [
+      "ai drama",
+      "ai short film",
+      "ai filmmaking",
+      "vertical drama",
+      "short drama",
+      "web series",
+      "sora",
+      "runway",
+    ],
+    excludeKeywords: ["fake trailer", "fan trailer", "celebrity gossip"],
+    notes: "海外 AI 短剧和 AI film 市场补充源，仅进入独立短剧抓取池。",
+  },
+  {
+    id: "google-news-ai-video-drama-market",
+    name: "Google News · AI视频短剧市场",
+    authority: "media",
+    status: "ready",
+    homeUrl: "https://news.google.com/search?q=AI%20video%20short%20drama%20ReelShort%20Sora%20short%20film",
+    feedUrl:
+      "https://news.google.com/rss/search?q=%28%22AI%20video%22%20AND%20%22short%20drama%22%29%20OR%20%28ReelShort%20AND%20AI%29%20OR%20%28%22micro%20drama%22%20AND%20AI%29%20OR%20%28Sora%20AND%20%22short%20film%22%29&hl=en-US&gl=US&ceid=US:en",
+    fetchType: "rss",
+    language: "multi",
+    cadence: "daily",
+    recommendedType: "news",
+    tags: ["AI短剧", "短剧市场", "AI视频", "海外市场"],
+    reliabilityScore: 80,
+    autoIngest: true,
+    maxItemAgeDays: 14,
+    includeKeywords: ["ai video", "short drama", "micro drama", "reelshort", "sora", "short film"],
+    excludeKeywords: ["fake trailer", "fan trailer", "celebrity gossip"],
+    notes: "海外 AI 视频和短剧市场补充源，和主 Google News 源互为备份，不占用正常新闻源配额。",
+  },
 ];
 
 export const fetchableSources = authoritativeSources.filter(
@@ -475,6 +544,7 @@ export const fetchableSources = authoritativeSources.filter(
 
 function canAutoIngestSource(source: AiSource) {
   if (!source.autoIngest) return false;
+  if (source.tags.some((tag) => tag === "AI短剧" || tag === "短剧市场")) return false;
 
   // 先聚焦中文和非纯英文来源，避免首页混入整站外文内容。
   return source.language !== "en";
@@ -482,6 +552,9 @@ function canAutoIngestSource(source: AiSource) {
 
 export const autoIngestSources = fetchableSources.filter(canAutoIngestSource);
 export const autoIngestSourceIds = new Set(autoIngestSources.map((source) => source.id));
+export const aiDramaIngestSources = fetchableSources.filter((source) =>
+  source.tags.some((tag) => tag === "AI短剧" || tag === "短剧市场"),
+);
 
 export function getSourcesByAuthority(authority: SourceAuthority) {
   return authoritativeSources.filter((source) => source.authority === authority);

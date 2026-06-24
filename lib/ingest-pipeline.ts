@@ -1,4 +1,4 @@
-import { autoIngestSources, type AiSource } from "@/lib/ai-sources";
+import { aiDramaIngestSources, autoIngestSources, type AiSource } from "@/lib/ai-sources";
 import { generateProductionAiComments } from "@/lib/ai-comment-service";
 import { fetchBackupVideoItems } from "@/lib/backup-video-fetcher";
 import { fetchDouyinVideoItems, type DouyinVideoItem } from "@/lib/douyin-video-fetcher";
@@ -72,6 +72,8 @@ export async function runIngestPipeline({
   backupVideoSourceLimit = 6,
   backupVideoItemLimit = 2,
   submittedSourceLimit = 8,
+  aiDramaSourceLimit = 3,
+  aiDramaItemLimit = 4,
   xSourceLimit = 24,
   xItemLimit = 3,
   xKeywordLimit = 0,
@@ -86,6 +88,8 @@ export async function runIngestPipeline({
   backupVideoSourceLimit?: number;
   backupVideoItemLimit?: number;
   submittedSourceLimit?: number;
+  aiDramaSourceLimit?: number;
+  aiDramaItemLimit?: number;
   xSourceLimit?: number;
   xItemLimit?: number;
   xKeywordLimit?: number;
@@ -94,7 +98,10 @@ export async function runIngestPipeline({
 }): Promise<IngestRunResult> {
   const sources = autoIngestSources.slice(0, sourceLimit);
   const fetchedSources = await fetchSourcesWithLimit(sources, itemLimit, 4);
+  const dramaSources = aiDramaIngestSources.slice(0, Math.max(0, aiDramaSourceLimit));
+  const fetchedDramaSources = await fetchSourcesWithLimit(dramaSources, aiDramaItemLimit, 2);
   const sourcePosts = fetchedSources.flatMap((result) => result.posts);
+  const dramaPosts = fetchedDramaSources.flatMap((result) => result.posts);
   const submittedResult = await runSubmittedSourcesTask({
     sourceLimit: submittedSourceLimit,
     itemLimit: Math.min(itemLimit, 3),
@@ -116,6 +123,7 @@ export async function runIngestPipeline({
   const posts = [
     ...githubResult.posts,
     ...sourcePosts,
+    ...dramaPosts,
     ...submittedResult.posts,
     ...videoResult.posts,
     ...xResult.posts,
@@ -141,9 +149,11 @@ export async function runIngestPipeline({
   ) : [];
   const primarySuccessCount =
     fetchedSources.filter((result) => result.ok).length +
+    fetchedDramaSources.filter((result) => result.ok).length +
     (githubAttempted && githubResult.ok ? 1 : 0);
   const primaryFailureCount =
     fetchedSources.filter((result) => !result.ok).length +
+    fetchedDramaSources.filter((result) => !result.ok).length +
     (githubAttempted && !githubResult.ok ? 1 : 0);
 
   aiCommentResults.forEach(([postId, aiComments]) => {
@@ -156,7 +166,7 @@ export async function runIngestPipeline({
 
   return {
     fetchedAt: new Date().toISOString(),
-    sourceCount: sources.length,
+    sourceCount: sources.length + dramaSources.length,
     githubRepoCount: githubResult.posts.length,
     successCount: primarySuccessCount,
     failureCount: primaryFailureCount,
@@ -166,6 +176,14 @@ export async function runIngestPipeline({
     comments,
     sources: [
       ...fetchedSources.map(({ source, posts, ...result }) => {
+        void posts;
+        return {
+          sourceId: source.id,
+          sourceName: source.name,
+          ...result,
+        };
+      }),
+      ...fetchedDramaSources.map(({ source, posts, ...result }) => {
         void posts;
         return {
           sourceId: source.id,

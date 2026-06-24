@@ -72,6 +72,14 @@ async function handleIngestRequest(request: Request) {
     url.searchParams.get("submittedSourceLimit") ?? process.env.SUBMITTED_SOURCE_LIMIT,
     8,
   );
+  const aiDramaSourceLimit = readNonNegativeInt(
+    url.searchParams.get("aiDramaSourceLimit") ?? process.env.AI_DRAMA_SOURCE_LIMIT,
+    3,
+  );
+  const aiDramaItemLimit = readPositiveInt(
+    url.searchParams.get("aiDramaItemLimit") ?? process.env.AI_DRAMA_ITEMS_PER_SOURCE,
+    4,
+  );
   const xSourceLimit = readNonNegativeInt(
     url.searchParams.get("xSourceLimit") ?? process.env.X_SOURCE_LIMIT,
     24,
@@ -158,6 +166,8 @@ async function handleIngestRequest(request: Request) {
     backupVideoSourceLimit,
     backupVideoItemLimit,
     submittedSourceLimit,
+    aiDramaSourceLimit,
+    aiDramaItemLimit,
     xSourceLimit,
     xItemLimit,
     xKeywordLimit,
@@ -354,6 +364,7 @@ async function handleIngestRequest(request: Request) {
 
   const feedAttempted =
     sourceLimit > 0 ||
+    aiDramaSourceLimit > 0 ||
     githubLimit > 0 ||
     douyinSourceLimit > 0 ||
     backupVideoSourceLimit > 0 ||

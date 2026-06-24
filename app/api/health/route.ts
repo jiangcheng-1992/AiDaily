@@ -68,6 +68,11 @@ export async function GET() {
           bilibiliRssHub: Boolean(process.env.RSSHUB_BASE_URL),
         },
       },
+      aiDrama: {
+        independent: true,
+        sourceLimit: readNonNegativeNumber(process.env.AI_DRAMA_SOURCE_LIMIT, 3),
+        itemLimit: readPositiveNumber(process.env.AI_DRAMA_ITEMS_PER_SOURCE, 4),
+      },
       x: {
         configured: Boolean(process.env.X_BEARER_TOKEN || process.env.TWITTER_BEARER_TOKEN),
         sourceLimit: readNonNegativeNumber(process.env.X_SOURCE_LIMIT, 24),

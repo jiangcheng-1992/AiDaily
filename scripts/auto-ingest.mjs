@@ -115,6 +115,7 @@ function buildLocalIngestUrl(mode) {
     url.searchParams.set("douyinSourceLimit", "0");
     url.searchParams.set("backupVideoSourceLimit", "0");
     url.searchParams.set("submittedSourceLimit", "0");
+    url.searchParams.set("aiDramaSourceLimit", "0");
     url.searchParams.set("xSourceLimit", "0");
     url.searchParams.set("xKeywordLimit", "0");
   }
@@ -173,6 +174,14 @@ function buildLocalIngestUrl(mode) {
 
   if (mode !== "works" && process.env.AUTO_INGEST_SUBMITTED_SOURCE_LIMIT) {
     url.searchParams.set("submittedSourceLimit", process.env.AUTO_INGEST_SUBMITTED_SOURCE_LIMIT);
+  }
+
+  if (mode !== "works" && process.env.AUTO_INGEST_AI_DRAMA_SOURCE_LIMIT) {
+    url.searchParams.set("aiDramaSourceLimit", process.env.AUTO_INGEST_AI_DRAMA_SOURCE_LIMIT);
+  }
+
+  if (mode !== "works" && process.env.AUTO_INGEST_AI_DRAMA_ITEM_LIMIT) {
+    url.searchParams.set("aiDramaItemLimit", process.env.AUTO_INGEST_AI_DRAMA_ITEM_LIMIT);
   }
 
   if (mode !== "works" && process.env.AUTO_INGEST_X_SOURCE_LIMIT) {
