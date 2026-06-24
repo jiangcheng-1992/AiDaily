@@ -66,7 +66,7 @@ export async function readGeneratedFeed(
     // Keep serving the last persisted feed during deploys even if the policy
     // version changed, otherwise the homepage can flash empty before the next
     // ingest finishes rewriting the file.
-    const sanitizedFeed = sanitizeGeneratedFeed(withEditorialSeedPosts(normalizedFeed), options);
+    const sanitizedFeed = sanitizeGeneratedFeed(normalizedFeed, options);
     return sanitizedFeed.posts.length > 0 || !allowFallback
       ? sanitizedFeed
       : buildFallbackFeed(options);
@@ -229,21 +229,6 @@ function sanitizeGeneratedFeed(
     comments: Object.fromEntries(
       Object.entries(feed.comments).filter(([postId]) => postIds.has(postId)),
     ),
-  };
-}
-
-function withEditorialSeedPosts(feed: GeneratedFeed): GeneratedFeed {
-  const seedPosts = mockPosts.filter((post) => post.tags.includes("AI短剧"));
-  if (seedPosts.length === 0) return feed;
-
-  const existingIds = new Set(feed.posts.map((post) => post.id));
-
-  return {
-    ...feed,
-    posts: [
-      ...seedPosts.filter((post) => !existingIds.has(post.id)),
-      ...feed.posts,
-    ],
   };
 }
 

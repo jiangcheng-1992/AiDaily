@@ -222,8 +222,6 @@ const whitelistAccounts: XWhitelistAccount[] = [
   { username: "runwayml", name: "Runway", group: "official", authorType: "official", authorityScore: 8, tags: ["AI视频"] },
   { username: "LumaLabsAI", name: "Luma AI", group: "official", authorType: "official", authorityScore: 8, tags: ["AI视频"] },
   { username: "pika_labs", name: "Pika", group: "official", authorType: "official", authorityScore: 8, tags: ["AI视频"] },
-  { username: "TechCrunch", name: "TechCrunch", group: "media", authorType: "media", authorityScore: 8, tags: ["媒体", "新闻", "AI短剧市场"] },
-  { username: "VentureBeat", name: "VentureBeat AI", group: "media", authorType: "media", authorityScore: 8, tags: ["媒体", "新闻", "AI视频市场"] },
   { username: "midjourney", name: "Midjourney", group: "official", authorType: "official", authorityScore: 8, tags: ["AI图片"] },
   { username: "StabilityAI", name: "Stability AI", group: "official", authorType: "official", authorityScore: 8, tags: ["开源模型"] },
   { username: "elevenlabsio", name: "ElevenLabs", group: "official", authorType: "official", authorityScore: 8, tags: ["AI音频"] },
