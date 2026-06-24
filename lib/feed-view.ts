@@ -6,7 +6,6 @@ export type HomeChannelId =
   | "hot"
   | "product"
   | "agent"
-  | "ai-drama"
   | "video"
   | "research";
 
@@ -19,7 +18,6 @@ export const homeChannels: Array<{
   { id: "hot", label: "今日热点", description: "高评分、高互动、近 24 小时内容" },
   { id: "product", label: "产品发布", description: "模型、应用、平台和商业化动态" },
   { id: "agent", label: "Agent/工具", description: "智能体、开发工具和工作流" },
-  { id: "ai-drama", label: "AI短剧", description: "AI 影视、短剧、动画和生成式影像创作" },
   { id: "video", label: "视频", description: "B站、YouTube、抖音视频动态" },
   { id: "research", label: "研究/论文", description: "论文、评测、基准和技术研究" },
 ];
@@ -75,10 +73,6 @@ export function postMatchesHomeChannel(post: Post, channelId: HomeChannelId) {
       );
     case "agent":
       return /(agent|智能体|工具|workflow|工作流|自动化|mcp|插件|开发者|编程|代码|ide|copilot)/i.test(
-        text,
-      );
-    case "ai-drama":
-      return /(ai短剧|ai剧|ai 电影|ai电影|ai影视|ai 影视|微短剧|短剧|剧集|影视|电影|动画|分镜|脚本|镜头|文生视频|图生视频|视频生成|sora|veo|runway|pika|luma|kling|可灵|即梦|海螺)/i.test(
         text,
       );
     case "video":
@@ -150,7 +144,7 @@ function isAiRelevantPost(post: Post) {
   }`.toLowerCase();
 
   const hasAiSignal =
-    /(ai|aigc|agi|agent|llm|gpt|chatgpt|openai|claude|gemini|deepseek|qwen|sora|veo|runway|pika|luma|kling|midjourney|stable diffusion|copilot|cursor|mcp|prompt|大模型|模型|智能体|人工智能|生成式|机器学习|深度学习|神经网络|算力|推理|训练|多模态|机器人|自动化|提示词|智能|图像生成|视频生成|语音生成|文生视频|图生视频|可灵|即梦|海螺|ai短剧|ai剧|ai影视|ai电影)/i.test(
+    /(ai|aigc|agi|agent|llm|gpt|chatgpt|openai|claude|gemini|deepseek|qwen|sora|midjourney|stable diffusion|copilot|cursor|mcp|prompt|大模型|模型|智能体|人工智能|生成式|机器学习|深度学习|神经网络|算力|推理|训练|多模态|机器人|自动化|提示词|智能|图像生成|视频生成|语音生成)/i.test(
       text,
     );
 
