@@ -90,6 +90,9 @@ const parser = new XMLParser({
 });
 
 const includeKeywords = [
+  "ai drama",
+  "ai mini drama",
+  "ai web series",
   "ai short film",
   "ai short",
   "ai film",
@@ -110,11 +113,27 @@ const includeKeywords = [
   "cinematic short",
   "official short film",
   "cinematic ai",
+  "short drama",
+  "micro drama",
+  "mini drama",
+  "vertical drama",
+  "web drama",
+  "web series",
+  "short-form drama",
+  "ai series",
   "generative ai short film",
   "experimental ai film",
 ];
 
 const workFormatKeywords = [
+  "drama",
+  "series",
+  "episode",
+  "web series",
+  "short drama",
+  "micro drama",
+  "mini drama",
+  "vertical drama",
   "short film",
   "short movie",
   "short",
@@ -138,6 +157,9 @@ const aiSignalKeywords = [
   "generative",
   "generated",
   "gen ai",
+  "ai filmmaking",
+  "ai filmmaker",
+  "ai cinema",
   "midjourney",
   "runway",
   "sora",
@@ -622,6 +644,7 @@ function youtubeCandidateToWork({ candidate, score }: ScoredYoutubeWork): WorkIt
 function inferVideoWorkKind(candidate: YoutubeVideoCandidate) {
   const text = `${candidate.title} ${candidate.description}`.toLowerCase();
 
+  if (/(ai drama|ai mini drama|ai web series|short drama|micro drama|mini drama|vertical drama|web drama|web series|short-form drama|episode|series)/i.test(text)) return { label: "AI短剧", score: 20 };
   if (text.includes("music video") || /\bmv\b/.test(text)) return { label: "AI音乐视频", score: 18 };
   if (text.includes("commercial") || text.includes("spec ad")) return { label: "AI广告片", score: 18 };
   if (text.includes("animation") || text.includes("anime") || text.includes("animated short")) return { label: "AI动画", score: 16 };

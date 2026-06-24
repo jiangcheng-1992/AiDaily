@@ -4,6 +4,7 @@ import { calculatePostScore } from "@/lib/post-score";
 export type HomeChannelId =
   | "all"
   | "hot"
+  | "drama"
   | "product"
   | "agent"
   | "video"
@@ -16,6 +17,7 @@ export const homeChannels: Array<{
 }> = [
   { id: "all", label: "全部", description: "按发布时间展示全部动态" },
   { id: "hot", label: "今日热点", description: "高评分、高互动、近 24 小时内容" },
+  { id: "drama", label: "AI短剧", description: "AI 短剧、AI 影视、海外短剧市场和成片案例" },
   { id: "product", label: "产品发布", description: "模型、应用、平台和商业化动态" },
   { id: "agent", label: "Agent/工具", description: "智能体、开发工具和工作流" },
   { id: "video", label: "视频", description: "B站、YouTube、抖音视频动态" },
@@ -67,6 +69,8 @@ export function postMatchesHomeChannel(post: Post, channelId: HomeChannelId) {
   switch (channelId) {
     case "hot":
       return isRecentPost(post, 24) && (calculatePostScore(post) >= 8.2 || getPostHeat(post) >= 20);
+    case "drama":
+      return isAiDramaPost(post);
     case "product":
       return /(发布|上线|开放|产品|copilot|cursor|claude|chatgpt|openai|gemini|deepseek|qwen|千问|商业|付费|订阅|平台|应用)/i.test(
         text,
@@ -138,13 +142,23 @@ function scoreSourceAuthority(post: Post) {
   return 0;
 }
 
+function isAiDramaPost(post: Post) {
+  const text = `${post.title} ${post.summary} ${post.whyItMatters} ${post.editorComment} ${post.tags.join(" ")} ${
+    post.sourceName
+  }`.toLowerCase();
+
+  return /(ai短剧|ai 剧|ai剧|aigc短剧|ai影视|ai 影视|ai电影|ai短片|ai成片|短剧|微短剧|竖屏剧|漫剧|影视生成|视频生成|sora|runway|kling|可灵|veo|hailuo|海螺|pika|luma|ai drama|ai short film|ai film|ai filmmaking|ai filmmaker|ai cinema|ai video|short drama|micro drama|mini drama|vertical drama|web drama|web series|short-form drama|reelshort)/i.test(
+    text,
+  );
+}
+
 function isAiRelevantPost(post: Post) {
   const text = `${post.title} ${post.summary} ${post.whyItMatters} ${post.editorComment} ${post.tags.join(" ")} ${
     post.sourceName
   }`.toLowerCase();
 
   const hasAiSignal =
-    /(ai|aigc|agi|agent|llm|gpt|chatgpt|openai|claude|gemini|deepseek|qwen|sora|midjourney|stable diffusion|copilot|cursor|mcp|prompt|大模型|模型|智能体|人工智能|生成式|机器学习|深度学习|神经网络|算力|推理|训练|多模态|机器人|自动化|提示词|智能|图像生成|视频生成|语音生成)/i.test(
+    /(ai|aigc|agi|agent|llm|gpt|chatgpt|openai|claude|gemini|deepseek|qwen|sora|midjourney|stable diffusion|copilot|cursor|mcp|prompt|大模型|模型|智能体|人工智能|生成式|机器学习|深度学习|神经网络|算力|推理|训练|多模态|机器人|自动化|提示词|智能|图像生成|视频生成|语音生成|短剧|微短剧|ai影视|影视生成|ai short film|ai drama|ai filmmaking|vertical drama)/i.test(
       text,
     );
 

@@ -157,6 +157,19 @@ const includeSignals = [
   "multimodal",
   "reasoning",
   "video",
+  "ai video market",
+  "ai short film",
+  "ai filmmaking",
+  "ai filmmaker",
+  "ai drama",
+  "ai series",
+  "short drama",
+  "micro drama",
+  "mini drama",
+  "vertical drama",
+  "web series",
+  "short-form drama",
+  "creator economy",
   "coding",
   "workflow",
   "case study",
@@ -169,6 +182,10 @@ const includeSignals = [
   "开源模型",
   "推理模型",
   "AI视频",
+  "AI短剧",
+  "微短剧",
+  "短剧",
+  "AI影视",
   "AI编程",
   "智能体",
 ];
@@ -205,6 +222,8 @@ const whitelistAccounts: XWhitelistAccount[] = [
   { username: "runwayml", name: "Runway", group: "official", authorType: "official", authorityScore: 8, tags: ["AI视频"] },
   { username: "LumaLabsAI", name: "Luma AI", group: "official", authorType: "official", authorityScore: 8, tags: ["AI视频"] },
   { username: "pika_labs", name: "Pika", group: "official", authorType: "official", authorityScore: 8, tags: ["AI视频"] },
+  { username: "TechCrunch", name: "TechCrunch", group: "media", authorType: "media", authorityScore: 8, tags: ["媒体", "新闻", "AI短剧市场"] },
+  { username: "VentureBeat", name: "VentureBeat AI", group: "media", authorType: "media", authorityScore: 8, tags: ["媒体", "新闻", "AI视频市场"] },
   { username: "midjourney", name: "Midjourney", group: "official", authorType: "official", authorityScore: 8, tags: ["AI图片"] },
   { username: "StabilityAI", name: "Stability AI", group: "official", authorType: "official", authorityScore: 8, tags: ["开源模型"] },
   { username: "elevenlabsio", name: "ElevenLabs", group: "official", authorType: "official", authorityScore: 8, tags: ["AI音频"] },
@@ -252,7 +271,9 @@ const whitelistAccounts: XWhitelistAccount[] = [
 
 const keywordQueries = [
   '("AI agent" OR LLM OR multimodal OR "AI video" OR "open source model" OR RAG OR MCP OR "AI coding") lang:en -is:retweet',
+  '("AI short film" OR "AI drama" OR "AI filmmaking" OR "AI video market" OR "short drama" OR "vertical drama" OR "web series") lang:en -is:retweet',
   '("AI Agent" OR 大模型 OR 多模态 OR AI视频 OR 开源模型 OR RAG OR MCP OR AI编程) lang:zh -is:retweet',
+  '(AI短剧 OR AI影视 OR 微短剧 OR 短剧市场 OR 视频生成 OR Sora OR Runway OR 可灵) lang:zh -is:retweet',
   '("launched" OR "introducing" OR "released" OR "open-sourced") (AI OR LLM OR agent OR "video model") -is:retweet',
   '("paper" OR arxiv OR research) (LLM OR multimodal OR reasoning OR agent) -is:retweet',
 ];
@@ -706,7 +727,7 @@ function inferCategory(
 ): PostType {
   const text = normalizeText(post.text);
 
-  if (text.includes("video") || text.includes("sora") || text.includes("runway") || text.includes("pika")) {
+  if (/(video|sora|runway|pika|drama|film|filmmaking|series|短剧|微短剧|ai影视|视频生成)/i.test(text)) {
     return "video";
   }
   if (text.includes("open source") || text.includes("open-source") || text.includes("github") || text.includes("开源")) {
@@ -772,7 +793,7 @@ function buildWhyImportant(
   }
 
   if (decision.category === "video") {
-    return `AI 视频是当前变化最快的应用方向之一，这条动态来自高信号账号，适合作为视频模型和创作工具更新的线索。`;
+    return `AI 视频和 AI 短剧正在同时改变创作工具、内容供给和海外短剧市场，这条动态来自高信号账号，适合作为视频模型、成片案例或市场变化的线索。`;
   }
 
   return `这条动态来自${authorLabel}，并命中发布、研究、模型或产品更新信号，适合作为首页 AI 情报流的高可信来源。`;
@@ -786,7 +807,7 @@ function categoryTags(type: PostType) {
     skill: ["开源"],
     product: ["产品"],
     case: ["案例"],
-    video: ["AI视频"],
+    video: ["AI视频", "AI短剧"],
   };
 
   return map[type];

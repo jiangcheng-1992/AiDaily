@@ -82,7 +82,7 @@ async function handleIngestRequest(request: Request) {
   );
   const xKeywordLimit = readNonNegativeInt(
     url.searchParams.get("xKeywordLimit") ?? process.env.X_KEYWORD_QUERY_LIMIT,
-    0,
+    2,
   );
   const xPublishLimit = readNonNegativeInt(
     url.searchParams.get("xPublishLimit") ?? process.env.X_PUBLISH_LIMIT,

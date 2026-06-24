@@ -123,6 +123,50 @@ export const mockPosts: Post[] = [
     featured: true,
   },
   {
+    id: "ai-short-drama-overseas-series",
+    type: "news",
+    title: "海外 AI 短剧创作者开始从单条 demo 转向连续剧集测试",
+    summary:
+      "YouTube 和 X 上的 AI filmmaker 社区正在尝试用 Sora、Runway、可灵、Veo 等工具制作连续角色、固定世界观和分集发布的短剧样片。",
+    content:
+      "海外 AI 视频创作者正在从“单条惊艳镜头”转向更接近短剧的连续叙事测试。相比早期 AI film 更偏概念片，现在更多作品开始强调角色一致性、分集标题、固定世界观和竖屏传播。\n\n这背后有两条变化：一是视频模型在人物、镜头和时长上的稳定性提升；二是 ReelShort、TikTok、YouTube Shorts 等平台证明了短剧和短叙事内容的商业化空间。\n\nAI圈会持续跟踪海外 AI filmmaker、AI short film、AI drama 和 vertical drama 的作品与市场信号，把可观看视频和行业变化放入 AI短剧 tab。",
+    whyItMatters:
+      "AI 短剧的关键不只是生成视频，而是能否把角色、剧情、分发和低成本迭代连成稳定生产链。海外创作者的试验会直接影响国内短剧和品牌内容团队的判断。",
+    editorComment:
+      "单条 AI 视频已经不稀缺，真正值得看的是谁能持续讲同一个故事、复用同一套角色，并形成可分发的内容格式。",
+    sourceName: "AI圈编辑部",
+    sourceUrl: "https://www.youtube.com/results?search_query=AI+short+film+AI+drama",
+    author: "AI圈编辑部",
+    tags: ["AI短剧", "AI视频", "海外市场", "AI成片"],
+    createdAt: "2026-06-24T10:20:00+08:00",
+    likesCount: 612,
+    commentsCount: 74,
+    savesCount: 208,
+    featured: true,
+  },
+  {
+    id: "ai-short-drama-market-watch",
+    type: "opinion",
+    title: "AI短剧市场观察：海外短剧平台给生成式视频带来的三类机会",
+    summary:
+      "ReelShort 式短剧出海、竖屏付费剧情和 AI 视频工具成熟，让 AI 短剧更像内容供应链机会，而不只是模型演示。",
+    content:
+      "海外短剧市场已经验证了竖屏、强情绪、快节奏、分集付费的内容形态。生成式视频加入后，最先出现机会的未必是完整替代剧组，而是前期概念验证、广告素材、角色测试和多语言本地化。\n\n对创作者来说，AI 可以降低试错成本：先用 AI 做出 3 到 5 集样片，测试题材、人设和封面，再决定是否投入真人拍摄或继续虚拟化制作。\n\n对平台和工具公司来说，谁能解决角色一致性、对白口型、批量剪辑和版权合规，谁就更接近 AI 短剧的真实生产场景。",
+    whyItMatters:
+      "短剧是高频、强商业化、强素材消耗的内容品类，非常适合观察 AI 视频从演示走向生产的速度。",
+    editorComment:
+      "AI短剧不应只看模型画质，还要看剧本测试、素材复用、投放转化和版权边界，这些才决定它能不能成为生意。",
+    sourceName: "AI圈编辑部",
+    sourceUrl: "https://www.reelshort.com/",
+    author: "AI圈编辑部",
+    tags: ["AI短剧", "短剧市场", "海外市场", "商业化"],
+    createdAt: "2026-06-24T09:50:00+08:00",
+    likesCount: 538,
+    commentsCount: 61,
+    savesCount: 196,
+    featured: true,
+  },
+  {
     id: "agentic-workflows-ng",
     type: "opinion",
     title: "Andrew Ng：Agentic Workflows 会成为今年 AI 应用的核心分水岭",
@@ -398,6 +442,7 @@ export const mockComments: Record<string, Comment[]> = {
 
 export const hotTags = [
   "Agent",
+  "AI短剧",
   "AI视频",
   "Cursor",
   "提示词",
